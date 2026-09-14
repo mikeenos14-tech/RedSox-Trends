@@ -1,5 +1,49 @@
 let runDiffChart = null;
 
+async function loadHeroHeadline() {
+  const el = document.getElementById("hero-headline");
+  try {
+    const res = await fetch("/api/team/hero-headline");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to load headline");
+    }
+    const data = await res.json();
+    el.textContent = data.headline;
+  } catch (e) {
+    el.textContent = "";
+    el.style.display = "none";
+  }
+}
+
+async function loadDivisionStandings() {
+  const tbody = document.querySelector("#standings-table tbody");
+  try {
+    const res = await fetch("/api/team/division-standings");
+    if (!res.ok) throw new Error("Failed to load standings");
+    const data = await res.json();
+
+    tbody.innerHTML = "";
+    data.teams.forEach((t) => {
+      const tr = document.createElement("tr");
+      if (t.is_target) tr.className = "target-row";
+      const streakCls = t.streak && t.streak.startsWith("W") ? "streak-w" : t.streak && t.streak.startsWith("L") ? "streak-l" : "";
+      tr.innerHTML = `
+        <td class="num">${t.division_rank}</td>
+        <td class="name">${t.name}</td>
+        <td class="num">${t.wins}</td>
+        <td class="num">${t.losses}</td>
+        <td class="num">${t.pct}</td>
+        <td class="num">${t.games_back}</td>
+        <td class="num ${streakCls}">${t.streak || "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7">Couldn't load standings: ${e.message}</td></tr>`;
+  }
+}
+
 function renderBulletText(container, text) {
   const lines = text
     .split("\n")
@@ -55,7 +99,7 @@ function renderSummary(data) {
     `${data.record.wins}-${data.record.losses} (.${data.record.pct?.replace("0.", "")}) ` +
     `• ${data.games_back === "-" ? "1st" : data.games_back + " GB"} • Streak: ${data.streak ?? "-"}`;
 
-  const cards = document.getElementById("cards");
+  const cards = document.getElementById("overview");
   cards.innerHTML = "";
   cards.append(
     card("Last 10", data.last_10 ? `${data.last_10.wins}-${data.last_10.losses}` : "-"),
@@ -342,6 +386,20 @@ function pctStr(v) {
   return v.toFixed(3).replace(/^0/, "");
 }
 
+function heatClass(v, opts) {
+  if (v == null) return "";
+  if (opts.badIfBelow != null && v <= opts.badIfBelow) return "heat-bad";
+  if (opts.badIfAbove != null && v >= opts.badIfAbove) return "heat-bad";
+  if (opts.goodIfAbove != null && v >= opts.goodIfAbove) return "heat-good";
+  if (opts.goodIfBelow != null && v <= opts.goodIfBelow) return "heat-good";
+  return "";
+}
+
+function warnIfFar(v, target, tolerance) {
+  if (v == null) return "";
+  return Math.abs(v - target) > tolerance ? "heat-warn" : "";
+}
+
 function deltaCell(delta, higherIsBetter, smallSample) {
   if (smallSample) return `<td class="num flag">small sample</td>`;
   if (delta == null) return `<td class="num">-</td>`;
@@ -364,15 +422,18 @@ async function loadPlayerHotCold() {
       const s = h.season;
       const r = h.recent;
       const tr = document.createElement("tr");
+      const babipCls = s ? warnIfFar(s.babip, 0.3, 0.03) : "";
+      const bbCls = s ? heatClass(s.bb_pct, { goodIfAbove: 0.09, badIfBelow: 0.06 }) : "";
+      const kCls = s ? heatClass(s.k_pct, { goodIfBelow: 0.18, badIfAbove: 0.28 }) : "";
       tr.innerHTML = `
         <td class="name">${h.name}</td>
         <td>${h.position || "-"}</td>
         <td class="num">${s ? pctStr(s.woba) : "-"}</td>
         <td class="num">${pctStr(r.woba)}</td>
         ${deltaCell(h.form_delta_woba, true, h.small_sample)}
-        <td class="num">${s ? pctStr(s.babip) : "-"}</td>
-        <td class="num">${s ? pctStr(s.bb_pct) : "-"}</td>
-        <td class="num">${s ? pctStr(s.k_pct) : "-"}</td>
+        <td class="num ${babipCls}">${s ? pctStr(s.babip) : "-"}</td>
+        <td class="num ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
+        <td class="num ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
         <td class="num">${s ? pctStr(s.iso) : "-"}</td>
       `;
       hittersBody.appendChild(tr);
@@ -383,16 +444,20 @@ async function loadPlayerHotCold() {
       const s = p.season;
       const r = p.recent;
       const tr = document.createElement("tr");
+      const fipCls = s ? heatClass(s.fip, { goodIfBelow: 3.5, badIfAbove: 4.75 }) : "";
+      const kbbCls = s ? heatClass(s.k_bb_pct, { goodIfAbove: 0.15, badIfBelow: 0.05 }) : "";
+      const babipAgstCls = s ? warnIfFar(s.babip_against, 0.3, 0.03) : "";
+      const lobCls = s ? warnIfFar(s.lob_pct, 0.72, 0.08) : "";
       tr.innerHTML = `
         <td class="name">${p.name}</td>
         <td>${p.role}</td>
         <td class="num">${s ? (s.era ?? "-") : "-"}</td>
         <td class="num">${r.era ?? "-"}</td>
         ${deltaCell(p.form_delta_era, true, p.small_sample)}
-        <td class="num">${s ? (s.fip ?? "-") : "-"}</td>
-        <td class="num">${s ? pctStr(s.k_bb_pct) : "-"}</td>
-        <td class="num">${s ? pctStr(s.babip_against) : "-"}</td>
-        <td class="num">${s ? pctStr(s.lob_pct) : "-"}</td>
+        <td class="num ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
+        <td class="num ${kbbCls}">${s ? pctStr(s.k_bb_pct) : "-"}</td>
+        <td class="num ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
+        <td class="num ${lobCls}">${s ? pctStr(s.lob_pct) : "-"}</td>
       `;
       pitchersBody.appendChild(tr);
     });
@@ -437,3 +502,5 @@ loadSummary()
 loadHeadlines();
 loadPlayerHotCold();
 loadLeagueContext();
+loadDivisionStandings();
+loadHeroHeadline();

@@ -20,8 +20,31 @@
     <p id="record-line" class="subtitle">Loading…</p>
   </header>
 
+  <nav class="site-nav">
+    <a href="#overview">Overview</a>
+    <a href="#league">League</a>
+    <a href="#players">Players</a>
+    <a href="#games">Games</a>
+  </nav>
+
+  <div class="hero-headline" id="hero-headline">
+    <span class="hero-spinner"></span> Reading the numbers…
+  </div>
+
   <main>
-    <section class="cards" id="cards"></section>
+    <section class="cards" id="overview"></section>
+
+    <section class="standings-section">
+      <h2>AL East Standings</h2>
+      <div class="table-scroll">
+        <table id="standings-table" class="stat-table">
+          <thead>
+            <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>GB</th><th>Streak</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
 
     <section class="recap-section">
       <div class="recap-header">
@@ -40,7 +63,7 @@
       <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
     </section>
 
-    <section class="league-section">
+    <section class="league-section" id="league">
       <h2>Where Boston Ranks <span class="section-sub">of 30 MLB teams</span></h2>
       <div class="cards" id="league-cards"></div>
       <div class="chart-wrap">
@@ -65,7 +88,7 @@
       <p id="analysis-text" class="recap-text">Click "Generate Briefing" for a front-office-style read on roster construction and regression risk.</p>
     </section>
 
-    <section class="players-section">
+    <section class="players-section" id="players">
       <div class="recap-header">
         <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 days vs. season</span></h2>
         <button id="player-notes-btn">Generate Player Notes</button>
@@ -102,7 +125,7 @@
       <p class="muted small-note">League-average BABIP is ~.300 — rate stats well above or below that are flagged as likely regression candidates. Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).</p>
     </section>
 
-    <section class="games-section">
+    <section class="games-section" id="games">
       <h2>Last 15 Games</h2>
       <table id="games-table">
         <thead>

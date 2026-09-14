@@ -40,6 +40,33 @@ def _extract_text(message) -> str:
     return text
 
 
+HEADLINE_SYSTEM_PROMPT = (
+    "You write a single punchy headline for the top of a Boston Red Sox analytics "
+    "dashboard, in the style of a sharp sports-analytics one-liner (think a smart "
+    "tweet, not a newspaper headline). Given structured team trend data as JSON, "
+    "distill the single most interesting or surprising storyline right now — a hot "
+    "streak, a stat that contradicts the record, an elite/weak ranking, a luck "
+    "indicator — into ONE sentence, under 22 words. Lead with a relevant emoji "
+    "(one only). Be specific and cite a number. No hashtags, no quotation marks, "
+    "plain text only. Return only the sentence, nothing else."
+)
+
+
+def generate_headline(trends_summary: dict) -> str:
+    message = _create_message(
+        model=MODEL,
+        max_tokens=600,
+        system=HEADLINE_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Trend data:\n{json.dumps(trends_summary, indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)
+
+
 SYSTEM_PROMPT = (
     "You are a sharp, knowledgeable beat writer covering the Boston Red Sox. "
     "Given structured season-trend data as JSON, write a short recap (4-6 sentences) "

@@ -54,6 +54,23 @@ async def team_league_context():
     return await league_context.get_league_context()
 
 
+@app.get("/api/team/division-standings")
+async def team_division_standings():
+    return {"teams": await mlb_client.get_division_standings()}
+
+
+@app.get("/api/team/hero-headline")
+async def team_hero_headline():
+    summary = await _build_summary()
+
+    try:
+        headline = ai_recap.generate_headline(summary)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"headline": headline}
+
+
 @app.get("/api/team/analysis")
 async def team_analysis():
     summary = await _build_summary()

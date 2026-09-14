@@ -81,6 +81,46 @@ async def get_recent_games(
     return games
 
 
+async def get_division_standings(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> list[dict]:
+    """Fetch the standings for this team's own division, sorted by rank."""
+    url = f"{BASE_URL}/standings"
+    params = {
+        "leagueId": config.LEAGUE_ID,
+        "season": season,
+        "standingsTypes": "regularSeason",
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+    for division in data.get("records", []):
+        team_ids = [tr["team"]["id"] for tr in division.get("teamRecords", [])]
+        if team_id not in team_ids:
+            continue
+
+        teams = []
+        for tr in division.get("teamRecords", []):
+            record = tr.get("leagueRecord", {})
+            teams.append(
+                {
+                    "id": tr["team"]["id"],
+                    "name": tr["team"]["name"],
+                    "wins": record.get("wins"),
+                    "losses": record.get("losses"),
+                    "pct": record.get("pct"),
+                    "games_back": tr.get("gamesBack"),
+                    "streak": (tr.get("streak") or {}).get("streakCode"),
+                    "division_rank": tr.get("divisionRank"),
+                    "is_target": tr["team"]["id"] == team_id,
+                }
+            )
+        teams.sort(key=lambda t: int(t["division_rank"]))
+        return teams
+
+    raise ValueError(f"Division for team {team_id} not found in standings for season {season}")
+
+
 async def get_league_win_pcts(season: int = config.SEASON) -> dict[int, float]:
     """Fetch current win% for every MLB team (both leagues), keyed by team id."""
     url = f"{BASE_URL}/standings"
