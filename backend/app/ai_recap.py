@@ -6,6 +6,26 @@ from . import config
 
 MODEL = "claude-sonnet-5"
 
+
+def _client() -> Anthropic:
+    if not config.ANTHROPIC_API_KEY:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is not set. Add it to backend/.env (see .env.example)."
+        )
+    return Anthropic(api_key=config.ANTHROPIC_API_KEY)
+
+
+def _extract_text(message) -> str:
+    text = "".join(block.text for block in message.content if block.type == "text")
+    if not text or message.stop_reason == "max_tokens":
+        raise RuntimeError(
+            f"Response was truncated (stop_reason={message.stop_reason}, "
+            f"got {len(text)} chars of text). Try again — the prompt may need "
+            "a larger max_tokens budget."
+        )
+    return text
+
+
 SYSTEM_PROMPT = (
     "You are a sharp, knowledgeable beat writer covering the Boston Red Sox. "
     "Given structured season-trend data as JSON, write a short recap (4-6 sentences) "
@@ -19,16 +39,9 @@ SYSTEM_PROMPT = (
 
 
 def generate_recap(trends_summary: dict) -> str:
-    if not config.ANTHROPIC_API_KEY:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Add it to backend/.env (see .env.example)."
-        )
-
-    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
-
-    message = client.messages.create(
+    message = _client().messages.create(
         model=MODEL,
-        max_tokens=400,
+        max_tokens=700,
         system=SYSTEM_PROMPT,
         messages=[
             {
@@ -37,8 +50,7 @@ def generate_recap(trends_summary: dict) -> str:
             }
         ],
     )
-
-    return "".join(block.text for block in message.content if block.type == "text")
+    return _extract_text(message)
 
 
 ANALYSIS_SYSTEM_PROMPT = (
@@ -55,16 +67,9 @@ ANALYSIS_SYSTEM_PROMPT = (
 
 
 def generate_front_office_analysis(trends_summary: dict) -> str:
-    if not config.ANTHROPIC_API_KEY:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Add it to backend/.env (see .env.example)."
-        )
-
-    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
-
-    message = client.messages.create(
+    message = _client().messages.create(
         model=MODEL,
-        max_tokens=400,
+        max_tokens=700,
         system=ANALYSIS_SYSTEM_PROMPT,
         messages=[
             {
@@ -73,8 +78,36 @@ def generate_front_office_analysis(trends_summary: dict) -> str:
             }
         ],
     )
+    return _extract_text(message)
 
-    return "".join(block.text for block in message.content if block.type == "text")
+
+PLAYER_NOTES_SYSTEM_PROMPT = (
+    "You are a statistical analyst for the Boston Red Sox front office, reviewing "
+    "player-level form data. Given JSON with each rostered hitter's and pitcher's "
+    "season stats vs. their last-15-day stats (wOBA, BABIP, BB%/K%, ISO for "
+    "hitters; ERA, FIP, K-BB%, BABIP-against, strand rate for pitchers), identify "
+    "the 2-3 most notable hot streaks and 2-3 most notable cold streaks. For each, "
+    "say explicitly whether the underlying peripherals (BABIP, FIP vs ERA, K%/BB%) "
+    "suggest the streak reflects real improved/declined performance, or is likely "
+    "small-sample variance/luck that should regress. League-average BABIP is "
+    "roughly .300. Write 5-7 bullet points, each starting with '- ', naming the "
+    "specific player. Be direct and technical, like an internal analytics memo."
+)
+
+
+def generate_player_notes(player_report: dict) -> str:
+    message = _client().messages.create(
+        model=MODEL,
+        max_tokens=4000,
+        system=PLAYER_NOTES_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Player form data:\n{json.dumps(player_report, indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)
 
 
 HEADLINES_SYSTEM_PROMPT = (
@@ -89,21 +122,14 @@ HEADLINES_SYSTEM_PROMPT = (
 
 
 def generate_headlines_summary(headlines: list[dict]) -> str:
-    if not config.ANTHROPIC_API_KEY:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Add it to backend/.env (see .env.example)."
-        )
-
     if not headlines:
         return "- No recent headlines found in the last few days."
 
-    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
-
     slim = [{"title": h["title"], "source": h["source"]} for h in headlines]
 
-    message = client.messages.create(
+    message = _client().messages.create(
         model=MODEL,
-        max_tokens=350,
+        max_tokens=600,
         system=HEADLINES_SYSTEM_PROMPT,
         messages=[
             {
@@ -112,5 +138,4 @@ def generate_headlines_summary(headlines: list[dict]) -> str:
             }
         ],
     )
-
-    return "".join(block.text for block in message.content if block.type == "text")
+    return _extract_text(message)

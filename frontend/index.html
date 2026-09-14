@@ -49,6 +49,43 @@
       <p id="analysis-text" class="recap-text">Click "Generate Briefing" for a front-office-style read on roster construction and regression risk.</p>
     </section>
 
+    <section class="players-section">
+      <div class="recap-header">
+        <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 days vs. season</span></h2>
+        <button id="player-notes-btn">Generate Player Notes</button>
+      </div>
+      <p id="player-notes-text" class="recap-text">Click "Generate Player Notes" for an analyst read on which streaks are real vs. small-sample noise.</p>
+
+      <h3>Hitters</h3>
+      <div class="table-scroll">
+        <table id="hitters-table" class="stat-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Pos</th>
+              <th>wOBA (S)</th><th>wOBA (L15)</th><th>Δ</th>
+              <th>BABIP</th><th>BB%</th><th>K%</th><th>ISO</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <h3>Pitchers</h3>
+      <div class="table-scroll">
+        <table id="pitchers-table" class="stat-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Role</th>
+              <th>ERA (S)</th><th>ERA (L15)</th><th>Δ</th>
+              <th>FIP</th><th>K-BB%</th><th>BABIP-agst</th><th>LOB%</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted small-note">League-average BABIP is ~.300 — rate stats well above or below that are flagged as likely regression candidates. Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).</p>
+    </section>
+
     <section class="games-section">
       <h2>Last 15 Games</h2>
       <table id="games-table">

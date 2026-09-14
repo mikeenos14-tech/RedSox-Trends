@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, mlb_client, news, trends
+from . import ai_recap, mlb_client, news, player_stats, trends
 
 app = FastAPI(title="Red Sox Season Trends")
 
@@ -62,6 +62,23 @@ async def team_headlines_summary():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return {"summary": summary}
+
+
+@app.get("/api/players/hot-cold")
+async def players_hot_cold():
+    return await player_stats.get_player_hot_cold_report()
+
+
+@app.get("/api/players/notes")
+async def players_notes():
+    report = await player_stats.get_player_hot_cold_report()
+
+    try:
+        notes = ai_recap.generate_player_notes(report)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"notes": notes}
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

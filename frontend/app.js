@@ -206,9 +206,96 @@ async function loadAnalysisBriefing() {
   }
 }
 
+function pctStr(v) {
+  if (v == null) return "-";
+  return v.toFixed(3).replace(/^0/, "");
+}
+
+function deltaCell(delta, higherIsBetter, smallSample) {
+  if (smallSample) return `<td class="num flag">small sample</td>`;
+  if (delta == null) return `<td class="num">-</td>`;
+  const good = higherIsBetter ? delta > 0 : delta > 0;
+  const cls = delta === 0 ? "" : good ? "delta-up" : "delta-down";
+  const sign = delta > 0 ? "+" : "";
+  return `<td class="num ${cls}">${sign}${delta}</td>`;
+}
+
+async function loadPlayerHotCold() {
+  const hittersBody = document.querySelector("#hitters-table tbody");
+  const pitchersBody = document.querySelector("#pitchers-table tbody");
+  try {
+    const res = await fetch("/api/players/hot-cold");
+    if (!res.ok) throw new Error("Failed to load player stats");
+    const data = await res.json();
+
+    hittersBody.innerHTML = "";
+    data.hitters.forEach((h) => {
+      const s = h.season;
+      const r = h.recent;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="name">${h.name}</td>
+        <td>${h.position || "-"}</td>
+        <td class="num">${pctStr(s.woba)}</td>
+        <td class="num">${r ? pctStr(r.woba) : "-"}</td>
+        ${deltaCell(h.form_delta_woba, true, h.small_sample)}
+        <td class="num">${pctStr(s.babip)}</td>
+        <td class="num">${pctStr(s.bb_pct)}</td>
+        <td class="num">${pctStr(s.k_pct)}</td>
+        <td class="num">${pctStr(s.iso)}</td>
+      `;
+      hittersBody.appendChild(tr);
+    });
+
+    pitchersBody.innerHTML = "";
+    data.pitchers.forEach((p) => {
+      const s = p.season;
+      const r = p.recent;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="name">${p.name}</td>
+        <td>${p.role}</td>
+        <td class="num">${s.era ?? "-"}</td>
+        <td class="num">${r ? (r.era ?? "-") : "-"}</td>
+        ${deltaCell(p.form_delta_era, true, p.small_sample)}
+        <td class="num">${s.fip ?? "-"}</td>
+        <td class="num">${pctStr(s.k_bb_pct)}</td>
+        <td class="num">${pctStr(s.babip_against)}</td>
+        <td class="num">${pctStr(s.lob_pct)}</td>
+      `;
+      pitchersBody.appendChild(tr);
+    });
+  } catch (e) {
+    hittersBody.innerHTML = `<tr><td colspan="9">Couldn't load: ${e.message}</td></tr>`;
+  }
+}
+
+async function loadPlayerNotes() {
+  const btn = document.getElementById("player-notes-btn");
+  const textEl = document.getElementById("player-notes-text");
+  btn.disabled = true;
+  btn.textContent = "Generating…";
+  textEl.textContent = "Reviewing player form data…";
+  try {
+    const res = await fetch("/api/players/notes");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to generate player notes");
+    }
+    const data = await res.json();
+    textEl.textContent = data.notes;
+  } catch (e) {
+    textEl.textContent = `Couldn't generate notes: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Player Notes";
+  }
+}
+
 document.getElementById("regenerate-btn").addEventListener("click", loadRecap);
 document.getElementById("headlines-summary-btn").addEventListener("click", loadHeadlinesSummary);
 document.getElementById("analysis-btn").addEventListener("click", loadAnalysisBriefing);
+document.getElementById("player-notes-btn").addEventListener("click", loadPlayerNotes);
 
 loadSummary()
   .then(renderSummary)
@@ -217,3 +304,4 @@ loadSummary()
   });
 
 loadHeadlines();
+loadPlayerHotCold();
