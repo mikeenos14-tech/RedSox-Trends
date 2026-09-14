@@ -151,7 +151,15 @@ function renderRunDiffChart(series) {
   const ctx = document.getElementById("run-diff-chart");
   if (!ctx || typeof Chart === "undefined") return;
 
-  const labels = series.map((p) => p.date.slice(5));
+  // Doubleheaders produce two points on the same calendar date, which
+  // collide as duplicate x-axis labels and make the line look broken.
+  // Disambiguate the second+ game of a date with a "G2"/"G3" suffix.
+  const seen = {};
+  const labels = series.map((p) => {
+    const short = p.date.slice(5);
+    seen[p.date] = (seen[p.date] || 0) + 1;
+    return seen[p.date] > 1 ? `${short} (G${seen[p.date]})` : short;
+  });
   const values = series.map((p) => p.rolling_run_diff);
 
   if (runDiffChart) {
@@ -386,18 +394,38 @@ function pctStr(v) {
   return v.toFixed(3).replace(/^0/, "");
 }
 
-function heatClass(v, opts) {
-  if (v == null) return "";
-  if (opts.badIfBelow != null && v <= opts.badIfBelow) return "heat-bad";
-  if (opts.badIfAbove != null && v >= opts.badIfAbove) return "heat-bad";
-  if (opts.goodIfAbove != null && v >= opts.goodIfAbove) return "heat-good";
-  if (opts.goodIfBelow != null && v <= opts.goodIfBelow) return "heat-good";
-  return "";
+// Green = above league average (in the direction that's good for this stat),
+// yellow = within the "roughly average" band, red = below league average.
+// `band` is a relative tolerance (8% of the league-average value by default)
+// treated as "at league average" rather than forcing everything into a
+// binary above/below call.
+function tierClass(v, leagueAvg, higherIsBetter, band = 0.08) {
+  if (v == null || leagueAvg == null || leagueAvg === 0) return "";
+  const relDiff = (v - leagueAvg) / Math.abs(leagueAvg);
+  if (Math.abs(relDiff) <= band) return "heat-avg";
+  const isAboveAvg = relDiff > 0;
+  const isGood = higherIsBetter ? isAboveAvg : !isAboveAvg;
+  return isGood ? "heat-good" : "heat-bad";
 }
 
+// BABIP and strand rate (LOB%) aren't skill stats where "above average" is
+// good or bad — they're luck/sequencing indicators. A hitter with a very
+// high BABIP isn't necessarily better, they're either hitting the ball hard
+// or running hot; you can't tell which from BABIP alone. So these get a
+// single amber "notably far from typical" flag instead of green/red.
 function warnIfFar(v, target, tolerance) {
   if (v == null) return "";
   return Math.abs(v - target) > tolerance ? "heat-warn" : "";
+}
+
+let statBenchmarks = null;
+async function loadStatBenchmarks() {
+  try {
+    const res = await fetch("/api/team/stat-benchmarks");
+    if (res.ok) statBenchmarks = await res.json();
+  } catch (e) {
+    statBenchmarks = null;
+  }
 }
 
 function deltaCell(delta, higherIsBetter, smallSample) {
@@ -413,6 +441,9 @@ async function loadPlayerHotCold() {
   const hittersBody = document.querySelector("#hitters-table tbody");
   const pitchersBody = document.querySelector("#pitchers-table tbody");
   try {
+    if (!statBenchmarks) await loadStatBenchmarks();
+    const b = statBenchmarks || {};
+
     const res = await fetch("/api/players/hot-cold");
     if (!res.ok) throw new Error("Failed to load player stats");
     const data = await res.json();
@@ -422,19 +453,21 @@ async function loadPlayerHotCold() {
       const s = h.season;
       const r = h.recent;
       const tr = document.createElement("tr");
-      const babipCls = s ? warnIfFar(s.babip, 0.3, 0.03) : "";
-      const bbCls = s ? heatClass(s.bb_pct, { goodIfAbove: 0.09, badIfBelow: 0.06 }) : "";
-      const kCls = s ? heatClass(s.k_pct, { goodIfBelow: 0.18, badIfAbove: 0.28 }) : "";
+      const wobaCls = s ? tierClass(s.woba, b.woba, true) : "";
+      const babipCls = s ? warnIfFar(s.babip, b.babip ?? 0.3, 0.03) : "";
+      const bbCls = s ? tierClass(s.bb_pct, b.bb_pct, true) : "";
+      const kCls = s ? tierClass(s.k_pct, b.k_pct, false) : "";
+      const isoCls = s ? tierClass(s.iso, b.iso, true) : "";
       tr.innerHTML = `
         <td class="name">${h.name}</td>
         <td>${h.position || "-"}</td>
-        <td class="num">${s ? pctStr(s.woba) : "-"}</td>
+        <td class="num ${wobaCls}">${s ? pctStr(s.woba) : "-"}</td>
         <td class="num">${pctStr(r.woba)}</td>
         ${deltaCell(h.form_delta_woba, true, h.small_sample)}
         <td class="num ${babipCls}">${s ? pctStr(s.babip) : "-"}</td>
         <td class="num ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
         <td class="num ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
-        <td class="num">${s ? pctStr(s.iso) : "-"}</td>
+        <td class="num ${isoCls}">${s ? pctStr(s.iso) : "-"}</td>
       `;
       hittersBody.appendChild(tr);
     });
@@ -444,14 +477,15 @@ async function loadPlayerHotCold() {
       const s = p.season;
       const r = p.recent;
       const tr = document.createElement("tr");
-      const fipCls = s ? heatClass(s.fip, { goodIfBelow: 3.5, badIfAbove: 4.75 }) : "";
-      const kbbCls = s ? heatClass(s.k_bb_pct, { goodIfAbove: 0.15, badIfBelow: 0.05 }) : "";
-      const babipAgstCls = s ? warnIfFar(s.babip_against, 0.3, 0.03) : "";
-      const lobCls = s ? warnIfFar(s.lob_pct, 0.72, 0.08) : "";
+      const eraCls = s ? tierClass(s.era, b.era, false) : "";
+      const fipCls = s ? tierClass(s.fip, b.fip, false) : "";
+      const kbbCls = s ? tierClass(s.k_bb_pct, b.k_bb_pct, true) : "";
+      const babipAgstCls = s ? warnIfFar(s.babip_against, b.babip ?? 0.3, 0.03) : "";
+      const lobCls = s ? warnIfFar(s.lob_pct, b.lob_pct ?? 0.72, 0.08) : "";
       tr.innerHTML = `
         <td class="name">${p.name}</td>
         <td>${p.role}</td>
-        <td class="num">${s ? (s.era ?? "-") : "-"}</td>
+        <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
         <td class="num">${r.era ?? "-"}</td>
         ${deltaCell(p.form_delta_era, true, p.small_sample)}
         <td class="num ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>

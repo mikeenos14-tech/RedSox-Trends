@@ -59,6 +59,11 @@ async def team_division_standings():
     return {"teams": await mlb_client.get_division_standings()}
 
 
+@app.get("/api/team/stat-benchmarks")
+async def team_stat_benchmarks():
+    return await league_context.get_stat_benchmarks()
+
+
 @app.get("/api/team/hero-headline")
 async def team_hero_headline():
     summary = await _build_summary()

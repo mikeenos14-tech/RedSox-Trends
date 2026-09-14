@@ -312,9 +312,13 @@ main section { scroll-margin-top: 3.5rem; }
 .stat-table td.delta-down { color: var(--red); font-weight: 700; }
 .stat-table td.flag { color: var(--warn); font-size: 0.78rem; }
 
-.stat-table td.heat-good { background: var(--good-bg); color: var(--good); font-weight: 600; }
-.stat-table td.heat-bad { background: var(--bad-bg); color: var(--red); font-weight: 600; }
-.stat-table td.heat-warn { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+.heat-good { background: var(--good-bg); color: var(--good); }
+.heat-bad { background: var(--bad-bg); color: var(--red); }
+.heat-avg { background: var(--warn-bg); color: var(--warn); }
+.heat-warn { background: var(--warn-bg); color: var(--warn); }
+
+.stat-table td.heat-good, .stat-table td.heat-bad, .stat-table td.heat-avg { font-weight: 600; }
+.stat-table td.heat-warn { font-style: italic; }
 
 .standings-section {
   background: var(--card-bg);
@@ -333,6 +337,14 @@ main section { scroll-margin-top: 3.5rem; }
   font-size: 0.78rem;
   margin-top: 0.75rem;
   line-height: 1.5;
+}
+
+.legend-swatch {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
 }
 
 .chart-wrap {

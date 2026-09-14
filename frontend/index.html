@@ -122,7 +122,14 @@
           <tbody></tbody>
         </table>
       </div>
-      <p class="muted small-note">League-average BABIP is ~.300 — rate stats well above or below that are flagged as likely regression candidates. Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).</p>
+      <p class="muted small-note">
+        <span class="legend-swatch heat-good">green</span> = better than the current MLB average,
+        <span class="legend-swatch heat-avg">yellow</span> = about average,
+        <span class="legend-swatch heat-bad">red</span> = below average.
+        BABIP, BABIP-against, and strand rate (LOB%) are luck/sequencing indicators rather than skill stats, so
+        <span class="legend-swatch heat-warn">amber</span> there just flags "far from typical" (~.300 BABIP, ~72% LOB%), not good-or-bad.
+        Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).
+      </p>
     </section>
 
     <section class="games-section" id="games">

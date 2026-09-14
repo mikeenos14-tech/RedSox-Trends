@@ -49,6 +49,17 @@ def _team_woba(stat: dict) -> float | None:
     return round(num / denom, 3)
 
 
+def _team_iso(stat: dict) -> float | None:
+    avg = stat.get("avg")
+    slg = stat.get("slg")
+    if avg is None or slg is None:
+        return None
+    try:
+        return round(float(slg) - float(avg), 3)
+    except ValueError:
+        return None
+
+
 def _team_fip(stat: dict) -> float | None:
     ip = _parse_innings(stat.get("inningsPitched"))
     if ip <= 0:
@@ -80,6 +91,53 @@ def _rank_desc(values: dict[int, float], team_id: int) -> tuple[int, int] | None
 
 def _avg(values: list[float]) -> float:
     return round(sum(values) / len(values), 3) if values else 0.0
+
+
+async def get_stat_benchmarks(season: int = config.SEASON) -> dict:
+    """League-average rate stats, used as the baseline for player-level
+    heat-coloring (team-level aggregates are a close proxy for the true
+    player-weighted league average, and are much cheaper to compute)."""
+    hitting_splits = await _fetch_league_team_stats("hitting", season)
+    pitching_splits = await _fetch_league_team_stats("pitching", season)
+
+    woba, bb_pct, k_pct, iso = [], [], [], []
+    for split in hitting_splits:
+        stat = split["stat"]
+        w = _team_woba(stat)
+        if w is not None:
+            woba.append(w)
+        i = _team_iso(stat)
+        if i is not None:
+            iso.append(i)
+        pa = stat.get("plateAppearances", 0) or 0
+        if pa:
+            bb_pct.append((stat.get("baseOnBalls", 0) or 0) / pa)
+            k_pct.append((stat.get("strikeOuts", 0) or 0) / pa)
+
+    era, fip, k_bb_pct = [], [], []
+    for split in pitching_splits:
+        stat = split["stat"]
+        e = stat.get("era")
+        if e is not None:
+            era.append(float(e))
+        f = _team_fip(stat)
+        if f is not None:
+            fip.append(f)
+        bf = stat.get("battersFaced", 0) or 0
+        if bf:
+            k_bb_pct.append(((stat.get("strikeOuts", 0) or 0) - (stat.get("baseOnBalls", 0) or 0)) / bf)
+
+    return {
+        "woba": _avg(woba),
+        "bb_pct": _avg(bb_pct),
+        "k_pct": _avg(k_pct),
+        "iso": _avg(iso),
+        "babip": 0.300,
+        "era": _avg(era),
+        "fip": _avg(fip),
+        "k_bb_pct": _avg(k_bb_pct),
+        "lob_pct": 0.72,
+    }
 
 
 async def get_league_context(team_id: int = config.TEAM_ID) -> dict:
