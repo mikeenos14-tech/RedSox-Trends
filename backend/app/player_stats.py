@@ -45,7 +45,11 @@ def _parse_innings(ip_str: str | None) -> float:
 
 
 async def _get_roster(season: int = config.SEASON) -> list[dict]:
-    params = {"rosterType": "fullSeason", "season": season}
+    # 40Man, not fullSeason — fullSeason includes anyone who passed through
+    # the org this year (trades, DFAs, releases included), which surfaces
+    # players no longer with the team. 40Man reflects who's actually still
+    # rostered right now.
+    params = {"rosterType": "40Man", "season": season}
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/teams/{config.TEAM_ID}/roster", params=params)
         resp.raise_for_status()
