@@ -516,6 +516,10 @@ async function loadPlayerHotCold() {
         <td class="num ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
         <td class="num ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
         <td class="num ${isoCls}">${s ? pctStr(s.iso) : "-"}</td>
+        <td class="num">${s ? pctStr(s.avg) : "-"}</td>
+        <td class="num">${s ? pctStr(s.ops) : "-"}</td>
+        <td class="num">${s && s.hr != null ? s.hr : "-"}</td>
+        <td class="num">${s && s.rbi != null ? s.rbi : "-"}</td>
       `;
       hittersBody.appendChild(tr);
     });
@@ -544,7 +548,7 @@ async function loadPlayerHotCold() {
       pitchersBody.appendChild(tr);
     });
   } catch (e) {
-    hittersBody.innerHTML = `<tr><td colspan="9">Couldn't load: ${e.message}</td></tr>`;
+    hittersBody.innerHTML = `<tr><td colspan="13">Couldn't load: ${e.message}</td></tr>`;
   }
 }
 

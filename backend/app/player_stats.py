@@ -123,6 +123,7 @@ def _hitting_metrics(stat: dict) -> dict:
         "bb_pct": round(bb / pa, 3) if pa else None,
         "k_pct": round(so / pa, 3) if pa else None,
         "hr": hr,
+        "rbi": stat.get("rbi"),
     }
 
 
