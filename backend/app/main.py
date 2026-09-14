@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 import traceback
-from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -172,10 +171,11 @@ async def players_notes():
 
 @app.get("/api/players/highlight")
 async def players_highlight():
-    # Cached for the calendar day: the whole point is one player featured
-    # per day for everyone, not a fresh AI-written bio (and roster fetch)
-    # on every visit.
-    today = date.today().isoformat()
+    # Cached for the calendar day (Eastern time — see
+    # player_highlight.eastern_today for why): the whole point is one
+    # player featured per day for everyone, not a fresh AI-written bio
+    # (and roster fetch) on every visit.
+    today = player_highlight.eastern_today().isoformat()
     async with _highlight_lock:
         if _highlight_cache["date"] == today and _highlight_cache["data"] is not None:
             return _highlight_cache["data"]

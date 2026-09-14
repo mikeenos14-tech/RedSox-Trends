@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import date
+from datetime import date, datetime
 
 import httpx
 
 from . import config, player_stats
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
+
+
+def eastern_today() -> date:
+    return datetime.now(config.EASTERN_TZ).date()
 
 
 def _pick_daily_player_id(roster: list[dict], for_date: date) -> int:
@@ -137,7 +141,7 @@ KNOWN_NICKNAMES: dict[int, str] = {
 
 
 async def get_daily_highlight(for_date: date | None = None) -> dict:
-    for_date = for_date or date.today()
+    for_date = for_date or eastern_today()
 
     roster = await player_stats.get_roster()
     position_by_id = {
