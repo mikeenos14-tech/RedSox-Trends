@@ -1,6 +1,8 @@
+import traceback
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import ai_recap, config, league_context, mlb_client, news, player_stats, trends
@@ -8,6 +10,21 @@ from . import ai_recap, config, league_context, mlb_client, news, player_stats, 
 app = FastAPI(title="Red Sox Season Trends")
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    # Surface the real error instead of a bare "Internal Server Error" —
+    # this is a small personal project, not a service handling other
+    # people's data, so exposing exception details here is a reasonable
+    # trade for actually being able to debug production failures.
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        },
+    )
 
 
 async def _build_summary() -> dict:
