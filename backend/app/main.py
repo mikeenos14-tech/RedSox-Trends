@@ -64,6 +64,29 @@ async def team_stat_benchmarks():
     return await league_context.get_stat_benchmarks()
 
 
+@app.get("/api/team/upcoming-schedule")
+async def team_upcoming_schedule():
+    games = await mlb_client.get_upcoming_games()
+    division_teams = await mlb_client.get_division_standings()
+    division_ids = {t["id"] for t in division_teams if not t["is_target"]}
+
+    for g in games:
+        g["is_division_game"] = g["opponent_id"] in division_ids
+
+    pcts = [float(g["opponent_record"]["pct"]) for g in games if g["opponent_record"].get("pct")]
+    home_count = sum(1 for g in games if g["home_or_away"] == "home")
+
+    return {
+        "games": games,
+        "summary": {
+            "avg_opponent_pct": round(sum(pcts) / len(pcts), 3) if pcts else None,
+            "home_count": home_count,
+            "away_count": len(games) - home_count,
+            "division_game_count": sum(1 for g in games if g["is_division_game"]),
+        },
+    }
+
+
 @app.get("/api/team/hero-headline")
 async def team_hero_headline():
     summary = await _build_summary()

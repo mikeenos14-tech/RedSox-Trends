@@ -44,6 +44,54 @@ async function loadDivisionStandings() {
   }
 }
 
+function formatGameDate(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
+}
+
+async function loadUpcomingSchedule() {
+  const cards = document.getElementById("upcoming-cards");
+  const tbody = document.querySelector("#upcoming-table tbody");
+  try {
+    const res = await fetch("/api/team/upcoming-schedule");
+    if (!res.ok) throw new Error("Failed to load upcoming schedule");
+    const data = await res.json();
+    const s = data.summary;
+
+    cards.innerHTML = "";
+    cards.append(
+      card("Avg Opponent PCT", s.avg_opponent_pct != null ? fmtRate(s.avg_opponent_pct) : "-"),
+      card("Home / Away", `${s.home_count} / ${s.away_count}`),
+      card("Division Games", s.division_game_count)
+    );
+
+    tbody.innerHTML = "";
+    if (!data.games.length) {
+      tbody.innerHTML = `<tr><td colspan="6">No upcoming games scheduled.</td></tr>`;
+      return;
+    }
+    data.games.forEach((g) => {
+      const tr = document.createElement("tr");
+      if (g.is_division_game) tr.className = "division-game";
+      const rec = g.opponent_record;
+      const recStr = rec && rec.wins != null ? `${rec.wins}-${rec.losses} (${rec.pct})` : "-";
+      const divBadge = g.is_division_game ? `<span class="div-badge">DIV</span>` : "";
+      tr.innerHTML = `
+        <td>${formatGameDate(g.date)}</td>
+        <td class="name">${g.opponent}${divBadge}</td>
+        <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
+        <td class="num">${recStr}</td>
+        <td>${g.us_probable_pitcher || "TBD"}</td>
+        <td>${g.opponent_probable_pitcher || "TBD"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6">Couldn't load schedule: ${e.message}</td></tr>`;
+  }
+}
+
 function renderBulletText(container, text) {
   const lines = text
     .split("\n")
@@ -538,3 +586,4 @@ loadPlayerHotCold();
 loadLeagueContext();
 loadDivisionStandings();
 loadHeroHeadline();
+loadUpcomingSchedule();

@@ -145,3 +145,57 @@ async def get_league_win_pcts(season: int = config.SEASON) -> dict[int, float]:
                         win_pcts[team_record["team"]["id"]] = float(pct_str)
 
     return win_pcts
+
+
+async def get_upcoming_games(team_id: int = config.TEAM_ID, count: int = 10, season: int = config.SEASON) -> list[dict]:
+    """Fetch the next `count` not-yet-played games, with probable pitchers."""
+    start = date.today()
+    end = start + timedelta(days=30)  # generous window in case of postponements/gaps
+
+    url = f"{BASE_URL}/schedule"
+    params = {
+        "teamId": team_id,
+        "startDate": start.isoformat(),
+        "endDate": end.isoformat(),
+        "sportId": 1,
+        "gameType": "R",
+        "hydrate": "probablePitcher",
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+    games = []
+    for date_entry in data.get("dates", []):
+        for game in date_entry.get("games", []):
+            if game["status"]["abstractGameState"] not in ("Preview",):
+                continue
+
+            teams = game["teams"]
+            is_home = teams["home"]["team"]["id"] == team_id
+            us = teams["home"] if is_home else teams["away"]
+            them = teams["away"] if is_home else teams["home"]
+            them_record = them.get("leagueRecord", {})
+
+            games.append(
+                {
+                    "date": game["officialDate"],
+                    "game_date_utc": game["gameDate"],
+                    "opponent": them["team"]["name"],
+                    "opponent_id": them["team"]["id"],
+                    "home_or_away": "home" if is_home else "away",
+                    "opponent_record": {
+                        "wins": them_record.get("wins"),
+                        "losses": them_record.get("losses"),
+                        "pct": them_record.get("pct"),
+                    },
+                    "us_probable_pitcher": (us.get("probablePitcher") or {}).get("fullName"),
+                    "opponent_probable_pitcher": (them.get("probablePitcher") or {}).get("fullName"),
+                    "venue": (game.get("venue") or {}).get("name"),
+                    "game_number": game.get("gameNumber", 1),
+                }
+            )
+
+    games.sort(key=lambda g: g["game_date_utc"])
+    return games[:count]
