@@ -68,6 +68,7 @@ async def get_recent_games(
                 {
                     "date": game["officialDate"],
                     "opponent": them["team"]["name"],
+                    "opponent_id": them["team"]["id"],
                     "home_or_away": "home" if is_home else "away",
                     "our_score": us.get("score"),
                     "their_score": them.get("score"),
@@ -78,3 +79,29 @@ async def get_recent_games(
 
     games.sort(key=lambda g: g["date"])
     return games
+
+
+async def get_league_win_pcts(season: int = config.SEASON) -> dict[int, float]:
+    """Fetch current win% for every MLB team (both leagues), keyed by team id."""
+    url = f"{BASE_URL}/standings"
+    win_pcts: dict[int, float] = {}
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        for league_id in (103, 104):  # American League, National League
+            resp = await client.get(
+                url,
+                params={
+                    "leagueId": league_id,
+                    "season": season,
+                    "standingsTypes": "regularSeason",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            for division in data.get("records", []):
+                for team_record in division.get("teamRecords", []):
+                    pct_str = team_record.get("leagueRecord", {}).get("pct")
+                    if pct_str is not None:
+                        win_pcts[team_record["team"]["id"]] = float(pct_str)
+
+    return win_pcts

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Red Sox Season Trends</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
@@ -21,6 +22,31 @@
         <button id="regenerate-btn">Regenerate</button>
       </div>
       <p id="recap-text" class="recap-text">Click "Regenerate" to generate an AI recap of the team's current trends.</p>
+    </section>
+
+    <section class="headlines-section">
+      <div class="recap-header">
+        <h2>Headlines <span class="section-sub">last 3 days</span></h2>
+        <button id="headlines-summary-btn">Summarize Coverage</button>
+      </div>
+      <p id="headlines-summary-text" class="recap-text">Click "Summarize Coverage" to see what talking heads are saying.</p>
+      <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
+    </section>
+
+    <section class="analysis-section">
+      <h2>Front Office Analysis</h2>
+
+      <div class="cards" id="analysis-cards"></div>
+
+      <div class="chart-wrap">
+        <canvas id="run-diff-chart" height="90"></canvas>
+      </div>
+
+      <div class="recap-header">
+        <h3>Analyst Briefing</h3>
+        <button id="analysis-btn">Generate Briefing</button>
+      </div>
+      <p id="analysis-text" class="recap-text">Click "Generate Briefing" for a front-office-style read on roster construction and regression risk.</p>
     </section>
 
     <section class="games-section">

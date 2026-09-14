@@ -99,7 +99,7 @@ main {
 
 .recap-header h2 { margin: 0; }
 
-#regenerate-btn {
+#regenerate-btn, #headlines-summary-btn, #analysis-btn {
   background: var(--red);
   color: white;
   border: none;
@@ -107,9 +107,10 @@ main {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-#regenerate-btn:disabled {
+#regenerate-btn:disabled, #headlines-summary-btn:disabled, #analysis-btn:disabled {
   opacity: 0.6;
   cursor: default;
 }
@@ -120,6 +121,65 @@ main {
 }
 
 .games-section h2 { margin-bottom: 0.75rem; }
+
+.headlines-section, .analysis-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.section-sub {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: 0.4rem;
+}
+
+.headlines-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.headlines-list li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+
+.headlines-list li:last-child { border-bottom: none; }
+
+.headlines-list a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.headlines-list a:hover { color: var(--red); }
+
+.headlines-list .meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}
+
+.headlines-list .muted { color: var(--muted); }
+
+.analysis-section h2 { margin-top: 0; }
+.analysis-section h3 { margin-bottom: 0; font-size: 1rem; }
+
+.chart-wrap {
+  margin: 1.25rem 0 1.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+}
 
 table {
   width: 100%;

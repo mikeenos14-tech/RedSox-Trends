@@ -1,3 +1,5 @@
+let runDiffChart = null;
+
 async function loadSummary() {
   const res = await fetch("/api/team/summary");
   if (!res.ok) throw new Error("Failed to load summary");
@@ -9,6 +11,11 @@ function card(label, value) {
   el.className = "card";
   el.innerHTML = `<div class="label">${label}</div><div class="value">${value}</div>`;
   return el;
+}
+
+function fmtPct(pct) {
+  if (pct == null) return "-";
+  return `.${String(pct).replace("0.", "").padEnd(3, "0")}`;
 }
 
 function renderSummary(data) {
@@ -43,6 +50,67 @@ function renderSummary(data) {
     `;
     tbody.appendChild(tr);
   });
+
+  renderAnalysis(data.analysis || {});
+}
+
+function renderAnalysis(analysis) {
+  const cards = document.getElementById("analysis-cards");
+  cards.innerHTML = "";
+  cards.append(
+    card("vs LHP", analysis.vs_lhp_record ? `${analysis.vs_lhp_record.wins}-${analysis.vs_lhp_record.losses}` : "-"),
+    card("vs RHP", analysis.vs_rhp_record ? `${analysis.vs_rhp_record.wins}-${analysis.vs_rhp_record.losses}` : "-"),
+    card("One-Run Games", analysis.one_run_record ? `${analysis.one_run_record.wins}-${analysis.one_run_record.losses}` : "-"),
+    card("Extra Innings", analysis.extra_innings_record ? `${analysis.extra_innings_record.wins}-${analysis.extra_innings_record.losses}` : "-"),
+    card(
+      "Strength of Sched (L15)",
+      analysis.strength_of_schedule ? fmtPct(analysis.strength_of_schedule.avg_opponent_win_pct) : "-"
+    )
+  );
+
+  renderRunDiffChart(analysis.rolling_run_diff_series || []);
+}
+
+function renderRunDiffChart(series) {
+  const ctx = document.getElementById("run-diff-chart");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  const labels = series.map((p) => p.date.slice(5));
+  const values = series.map((p) => p.rolling_run_diff);
+
+  if (runDiffChart) {
+    runDiffChart.data.labels = labels;
+    runDiffChart.data.datasets[0].data = values;
+    runDiffChart.update();
+    return;
+  }
+
+  runDiffChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Rolling 10-Game Run Differential",
+          data: values,
+          borderColor: "#bd3039",
+          backgroundColor: "rgba(189, 48, 57, 0.12)",
+          fill: true,
+          tension: 0.25,
+          pointRadius: 0,
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } },
+      scales: {
+        y: { title: { display: true, text: "Run Diff (last 10)" } },
+        x: { ticks: { maxTicksLimit: 10 } },
+      },
+    },
+  });
 }
 
 async function loadRecap() {
@@ -67,10 +135,85 @@ async function loadRecap() {
   }
 }
 
+async function loadHeadlines() {
+  const list = document.getElementById("headlines-list");
+  try {
+    const res = await fetch("/api/team/headlines");
+    if (!res.ok) throw new Error("Failed to load headlines");
+    const data = await res.json();
+
+    list.innerHTML = "";
+    if (!data.headlines.length) {
+      list.innerHTML = '<li class="muted">No recent headlines found.</li>';
+      return;
+    }
+
+    data.headlines.forEach((h) => {
+      const li = document.createElement("li");
+      const date = h.published ? new Date(h.published).toLocaleDateString() : "";
+      li.innerHTML = `
+        <a href="${h.link}" target="_blank" rel="noopener">${h.title}</a>
+        <span class="meta">${[h.source, date].filter(Boolean).join(" • ")}</span>
+      `;
+      list.appendChild(li);
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="muted">Couldn't load headlines: ${e.message}</li>`;
+  }
+}
+
+async function loadHeadlinesSummary() {
+  const btn = document.getElementById("headlines-summary-btn");
+  const textEl = document.getElementById("headlines-summary-text");
+  btn.disabled = true;
+  btn.textContent = "Summarizing…";
+  textEl.textContent = "Reading recent coverage…";
+  try {
+    const res = await fetch("/api/team/headlines/summary");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to summarize coverage");
+    }
+    const data = await res.json();
+    textEl.textContent = data.summary;
+  } catch (e) {
+    textEl.textContent = `Couldn't summarize coverage: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Summarize Coverage";
+  }
+}
+
+async function loadAnalysisBriefing() {
+  const btn = document.getElementById("analysis-btn");
+  const textEl = document.getElementById("analysis-text");
+  btn.disabled = true;
+  btn.textContent = "Generating…";
+  textEl.textContent = "Running the numbers…";
+  try {
+    const res = await fetch("/api/team/analysis");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to generate analysis");
+    }
+    const data = await res.json();
+    textEl.textContent = data.analysis;
+  } catch (e) {
+    textEl.textContent = `Couldn't generate a briefing: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Briefing";
+  }
+}
+
 document.getElementById("regenerate-btn").addEventListener("click", loadRecap);
+document.getElementById("headlines-summary-btn").addEventListener("click", loadHeadlinesSummary);
+document.getElementById("analysis-btn").addEventListener("click", loadAnalysisBriefing);
 
 loadSummary()
   .then(renderSummary)
   .catch((e) => {
     document.getElementById("record-line").textContent = `Couldn't load data: ${e.message}`;
   });
+
+loadHeadlines();
