@@ -46,27 +46,41 @@ header {
 }
 
 .header-brand {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: center;
   gap: 1rem;
-  flex-wrap: wrap;
 }
 
 .team-logo {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: clamp(0.5rem, 6vw, 4rem);
   width: 64px;
   height: 64px;
   flex-shrink: 0;
 }
 
-.header-brand > div { text-align: center; }
+.header-brand > div {
+  grid-column: 2;
+  text-align: center;
+}
 
 header h1 {
   margin: 0;
   font-family: "Playball", cursive;
   font-weight: 400;
-  font-size: clamp(2.25rem, 8vw, 3.25rem);
+  font-size: clamp(2.75rem, 10vw, 4.5rem);
   line-height: 1.1;
+}
+
+@media (max-width: 480px) {
+  .header-brand {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .team-logo { margin-left: 0; }
 }
 
 .header-tagline {
