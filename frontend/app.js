@@ -145,7 +145,9 @@ function fmtPct(pct) {
 function renderSummary(data) {
   document.getElementById("record-line").textContent =
     `${data.record.wins}-${data.record.losses} (.${data.record.pct?.replace("0.", "")}) ` +
-    `• ${data.games_back === "-" ? "1st" : data.games_back + " GB"} • Streak: ${data.streak ?? "-"}`;
+    `• ${data.games_back === "-" ? "1st in div" : data.games_back + " GB"} ` +
+    `• WC: ${data.wildcard_games_back ?? "-"} ` +
+    `• Streak: ${data.streak ?? "-"}`;
 
   const cards = document.getElementById("overview");
   cards.innerHTML = "";

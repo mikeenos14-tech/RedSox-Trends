@@ -48,7 +48,19 @@ HEADLINE_SYSTEM_PROMPT = (
     "streak, a stat that contradicts the record, an elite/weak ranking, a luck "
     "indicator — into ONE sentence, under 22 words. Lead with a relevant emoji "
     "(one only). Be specific and cite a number. No hashtags, no quotation marks, "
-    "plain text only. Return only the sentence, nothing else."
+    "plain text only. Return only the sentence, nothing else.\n\n"
+    "PLAYOFF STAKES — get this right, it's the easiest thing to get wrong: "
+    "the `playoff_context` field is the ONLY authoritative source for whether "
+    "this team has something to play for. `games_back` is division standing "
+    "only — a team can be far back in its division while comfortably holding "
+    "a Wild Card spot, which is a completely different story. Never say "
+    "'nothing to play for', 'eliminated', 'spoiler mode', 'out of it', or "
+    "similar UNLESS `playoff_context.summary` explicitly says so (elimination "
+    "or a large negative wildcard deficit). If `currently_holds_wildcard_spot` "
+    "is true, that team is actively fighting to STAY IN a playoff spot — frame "
+    "it that way, not as also-rans. Write in natural prose — never name a JSON "
+    "field or key (e.g. don't write 'the playoff_context shows'), just state "
+    "the fact."
 )
 
 
@@ -75,7 +87,12 @@ SYSTEM_PROMPT = (
     "home/away splits, expected vs. actual record) rather than speaking vaguely. "
     "Call out whether the underlying trends (run differential, expected record) "
     "support or contradict the team's recent results. No headers, no bullet points, "
-    "just a tight paragraph."
+    "just a tight paragraph.\n\n"
+    "If you reference playoff stakes, `playoff_context` is the only authoritative "
+    "source — `games_back` alone is division standing only and can be misleading "
+    "(a team can be far back in the division while holding a Wild Card spot). "
+    "Never call a team eliminated or say it has nothing to play for unless "
+    "`playoff_context.summary` says so. Write in natural prose — never name a JSON field or key."
 )
 
 
@@ -108,7 +125,12 @@ ANALYSIS_SYSTEM_PROMPT = (
     "Boston's own trend. Focus on what the data implies for roster construction, "
     "sustainability of form, and regression risk. Be direct and technical, the "
     "way an analyst would write for decision-makers, not fans. No headers or "
-    "bullet points, just a dense paragraph. Cite specific numbers and ranks."
+    "bullet points, just a dense paragraph. Cite specific numbers and ranks.\n\n"
+    "If you reference playoff stakes, `playoff_context` is the only authoritative "
+    "source — `games_back` alone is division standing only and can be misleading "
+    "(a team can be far back in the division while holding a Wild Card spot). "
+    "Never call a team eliminated or say it has nothing to play for unless "
+    "`playoff_context.summary` says so. Write in natural prose — never name a JSON field or key."
 )
 
 

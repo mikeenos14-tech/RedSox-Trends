@@ -65,6 +65,46 @@ def _strength_of_schedule(games: list[dict], win_pcts: dict[int, float] | None, 
     }
 
 
+def _playoff_context(standings: dict) -> dict:
+    """A deterministic, unambiguous read on playoff positioning — computed
+    in code rather than left for the model to infer from raw numbers, since
+    'games back' in the division and Wild Card standing are easy to conflate
+    (a team can be far back in its division while comfortably holding a
+    Wild Card spot, which is a very different story than 'nothing to play
+    for')."""
+    has_wildcard = bool(standings.get("hasWildcard"))
+    division_leader = bool(standings.get("divisionLeader"))
+    clinched = bool(standings.get("clinched"))
+    wc_gb = standings.get("wildCardGamesBack")
+    elim_num = standings.get("eliminationNumber")
+    wc_elim_num = standings.get("wildCardEliminationNumber")
+
+    is_eliminated = elim_num in ("0", "E") and wc_elim_num in ("0", "E")
+
+    if clinched:
+        summary = "Has already clinched a playoff spot."
+    elif is_eliminated:
+        summary = "Mathematically eliminated from playoff contention."
+    elif division_leader:
+        summary = "Currently leads their division."
+    elif has_wildcard:
+        summary = f"Currently HOLDS a Wild Card spot, {wc_gb} games clear of the cutoff line."
+    elif wc_gb is not None:
+        summary = f"Chasing a Wild Card spot, {wc_gb} games back of the cutoff line."
+    else:
+        summary = "Playoff positioning unclear from available data."
+
+    return {
+        "currently_holds_wildcard_spot": has_wildcard,
+        "division_leader": division_leader,
+        "clinched": clinched,
+        "wildcard_games_back": wc_gb,
+        "elimination_number": elim_num,
+        "wildcard_elimination_number": wc_elim_num,
+        "summary": summary,
+    }
+
+
 def build_trends_summary(
     standings: dict,
     games: list[dict],
@@ -95,6 +135,7 @@ def build_trends_summary(
         "division_rank": standings.get("divisionRank"),
         "games_back": standings.get("gamesBack"),
         "wildcard_games_back": standings.get("wildCardGamesBack"),
+        "playoff_context": _playoff_context(standings),
         "streak": (standings.get("streak") or {}).get("streakCode"),
         "last_10": wl(last_ten),
         "home_record": wl(home),
