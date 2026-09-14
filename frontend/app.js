@@ -114,7 +114,11 @@ async function loadPlayerHighlight() {
       p.height && p.weight ? `<b>Ht/Wt:</b> ${p.height}, ${p.weight} lb` : null,
       p.birthplace ? `<b>From:</b> ${p.birthplace}` : null,
       p.mlb_debut ? `<b>MLB Debut:</b> ${formatLongDate(p.mlb_debut)}` : null,
-      p.draft_year ? `<b>Drafted:</b> ${p.draft_year}` : null,
+      p.drafted_by
+        ? `<b>Drafted:</b> ${p.drafted_by}, ${p.draft_year}${p.draft_round ? ` (Rd ${p.draft_round}, Pick ${p.draft_pick_number})` : ""}`
+        : p.draft_year
+        ? `<b>Drafted:</b> ${p.draft_year}`
+        : `<b>Signed:</b> International free agent`,
     ].filter(Boolean);
 
     const paragraphs = (p.narrative || "")
