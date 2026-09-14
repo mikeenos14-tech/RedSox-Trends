@@ -59,16 +59,14 @@ header {
   flex-shrink: 0;
 }
 
-.header-brand > div { text-align: left; }
-
-@media (max-width: 480px) {
-  .header-brand { text-align: center; }
-  .header-brand > div { text-align: center; }
-}
+.header-brand > div { text-align: center; }
 
 header h1 {
   margin: 0;
-  font-size: clamp(1.5rem, 5vw, 2.25rem);
+  font-family: "Playball", cursive;
+  font-weight: 400;
+  font-size: clamp(2.25rem, 8vw, 3.25rem);
+  line-height: 1.1;
 }
 
 .header-tagline {
