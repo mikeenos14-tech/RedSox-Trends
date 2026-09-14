@@ -1,3 +1,4 @@
+import logging
 import traceback
 from pathlib import Path
 
@@ -5,7 +6,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, config, league_context, mlb_client, news, player_stats, trends
+from . import ai_recap, league_context, mlb_client, news, player_stats, trends
+
+logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI(title="Red Sox Season Trends")
 
@@ -14,17 +17,12 @@ FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    # Surface the real error instead of a bare "Internal Server Error" —
-    # this is a small personal project, not a service handling other
-    # people's data, so exposing exception details here is a reasonable
-    # trade for actually being able to debug production failures.
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
-        },
-    )
+    # Log the full traceback server-side (visible in Render's log viewer)
+    # but never expose exception internals to the client — file paths,
+    # package versions, etc. shouldn't be handed to anyone who can trigger
+    # an error on a public-facing app.
+    logger.error("Unhandled exception on %s:\n%s", request.url.path, traceback.format_exc())
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 async def _build_summary() -> dict:
@@ -104,25 +102,6 @@ async def players_notes():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return {"notes": notes}
-
-
-@app.get("/api/debug/key-info")
-async def debug_key_info():
-    # TEMPORARY — for diagnosing an env var issue on Render. Never returns
-    # the actual key, only enough metadata to spot a bad copy/paste. Remove
-    # once the deployment key issue is resolved.
-    key = config.ANTHROPIC_API_KEY
-    if not key:
-        return {"is_set": False}
-    return {
-        "is_set": True,
-        "length": len(key),
-        "prefix": key[:14],
-        "suffix": key[-4:],
-        "has_leading_or_trailing_whitespace": key != key.strip(),
-        "has_newline": "\n" in key or "\r" in key,
-        "has_nonprintable": any(ord(c) < 32 or ord(c) > 126 for c in key),
-    }
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
