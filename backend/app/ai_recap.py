@@ -88,25 +88,29 @@ def generate_front_office_analysis(trends_summary: dict) -> str:
 
 PLAYER_NOTES_SYSTEM_PROMPT = (
     "You are a statistical analyst for the Boston Red Sox front office, reviewing "
-    "player-level form data. Given JSON with each rostered hitter's and pitcher's "
-    "season stats vs. their last-15-day stats (wOBA, BABIP, BB%/K%, ISO for "
-    "hitters; ERA, FIP, K-BB%, BABIP-against, strand rate for pitchers), pick ONLY "
-    "the 3-5 single most notable form changes across the whole roster (hot or "
-    "cold, whichever stand out most — don't force an even split). Skip anyone "
-    "whose recent sample is flagged small_sample. For each, say in one tight "
-    "sentence whether the peripherals (BABIP, FIP vs ERA, K%/BB%) suggest the "
-    "change is real or likely to regress. League-average BABIP is roughly .300. "
-    "Output exactly one bullet per player, each starting with '- ', in this exact "
-    "shape: '- Name (pos/role): one sentence of verdict + the 1-2 key numbers "
-    "backing it up.' Plain text only — no markdown bold/italics, no headers, no "
-    "preamble or closing remarks. Keep the whole thing under 120 words total."
+    "player-level form data for every player on the active roster with a large "
+    "enough recent sample to be meaningful. Given JSON with each hitter's and "
+    "pitcher's season stats vs. their last-15-day stats (wOBA, BABIP, BB%/K%, ISO "
+    "for hitters; ERA, FIP, K-BB%, BABIP-against, strand rate for pitchers), pick "
+    "ONLY the 3-5 single most notable form changes across the whole list (hot or "
+    "cold, whichever stand out most — don't force an even split). For each, say "
+    "in one tight sentence whether the peripherals (BABIP, FIP vs ERA, K%/BB%) "
+    "suggest the change is real or likely to regress. League-average BABIP is "
+    "roughly .300. Output exactly one bullet per player, each starting with '- ', "
+    "in this exact shape: '- Name (pos/role): one sentence of verdict + the 1-2 "
+    "key numbers backing it up.' Plain text only — no markdown bold/italics, no "
+    "headers, no preamble or closing remarks. Keep the whole thing under 120 "
+    "words total."
 )
 
 
 def generate_player_notes(player_report: dict) -> str:
+    if not player_report["hitters"] and not player_report["pitchers"]:
+        return "- Not enough recent playing time across the roster yet to call out a form change with confidence."
+
     message = _client().messages.create(
         model=MODEL,
-        max_tokens=4000,
+        max_tokens=6000,
         system=PLAYER_NOTES_SYSTEM_PROMPT,
         messages=[
             {

@@ -367,13 +367,13 @@ async function loadPlayerHotCold() {
       tr.innerHTML = `
         <td class="name">${h.name}</td>
         <td>${h.position || "-"}</td>
-        <td class="num">${pctStr(s.woba)}</td>
-        <td class="num">${r ? pctStr(r.woba) : "-"}</td>
+        <td class="num">${s ? pctStr(s.woba) : "-"}</td>
+        <td class="num">${pctStr(r.woba)}</td>
         ${deltaCell(h.form_delta_woba, true, h.small_sample)}
-        <td class="num">${pctStr(s.babip)}</td>
-        <td class="num">${pctStr(s.bb_pct)}</td>
-        <td class="num">${pctStr(s.k_pct)}</td>
-        <td class="num">${pctStr(s.iso)}</td>
+        <td class="num">${s ? pctStr(s.babip) : "-"}</td>
+        <td class="num">${s ? pctStr(s.bb_pct) : "-"}</td>
+        <td class="num">${s ? pctStr(s.k_pct) : "-"}</td>
+        <td class="num">${s ? pctStr(s.iso) : "-"}</td>
       `;
       hittersBody.appendChild(tr);
     });
@@ -386,13 +386,13 @@ async function loadPlayerHotCold() {
       tr.innerHTML = `
         <td class="name">${p.name}</td>
         <td>${p.role}</td>
-        <td class="num">${s.era ?? "-"}</td>
-        <td class="num">${r ? (r.era ?? "-") : "-"}</td>
+        <td class="num">${s ? (s.era ?? "-") : "-"}</td>
+        <td class="num">${r.era ?? "-"}</td>
         ${deltaCell(p.form_delta_era, true, p.small_sample)}
-        <td class="num">${s.fip ?? "-"}</td>
-        <td class="num">${pctStr(s.k_bb_pct)}</td>
-        <td class="num">${pctStr(s.babip_against)}</td>
-        <td class="num">${pctStr(s.lob_pct)}</td>
+        <td class="num">${s ? (s.fip ?? "-") : "-"}</td>
+        <td class="num">${s ? pctStr(s.k_bb_pct) : "-"}</td>
+        <td class="num">${s ? pctStr(s.babip_against) : "-"}</td>
+        <td class="num">${s ? pctStr(s.lob_pct) : "-"}</td>
       `;
       pitchersBody.appendChild(tr);
     });

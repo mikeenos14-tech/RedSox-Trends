@@ -79,9 +79,10 @@ async def players_hot_cold():
 @app.get("/api/players/notes")
 async def players_notes():
     report = await player_stats.get_player_hot_cold_report()
+    slim_report = player_stats.slim_for_ai(report)
 
     try:
-        notes = ai_recap.generate_player_notes(report)
+        notes = ai_recap.generate_player_notes(slim_report)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

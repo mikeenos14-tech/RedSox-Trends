@@ -157,7 +157,14 @@ def _pitching_metrics(stat: dict) -> dict:
     }
 
 
-async def get_player_hot_cold_report(hitter_count: int = 9, pitcher_count: int = 8, recent_days: int = 15) -> dict:
+async def get_player_hot_cold_report(recent_days: int = 15) -> dict:
+    """Every roster player with at least one plate appearance or inning
+    pitched in the last `recent_days` days — a rolling snapshot of whoever
+    is actually active right now, not just the season's leaders. This is
+    what makes sure a mid-season callup (e.g. a rookie who missed half the
+    year) or a low-innings reliever still shows up if they've played
+    recently, instead of being crowded out by season-long counting stats.
+    """
     end = date.today()
     start = end - timedelta(days=recent_days)
 
@@ -167,76 +174,106 @@ async def get_player_hot_cold_report(hitter_count: int = 9, pitcher_count: int =
 
     people = await _get_people_with_stats(person_ids, start, end)
 
-    hitter_candidates = []
-    pitcher_candidates = []
+    hitters = []
+    pitchers = []
 
     for person in people:
         pid = person["id"]
         name = person["fullName"]
 
-        season_hit = _first_split(person, "season", "hitting")
-        if season_hit and (season_hit.get("plateAppearances") or 0) > 0:
-            recent_hit = _first_split(person, "byDateRange", "hitting")
-            season_metrics = _hitting_metrics(season_hit)
-            hitter_candidates.append(
+        recent_hit = _first_split(person, "byDateRange", "hitting")
+        if recent_hit and (recent_hit.get("plateAppearances") or 0) > 0:
+            season_hit = _first_split(person, "season", "hitting")
+            recent_metrics = _hitting_metrics(recent_hit)
+            season_metrics = _hitting_metrics(season_hit) if season_hit else None
+            enough_sample = (recent_metrics["pa"] or 0) >= MIN_RECENT_PA
+            hitters.append(
                 {
                     "name": name,
                     "position": position_by_id.get(pid),
                     "season": season_metrics,
-                    "recent": _hitting_metrics(recent_hit) if recent_hit else None,
-                    "_pa": season_metrics["pa"],
+                    "recent": recent_metrics,
+                    "small_sample": not enough_sample,
+                    "form_delta_woba": (
+                        round(recent_metrics["woba"] - season_metrics["woba"], 3)
+                        if enough_sample
+                        and season_metrics
+                        and recent_metrics["woba"] is not None
+                        and season_metrics["woba"] is not None
+                        else None
+                    ),
                 }
             )
 
-        season_pitch = _first_split(person, "season", "pitching")
-        if season_pitch and _parse_innings(season_pitch.get("inningsPitched")) > 0:
-            recent_pitch = _first_split(person, "byDateRange", "pitching")
-            season_metrics = _pitching_metrics(season_pitch)
-            games = season_pitch.get("gamesPitched") or 1
-            starts = season_pitch.get("gamesStarted") or 0
-            pitcher_candidates.append(
+        recent_pitch = _first_split(person, "byDateRange", "pitching")
+        if recent_pitch and _parse_innings(recent_pitch.get("inningsPitched")) > 0:
+            season_pitch = _first_split(person, "season", "pitching")
+            recent_metrics = _pitching_metrics(recent_pitch)
+            season_metrics = _pitching_metrics(season_pitch) if season_pitch else None
+            enough_sample = (recent_metrics["ip"] or 0) >= MIN_RECENT_IP
+            games = (season_pitch or recent_pitch).get("gamesPitched") or 1
+            starts = (season_pitch or recent_pitch).get("gamesStarted") or 0
+            pitchers.append(
                 {
                     "name": name,
                     "role": "SP" if starts >= games / 2 else "RP",
                     "season": season_metrics,
-                    "recent": _pitching_metrics(recent_pitch) if recent_pitch else None,
-                    "_ip": season_metrics["ip"],
+                    "recent": recent_metrics,
+                    "small_sample": not enough_sample,
+                    "form_delta_era": (
+                        round(season_metrics["era"] - recent_metrics["era"], 2)
+                        if enough_sample
+                        and season_metrics
+                        and recent_metrics["era"] is not None
+                        and season_metrics["era"] is not None
+                        else None
+                    ),
                 }
             )
 
-    top_hitters = sorted(hitter_candidates, key=lambda h: h["_pa"], reverse=True)[:hitter_count]
-    top_pitchers = sorted(pitcher_candidates, key=lambda p: p["_ip"], reverse=True)[:pitcher_count]
-
-    for h in top_hitters:
-        del h["_pa"]
-        r = h["recent"]
-        s = h["season"]
-        enough_sample = bool(r and (r["pa"] or 0) >= MIN_RECENT_PA)
-        h["small_sample"] = bool(r) and not enough_sample
-        h["form_delta_woba"] = (
-            round(r["woba"] - s["woba"], 3)
-            if enough_sample and r["woba"] is not None and s["woba"] is not None
-            else None
-        )
-
-    for p in top_pitchers:
-        del p["_ip"]
-        r = p["recent"]
-        s = p["season"]
-        enough_sample = bool(r and (r["ip"] or 0) >= MIN_RECENT_IP)
-        p["small_sample"] = bool(r) and not enough_sample
-        p["form_delta_era"] = (
-            round(s["era"] - r["era"], 2)
-            if enough_sample and r["era"] is not None and s["era"] is not None
-            else None
-        )
-
-    top_hitters.sort(key=lambda h: h["form_delta_woba"] if h["form_delta_woba"] is not None else -99, reverse=True)
-    top_pitchers.sort(key=lambda p: p["form_delta_era"] if p["form_delta_era"] is not None else -99, reverse=True)
+    hitters.sort(key=lambda h: h["form_delta_woba"] if h["form_delta_woba"] is not None else -99, reverse=True)
+    pitchers.sort(key=lambda p: p["form_delta_era"] if p["form_delta_era"] is not None else -99, reverse=True)
 
     return {
         "league_avg_babip": LEAGUE_AVG_BABIP,
         "window_days": recent_days,
-        "hitters": top_hitters,
-        "pitchers": top_pitchers,
+        "hitters": hitters,
+        "pitchers": pitchers,
+    }
+
+
+def slim_for_ai(report: dict) -> dict:
+    """Trim the report to just what the player-notes prompt needs: players
+    with a large enough recent sample to say anything meaningful about, and
+    only the specific fields that feed the verdict. Keeps the roster grown
+    from get_player_hot_cold_report() from ballooning the prompt/thinking
+    budget now that it covers the whole active roster (~35-40 players)
+    instead of a fixed top-N.
+    """
+
+    def slim_hitter(h: dict) -> dict:
+        s, r = h["season"], h["recent"]
+        return {
+            "name": h["name"],
+            "position": h["position"],
+            "form_delta_woba": h["form_delta_woba"],
+            "season": s and {"woba": s["woba"], "babip": s["babip"], "bb_pct": s["bb_pct"], "k_pct": s["k_pct"], "iso": s["iso"]},
+            "recent": {"woba": r["woba"], "babip": r["babip"], "bb_pct": r["bb_pct"], "k_pct": r["k_pct"], "iso": r["iso"]},
+        }
+
+    def slim_pitcher(p: dict) -> dict:
+        s, r = p["season"], p["recent"]
+        return {
+            "name": p["name"],
+            "role": p["role"],
+            "form_delta_era": p["form_delta_era"],
+            "season": s and {"era": s["era"], "fip": s["fip"], "k_bb_pct": s["k_bb_pct"], "babip_against": s["babip_against"], "lob_pct": s["lob_pct"]},
+            "recent": {"era": r["era"], "fip": r["fip"], "k_bb_pct": r["k_bb_pct"], "babip_against": r["babip_against"], "lob_pct": r["lob_pct"]},
+        }
+
+    return {
+        "league_avg_babip": report["league_avg_babip"],
+        "window_days": report["window_days"],
+        "hitters": [slim_hitter(h) for h in report["hitters"] if not h["small_sample"]],
+        "pitchers": [slim_pitcher(p) for p in report["pitchers"] if not p["small_sample"]],
     }
