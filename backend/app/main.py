@@ -10,7 +10,7 @@ from . import ai_recap, league_context, mlb_client, news, player_stats, trends
 
 logger = logging.getLogger("uvicorn.error")
 
-app = FastAPI(title="Red Sox Season Trends")
+app = FastAPI(title="Stat Sox")
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 

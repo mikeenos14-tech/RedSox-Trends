@@ -1,4 +1,4 @@
-# Red Sox Season Trends
+# Stat Sox
 
 An AI-powered analytics dashboard for the Boston Red Sox. It pulls live season
 data from the public MLB Stats API, computes form/trend metrics (hot/cold
