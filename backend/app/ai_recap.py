@@ -1,5 +1,6 @@
 import json
 
+import anthropic
 from anthropic import Anthropic
 
 from . import config
@@ -13,6 +14,19 @@ def _client() -> Anthropic:
             "ANTHROPIC_API_KEY is not set. Add it to backend/.env (see .env.example)."
         )
     return Anthropic(api_key=config.ANTHROPIC_API_KEY)
+
+
+def _create_message(**kwargs):
+    """Wraps client.messages.create() and converts the Anthropic SDK's own
+    exception types (AuthenticationError, RateLimitError, APIConnectionError,
+    etc. — none of which are RuntimeError subclasses) into RuntimeError, so
+    a single `except RuntimeError` at the route level reliably catches every
+    failure mode instead of some falling through as unhandled 500s.
+    """
+    try:
+        return _client().messages.create(**kwargs)
+    except anthropic.APIError as exc:
+        raise RuntimeError(f"Anthropic API request failed: {exc}") from exc
 
 
 def _extract_text(message) -> str:
@@ -39,7 +53,7 @@ SYSTEM_PROMPT = (
 
 
 def generate_recap(trends_summary: dict) -> str:
-    message = _client().messages.create(
+    message = _create_message(
         model=MODEL,
         max_tokens=700,
         system=SYSTEM_PROMPT,
@@ -72,7 +86,7 @@ ANALYSIS_SYSTEM_PROMPT = (
 
 
 def generate_front_office_analysis(trends_summary: dict) -> str:
-    message = _client().messages.create(
+    message = _create_message(
         model=MODEL,
         max_tokens=700,
         system=ANALYSIS_SYSTEM_PROMPT,
@@ -108,7 +122,7 @@ def generate_player_notes(player_report: dict) -> str:
     if not player_report["hitters"] and not player_report["pitchers"]:
         return "- Not enough recent playing time across the roster yet to call out a form change with confidence."
 
-    message = _client().messages.create(
+    message = _create_message(
         model=MODEL,
         max_tokens=6000,
         system=PLAYER_NOTES_SYSTEM_PROMPT,
@@ -139,7 +153,7 @@ def generate_headlines_summary(headlines: list[dict]) -> str:
 
     slim = [{"title": h["title"], "source": h["source"]} for h in headlines]
 
-    message = _client().messages.create(
+    message = _create_message(
         model=MODEL,
         max_tokens=600,
         system=HEADLINES_SYSTEM_PROMPT,
