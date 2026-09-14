@@ -92,6 +92,53 @@ async function loadUpcomingSchedule() {
   }
 }
 
+function formatLongDate(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+}
+
+async function loadPlayerHighlight() {
+  const container = document.getElementById("highlight-body");
+  try {
+    const res = await fetch("/api/players/highlight");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to load player highlight");
+    }
+    const p = await res.json();
+
+    const facts = [
+      p.position ? `<b>Pos:</b> ${p.position}` : null,
+      p.bat_side || p.pitch_hand ? `<b>Bats/Throws:</b> ${(p.bat_side || "-")[0]}/${(p.pitch_hand || "-")[0]}` : null,
+      p.height && p.weight ? `<b>Ht/Wt:</b> ${p.height}, ${p.weight} lb` : null,
+      p.birthplace ? `<b>From:</b> ${p.birthplace}` : null,
+      p.mlb_debut ? `<b>MLB Debut:</b> ${formatLongDate(p.mlb_debut)}` : null,
+      p.draft_year ? `<b>Drafted:</b> ${p.draft_year}` : null,
+    ].filter(Boolean);
+
+    const paragraphs = (p.narrative || "")
+      .split(/\n\s*\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => `<p>${s}</p>`)
+      .join("");
+
+    container.innerHTML = `
+      <div class="highlight-header">
+        <img class="highlight-headshot" src="${p.headshot_url}" alt="${p.name}" onerror="this.style.display='none'" />
+        <div>
+          <h3 class="highlight-name">${p.name} ${p.jersey_number ? `<span class="jersey">#${p.jersey_number}</span>` : ""}</h3>
+          <div class="highlight-facts">${facts.map((f) => `<span>${f}</span>`).join("")}</div>
+        </div>
+      </div>
+      <div class="highlight-narrative">${paragraphs}</div>
+    `;
+  } catch (e) {
+    container.innerHTML = `<p class="muted">Couldn't load today's player highlight: ${e.message}</p>`;
+  }
+}
+
 function renderBulletText(container, text) {
   const lines = text
     .split("\n")
@@ -593,3 +640,4 @@ loadLeagueContext();
 loadDivisionStandings();
 loadHeroHeadline();
 loadUpcomingSchedule();
+loadPlayerHighlight();

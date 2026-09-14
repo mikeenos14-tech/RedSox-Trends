@@ -2,13 +2,14 @@ import asyncio
 import logging
 import time
 import traceback
+from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, league_context, mlb_client, news, player_stats, trends
+from . import ai_recap, league_context, mlb_client, news, player_highlight, player_stats, trends
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -18,6 +19,8 @@ FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 HEADLINE_CACHE_SECONDS = 3600
 _headline_cache = {"text": None, "generated_at": 0.0}
+_highlight_cache = {"date": None, "data": None}
+_highlight_lock = asyncio.Lock()
 _headline_lock = asyncio.Lock()
 
 
@@ -165,6 +168,28 @@ async def players_notes():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return {"notes": notes}
+
+
+@app.get("/api/players/highlight")
+async def players_highlight():
+    # Cached for the calendar day: the whole point is one player featured
+    # per day for everyone, not a fresh AI-written bio (and roster fetch)
+    # on every visit.
+    today = date.today().isoformat()
+    async with _highlight_lock:
+        if _highlight_cache["date"] == today and _highlight_cache["data"] is not None:
+            return _highlight_cache["data"]
+
+        bio = await player_highlight.get_daily_highlight()
+        try:
+            narrative = ai_recap.generate_player_highlight(bio)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        result = {**bio, "narrative": narrative}
+        _highlight_cache["date"] = today
+        _highlight_cache["data"] = result
+        return result
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

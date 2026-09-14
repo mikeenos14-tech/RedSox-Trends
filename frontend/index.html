@@ -12,6 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
+  <div class="top-bunting"></div>
+  <div class="wall-edge left"></div>
+  <div class="wall-edge right"></div>
   <header>
     <div class="header-brand">
       <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
@@ -28,6 +31,7 @@
     <a href="#league">League</a>
     <a href="#players">Players</a>
     <a href="#games">Games</a>
+    <a href="#highlight">Highlight</a>
   </nav>
 
   <div class="hero-headline" id="hero-headline">
@@ -158,6 +162,13 @@
         </thead>
         <tbody></tbody>
       </table>
+    </section>
+
+    <section class="highlight-section" id="highlight">
+      <h2>Player Highlight <span class="section-sub">new player daily</span></h2>
+      <div id="highlight-body">
+        <p class="muted">Loading today's player highlight…</p>
+      </div>
     </section>
   </main>
 

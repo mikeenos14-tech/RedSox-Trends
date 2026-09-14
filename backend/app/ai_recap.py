@@ -1,4 +1,5 @@
 import json
+import re
 
 import anthropic
 from anthropic import Anthropic
@@ -6,6 +7,19 @@ from anthropic import Anthropic
 from . import config
 
 MODEL = "claude-sonnet-5"
+
+_LEADING_NON_WORD_RE = re.compile(r"^[^\w]+", re.UNICODE)
+
+
+def _ensure_baseball_emoji(text: str) -> str:
+    """Belt-and-suspenders on top of the prompt instruction: guarantee the
+    headline always leads with the baseball emoji, regardless of whether
+    the model actually followed instructions this time."""
+    text = text.strip()
+    if text.startswith("⚾"):
+        return text
+    stripped = _LEADING_NON_WORD_RE.sub("", text).lstrip()
+    return f"⚾ {stripped}"
 
 
 def _client() -> Anthropic:
@@ -46,9 +60,10 @@ HEADLINE_SYSTEM_PROMPT = (
     "tweet, not a newspaper headline). Given structured team trend data as JSON, "
     "distill the single most interesting or surprising storyline right now — a hot "
     "streak, a stat that contradicts the record, an elite/weak ranking, a luck "
-    "indicator — into ONE sentence, under 22 words. Lead with a relevant emoji "
-    "(one only). Be specific and cite a number. No hashtags, no quotation marks, "
-    "plain text only. Return only the sentence, nothing else.\n\n"
+    "indicator — into ONE sentence, under 22 words. ALWAYS lead with exactly "
+    "one baseball emoji (⚾) — never substitute a different emoji, no matter "
+    "how fitting it seems. Be specific and cite a number. No hashtags, no "
+    "quotation marks, plain text only. Return only the sentence, nothing else.\n\n"
     "PLAYOFF STAKES — get this right, it's the easiest thing to get wrong: "
     "the `playoff_context` field is the ONLY authoritative source for whether "
     "this team has something to play for. `games_back` is division standing "
@@ -76,7 +91,7 @@ def generate_headline(trends_summary: dict) -> str:
             }
         ],
     )
-    return _extract_text(message)
+    return _ensure_baseball_emoji(_extract_text(message))
 
 
 SYSTEM_PROMPT = (
@@ -210,6 +225,55 @@ def generate_headlines_summary(headlines: list[dict]) -> str:
             {
                 "role": "user",
                 "content": f"Recent headlines:\n{json.dumps(slim, indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)
+
+
+PLAYER_HIGHLIGHT_SYSTEM_PROMPT = (
+    "You are writing a 'Player Highlight' feature for a Red Sox fan website — "
+    "a condensed, warm version of a Wikipedia 'early life' + 'career' summary, "
+    "written so a fan can get the highlights of this player's story in under a "
+    "minute. You're given verified biographical data as JSON (birthplace, "
+    "height/weight, bats/throws, draft year, MLB debut date, position, jersey "
+    "number) for a player currently on the Boston Red Sox 40-man roster.\n\n"
+    "Write exactly three short paragraphs (2-4 sentences each), separated by "
+    "a blank line, with no headers or bullet points:\n"
+    "1. Background: where they're from, and — using general, well-established "
+    "public knowledge — their amateur path (high school/college/international) "
+    "toward being drafted or signed. If you aren't confident of specifics "
+    "beyond the verified draft year, keep this general rather than inventing "
+    "detail.\n"
+    "2. The climb: their path through the minors to their MLB debut (use the "
+    "verified debut date) and what they've been doing since, in broad strokes.\n"
+    "3. Color: one or two genuine, well-known fun facts, a nickname, or a "
+    "memorable moment — ONLY if you are confident it's real and specific to "
+    "this player. If you don't have confident, specific knowledge here, write "
+    "something true and general instead (e.g. their draft round if notable, "
+    "a real physical/statistical trait, hometown pride) rather than inventing "
+    "a plausible-sounding but unverified nickname, quote, or anecdote.\n\n"
+    "ACCURACY IS THE PRIORITY OVER COLOR. This is a real, named public figure "
+    "on a real website — a fabricated 'fun fact' that turns out false is a "
+    "real problem, a boring-but-true sentence is not. When you're not certain, "
+    "default to the verified fields (birthplace, draft year, debut date, "
+    "physical details) rather than invented specifics. Do not state a specific "
+    "college, draft round/pick number, award, or nickname unless you are "
+    "genuinely confident it is correct for this exact player. Write in warm, "
+    "readable prose, not encyclopedic tone. Don't repeat the player's full "
+    "name more than twice total."
+)
+
+
+def generate_player_highlight(bio: dict) -> str:
+    message = _create_message(
+        model=MODEL,
+        max_tokens=1500,
+        system=PLAYER_HIGHLIGHT_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Player bio data:\n{json.dumps(bio, indent=2)}",
             }
         ],
     )

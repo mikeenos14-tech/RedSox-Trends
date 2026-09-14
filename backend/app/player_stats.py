@@ -44,7 +44,7 @@ def _parse_innings(ip_str: str | None) -> float:
     return outs / 3
 
 
-async def _get_roster(season: int = config.SEASON) -> list[dict]:
+async def get_roster(season: int = config.SEASON) -> list[dict]:
     # 40Man, not fullSeason — fullSeason includes anyone who passed through
     # the org this year (trades, DFAs, releases included), which surfaces
     # players no longer with the team. 40Man reflects who's actually still
@@ -173,7 +173,7 @@ async def get_player_hot_cold_report(recent_days: int = 15) -> dict:
     end = date.today()
     start = end - timedelta(days=recent_days)
 
-    roster = await _get_roster()
+    roster = await get_roster()
     person_ids = [entry["person"]["id"] for entry in roster]
     position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in roster}
 

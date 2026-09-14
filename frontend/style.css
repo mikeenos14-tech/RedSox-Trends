@@ -1,6 +1,7 @@
 :root {
   --red: #bd3039;
   --navy: #0d2b56;
+  --monster-green: #0b5d3b;
   --bg: #f7f5f2;
   --card-bg: #ffffff;
   --text: #1a1a1a;
@@ -11,6 +12,7 @@
   --bad-bg: rgba(189, 48, 57, 0.13);
   --warn: #b8860b;
   --warn-bg: rgba(184, 134, 11, 0.14);
+  --stitch-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='none' stroke='%23bd3039' stroke-width='1.6' stroke-linecap='round' opacity='0.09'%3E%3Cpath d='M12 22 q4 4 0 8 M18 22 q4 4 0 8 M24 22 q4 4 0 8'/%3E%3Cpath d='M58 62 q4 4 0 8 M64 62 q4 4 0 8 M70 62 q4 4 0 8'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +27,8 @@
     --bad-bg: rgba(255, 99, 99, 0.16);
     --warn: #eab308;
     --warn-bg: rgba(234, 179, 8, 0.16);
+    --monster-green: #1c8c5c;
+    --stitch-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='none' stroke='%23ff6b6b' stroke-width='1.6' stroke-linecap='round' opacity='0.07'%3E%3Cpath d='M12 22 q4 4 0 8 M18 22 q4 4 0 8 M24 22 q4 4 0 8'/%3E%3Cpath d='M58 62 q4 4 0 8 M64 62 q4 4 0 8 M70 62 q4 4 0 8'/%3E%3C/g%3E%3C/svg%3E");
   }
 }
 
@@ -32,10 +36,34 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--stitch-pattern);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   padding-bottom: 3rem;
+}
+
+.top-bunting {
+  height: 6px;
+  background: linear-gradient(90deg, var(--red) 0 33.33%, var(--monster-green) 33.33% 66.66%, var(--navy) 66.66% 100%);
+}
+
+.wall-edge {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .wall-edge {
+    display: block;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    background: var(--monster-green);
+    z-index: 30;
+  }
+  .wall-edge.left { left: 0; box-shadow: 2px 0 6px rgba(0, 0, 0, 0.15); }
+  .wall-edge.right { right: 0; box-shadow: -2px 0 6px rgba(0, 0, 0, 0.15); }
 }
 
 header {
@@ -105,7 +133,7 @@ header h1 {
   justify-content: center;
   gap: 0.25rem;
   background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 3px solid var(--monster-green);
   padding: 0.6rem 1rem;
   overflow-x: auto;
 }
@@ -120,7 +148,7 @@ header h1 {
   white-space: nowrap;
 }
 
-.site-nav a:hover { background: var(--bg); }
+.site-nav a:hover { background: var(--good-bg); color: var(--monster-green); }
 
 .hero-headline {
   background: linear-gradient(135deg, var(--navy), #17386e);
@@ -165,6 +193,7 @@ main section { scroll-margin-top: 3.5rem; }
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--monster-green);
   border-radius: 10px;
   padding: 1rem;
 }
@@ -364,6 +393,70 @@ main section { scroll-margin-top: 3.5rem; }
   padding: 0 0.3rem;
   margin-left: 0.35rem;
 }
+
+.highlight-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--monster-green);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.highlight-section h2 { margin: 0 0 1rem; }
+
+.highlight-header {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.highlight-headshot {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg);
+  border: 3px solid var(--monster-green);
+  flex-shrink: 0;
+}
+
+.highlight-name {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.highlight-name .jersey {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.highlight-position {
+  margin: 0.1rem 0 0.6rem;
+  color: var(--red);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.highlight-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.highlight-facts b { color: var(--text); font-weight: 600; }
+
+.highlight-narrative p {
+  line-height: 1.65;
+  margin: 0 0 1rem;
+}
+.highlight-narrative p:last-child { margin-bottom: 0; }
 
 .small-note {
   font-size: 0.78rem;
