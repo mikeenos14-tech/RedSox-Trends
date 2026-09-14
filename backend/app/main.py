@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, league_context, mlb_client, news, player_stats, trends
+from . import ai_recap, config, league_context, mlb_client, news, player_stats, trends
 
 app = FastAPI(title="Red Sox Season Trends")
 
@@ -87,6 +87,25 @@ async def players_notes():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return {"notes": notes}
+
+
+@app.get("/api/debug/key-info")
+async def debug_key_info():
+    # TEMPORARY — for diagnosing an env var issue on Render. Never returns
+    # the actual key, only enough metadata to spot a bad copy/paste. Remove
+    # once the deployment key issue is resolved.
+    key = config.ANTHROPIC_API_KEY
+    if not key:
+        return {"is_set": False}
+    return {
+        "is_set": True,
+        "length": len(key),
+        "prefix": key[:14],
+        "suffix": key[-4:],
+        "has_leading_or_trailing_whitespace": key != key.strip(),
+        "has_newline": "\n" in key or "\r" in key,
+        "has_nonprintable": any(ord(c) < 32 or ord(c) > 126 for c in key),
+    }
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
