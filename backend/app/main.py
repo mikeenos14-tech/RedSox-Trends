@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import time
 import traceback
 from pathlib import Path
 
@@ -13,6 +15,10 @@ logger = logging.getLogger("uvicorn.error")
 app = FastAPI(title="Stat Sox")
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+HEADLINE_CACHE_SECONDS = 3600
+_headline_cache = {"text": None, "generated_at": 0.0}
+_headline_lock = asyncio.Lock()
 
 
 @app.exception_handler(Exception)
@@ -89,14 +95,26 @@ async def team_upcoming_schedule():
 
 @app.get("/api/team/hero-headline")
 async def team_hero_headline():
-    summary = await _build_summary()
+    # Cached for an hour: this is the one AI call that fires automatically
+    # on every page view rather than behind a button, so an uncached version
+    # would mean one paid API call per visit/refresh regardless of whether
+    # the visitor does anything else. The lock prevents a burst of
+    # simultaneous requests right as the cache goes stale from each kicking
+    # off their own redundant (and billed) regeneration.
+    now = time.monotonic()
+    async with _headline_lock:
+        if _headline_cache["text"] is not None and (now - _headline_cache["generated_at"]) < HEADLINE_CACHE_SECONDS:
+            return {"headline": _headline_cache["text"]}
 
-    try:
-        headline = ai_recap.generate_headline(summary)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        summary = await _build_summary()
+        try:
+            headline = ai_recap.generate_headline(summary)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    return {"headline": headline}
+        _headline_cache["text"] = headline
+        _headline_cache["generated_at"] = now
+        return {"headline": headline}
 
 
 @app.get("/api/team/analysis")
