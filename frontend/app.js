@@ -1,5 +1,37 @@
 let runDiffChart = null;
 
+function renderBulletText(container, text) {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("- "))
+    .map((l) => l.slice(2).trim());
+
+  container.innerHTML = "";
+
+  if (!lines.length) {
+    container.textContent = text;
+    return;
+  }
+
+  const ul = document.createElement("ul");
+  ul.className = "bullet-list";
+  lines.forEach((line) => {
+    const li = document.createElement("li");
+    const colonIdx = line.indexOf(":");
+    if (colonIdx > -1 && colonIdx < 60) {
+      const strong = document.createElement("strong");
+      strong.textContent = line.slice(0, colonIdx + 1);
+      li.appendChild(strong);
+      li.appendChild(document.createTextNode(line.slice(colonIdx + 1)));
+    } else {
+      li.textContent = line;
+    }
+    ul.appendChild(li);
+  });
+  container.appendChild(ul);
+}
+
 async function loadSummary() {
   const res = await fetch("/api/team/summary");
   if (!res.ok) throw new Error("Failed to load summary");
@@ -175,7 +207,7 @@ async function loadHeadlinesSummary() {
       throw new Error(err.detail || "Failed to summarize coverage");
     }
     const data = await res.json();
-    textEl.textContent = data.summary;
+    renderBulletText(textEl, data.summary);
   } catch (e) {
     textEl.textContent = `Couldn't summarize coverage: ${e.message}`;
   } finally {
@@ -283,7 +315,7 @@ async function loadPlayerNotes() {
       throw new Error(err.detail || "Failed to generate player notes");
     }
     const data = await res.json();
-    textEl.textContent = data.notes;
+    renderBulletText(textEl, data.notes);
   } catch (e) {
     textEl.textContent = `Couldn't generate notes: ${e.message}`;
   } finally {

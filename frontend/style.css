@@ -120,6 +120,23 @@ main {
   color: var(--text);
 }
 
+.recap-text ul.bullet-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.recap-text ul.bullet-list li {
+  margin-bottom: 0.6rem;
+}
+
+.recap-text ul.bullet-list li:last-child {
+  margin-bottom: 0;
+}
+
+.recap-text ul.bullet-list li strong {
+  font-weight: 700;
+}
+
 .games-section h2 { margin-bottom: 0.75rem; }
 
 .headlines-section, .analysis-section, .players-section {
