@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Red Sox Season Trends</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Boston Red Sox <span class="accent">Season Trends</span></h1>
+    <p id="record-line" class="subtitle">Loading…</p>
+  </header>
+
+  <main>
+    <section class="cards" id="cards"></section>
+
+    <section class="recap-section">
+      <div class="recap-header">
+        <h2>AI Trend Recap</h2>
+        <button id="regenerate-btn">Regenerate</button>
+      </div>
+      <p id="recap-text" class="recap-text">Click "Regenerate" to generate an AI recap of the team's current trends.</p>
+    </section>
+
+    <section class="games-section">
+      <h2>Last 15 Games</h2>
+      <table id="games-table">
+        <thead>
+          <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Score</th><th>Result</th><th>Record</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

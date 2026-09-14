@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "red-sox-dashboard",
+      "runtimeExecutable": "backend/venv/bin/uvicorn",
+      "runtimeArgs": ["app.main:app", "--reload", "--app-dir", "backend", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}
