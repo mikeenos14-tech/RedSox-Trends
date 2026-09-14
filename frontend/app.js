@@ -145,6 +145,105 @@ function renderRunDiffChart(series) {
   });
 }
 
+let leagueRunDiffChart = null;
+
+function rankClass(rank, of) {
+  if (rank == null || !of) return "";
+  const pct = rank / of;
+  if (pct <= 0.34) return "rank-good";
+  if (pct <= 0.67) return "rank-mid";
+  return "rank-bad";
+}
+
+function ordinal(n) {
+  if (n == null) return "-";
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function rankCard(label, block, fmt) {
+  const el = document.createElement("div");
+  el.className = "card";
+  if (!block || block.rank == null) {
+    el.innerHTML = `<div class="label">${label}</div><div class="value">-</div>`;
+    return el;
+  }
+  const cls = rankClass(block.rank, block.of);
+  el.innerHTML = `
+    <div class="label">${label}</div>
+    <div class="value">${fmt(block.value)}</div>
+    <div class="rank-line"><span class="rank-badge ${cls}">${ordinal(block.rank)} of ${block.of}</span>MLB avg: ${fmt(block.league_avg)}</div>
+  `;
+  return el;
+}
+
+const fmtInt = (v) => (v == null ? "-" : Math.round(v));
+const fmtSignedInt = (v) => (v == null ? "-" : v > 0 ? `+${Math.round(v)}` : Math.round(v));
+const fmtRate = (v) => (v == null ? "-" : v.toFixed(3).replace(/^0/, ""));
+const fmtEra = (v) => (v == null ? "-" : v.toFixed(2));
+const fmtPct1 = (v) => (v == null ? "-" : `${(v * 100).toFixed(1)}%`);
+
+async function loadLeagueContext() {
+  const cards = document.getElementById("league-cards");
+  try {
+    const res = await fetch("/api/team/league-context");
+    if (!res.ok) throw new Error("Failed to load league context");
+    const d = await res.json();
+
+    cards.innerHTML = "";
+    cards.append(
+      rankCard("Run Differential", d.run_differential, fmtSignedInt),
+      rankCard("Runs Scored", d.runs_scored, fmtInt),
+      rankCard("Runs Allowed", d.runs_allowed, fmtInt),
+      rankCard("Team wOBA", d.team_woba, fmtRate),
+      rankCard("Team OPS", d.team_ops, fmtRate),
+      rankCard("Walk Rate", d.team_bb_pct, fmtPct1),
+      rankCard("Strikeout Rate", d.team_k_pct, fmtPct1),
+      rankCard("Team ERA", d.team_era, fmtEra),
+      rankCard("Team FIP", d.team_fip, fmtEra),
+      rankCard("Pitching K-BB%", d.team_k_bb_pct, fmtPct1)
+    );
+
+    renderLeagueRunDiffChart(d.run_diff_league_chart || []);
+  } catch (e) {
+    cards.innerHTML = `<div class="card">Couldn't load league context: ${e.message}</div>`;
+  }
+}
+
+function renderLeagueRunDiffChart(teams) {
+  const ctx = document.getElementById("league-run-diff-chart");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  const labels = teams.map((t) => t.team);
+  const values = teams.map((t) => t.run_diff);
+  const colors = teams.map((t) => (t.is_boston ? "#bd3039" : "rgba(150,150,150,0.45)"));
+
+  if (leagueRunDiffChart) {
+    leagueRunDiffChart.data.labels = labels;
+    leagueRunDiffChart.data.datasets[0].data = values;
+    leagueRunDiffChart.data.datasets[0].backgroundColor = colors;
+    leagueRunDiffChart.update();
+    return;
+  }
+
+  leagueRunDiffChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label: "Run Differential", data: values, backgroundColor: colors }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { display: false }, grid: { display: false } },
+        y: { title: { display: true, text: "Run Differential" } },
+      },
+    },
+  });
+}
+
 async function loadRecap() {
   const btn = document.getElementById("regenerate-btn");
   const textEl = document.getElementById("recap-text");
@@ -337,3 +436,4 @@ loadSummary()
 
 loadHeadlines();
 loadPlayerHotCold();
+loadLeagueContext();

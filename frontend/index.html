@@ -3,13 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Red Sox Season Trends</title>
+  <title>Fenway Form Finder</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>Boston Red Sox <span class="accent">Season Trends</span></h1>
+    <div class="header-brand">
+      <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
+      <div>
+        <h1>Fenway Form <span class="accent">Finder</span></h1>
+        <p class="header-tagline">Boston Red Sox Season Trends &amp; Analytics</p>
+      </div>
+    </div>
     <p id="record-line" class="subtitle">Loading…</p>
   </header>
 
@@ -31,6 +38,15 @@
       </div>
       <div id="headlines-summary-text" class="recap-text">Click "Summarize Coverage" to see what talking heads are saying.</div>
       <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
+    </section>
+
+    <section class="league-section">
+      <h2>Where Boston Ranks <span class="section-sub">of 30 MLB teams</span></h2>
+      <div class="cards" id="league-cards"></div>
+      <div class="chart-wrap">
+        <canvas id="league-run-diff-chart" height="110"></canvas>
+        <p class="muted small-note">Every MLB team's season run differential, sorted. Boston highlighted in red.</p>
+      </div>
     </section>
 
     <section class="analysis-section">

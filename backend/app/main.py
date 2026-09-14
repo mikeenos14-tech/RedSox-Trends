@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, mlb_client, news, player_stats, trends
+from . import ai_recap, league_context, mlb_client, news, player_stats, trends
 
 app = FastAPI(title="Red Sox Season Trends")
 
@@ -34,9 +34,16 @@ async def team_recap():
     return {"recap": recap}
 
 
+@app.get("/api/team/league-context")
+async def team_league_context():
+    return await league_context.get_league_context()
+
+
 @app.get("/api/team/analysis")
 async def team_analysis():
     summary = await _build_summary()
+    lg_ctx = await league_context.get_league_context()
+    summary["league_context"] = {k: v for k, v in lg_ctx.items() if k != "run_diff_league_chart"}
 
     try:
         analysis = ai_recap.generate_front_office_analysis(summary)
