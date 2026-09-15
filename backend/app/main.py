@@ -28,7 +28,7 @@ from . import (
 
 logger = logging.getLogger("uvicorn.error")
 
-app = FastAPI(title="Stat Sox")
+app = FastAPI(title="The Fenway Almanac")
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 

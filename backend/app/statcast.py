@@ -17,7 +17,7 @@ CUSTOM_URL = "https://baseballsavant.mlb.com/leaderboard/custom"
 # export endpoints its own leaderboard pages use client-side (the pattern
 # the community's `pybaseball` library also relies on). No key required, but
 # it wants a browser-like User-Agent or it 403s.
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; StatSoxDashboard/1.0)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; FenwayAlmanacDashboard/1.0)"}
 
 _LEADERBOARD_RE = re.compile(r"var leaderboard_data = (\[.*?\]);", re.DOTALL)
 
