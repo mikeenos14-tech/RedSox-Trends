@@ -38,6 +38,7 @@
     <a href="#last-game">Last Game</a>
     <a href="#league">League</a>
     <a href="#players">Players</a>
+    <a href="#statcast">Statcast</a>
     <a href="#games">Games</a>
     <a href="#highlight">Highlight</a>
   </nav>
@@ -166,6 +167,29 @@
         BABIP, BABIP-against, and strand rate (LOB%) are luck/sequencing indicators rather than skill stats, so
         <span class="legend-swatch heat-warn">amber</span> there just flags "far from typical" (~.300 BABIP, ~72% LOB%), not good-or-bad.
         Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).
+      </p>
+    </section>
+
+    <section class="statcast-section" id="statcast">
+      <div class="recap-header">
+        <h2>Statcast Scouting Report <span class="section-sub">Red Sox vs. the league</span></h2>
+        <button id="statcast-notes-btn">Generate Scouting Notes</button>
+      </div>
+      <div id="statcast-notes-text" class="recap-text">Click "Generate Scouting Notes" for an analyst read on what the underlying batted-ball data says.</div>
+
+      <div class="cards" id="statcast-snapshot"></div>
+
+      <h3>Hitters</h3>
+      <div class="statcast-grid" id="statcast-hitters-grid"><p class="muted">Loading Statcast data…</p></div>
+
+      <h3>Pitchers</h3>
+      <div class="statcast-grid" id="statcast-pitchers-grid"></div>
+
+      <h3>League Leaders</h3>
+      <div class="leaderboard-grid" id="statcast-leaders"></div>
+
+      <p class="muted small-note">
+        Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
       </p>
     </section>
 

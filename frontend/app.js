@@ -726,6 +726,115 @@ async function loadLastGameRecap() {
   }
 }
 
+function statcastMetricRow(label, stat) {
+  return `
+    <div class="statcast-metric">
+      <div class="statcast-metric-label">
+        <span>${label}</span>
+        <span class="stat-value">${stat.value ?? "-"}</span>
+      </div>
+      <div class="statcast-bar">
+        <div class="statcast-bar-marker" style="left: ${stat.percentile}%"></div>
+      </div>
+      <div class="statcast-percentile">${ordinal(stat.percentile)} percentile</div>
+    </div>
+  `;
+}
+
+function statcastCard(player) {
+  const metrics = Object.entries(player.stats)
+    .map(([label, stat]) => statcastMetricRow(label, stat))
+    .join("");
+  return `
+    <div class="statcast-card">
+      <div class="statcast-card-name">${player.name}</div>
+      ${metrics}
+    </div>
+  `;
+}
+
+function statcastSnapshotCards(snapshot) {
+  const cards = [];
+  Object.entries(snapshot.hitters || {}).forEach(([label, pct]) => {
+    cards.push(card(`${label} (Hitters)`, `${ordinal(pct)} pctl`));
+  });
+  Object.entries(snapshot.pitchers || {}).forEach(([label, pct]) => {
+    cards.push(card(`${label} (Pitchers)`, `${ordinal(pct)} pctl`));
+  });
+  return cards;
+}
+
+function leaderboardBlock(label, entries) {
+  const items = entries
+    .map(
+      (e) => `
+      <li class="${e.is_red_sox ? "is-sox" : ""}">
+        <span class="lb-name">${e.name}</span>
+        <span class="lb-team">${e.team}</span>
+        <span class="lb-value">${e.value}</span>
+      </li>
+    `
+    )
+    .join("");
+  return `<div class="leaderboard"><h4>${label}</h4><ol>${items}</ol></div>`;
+}
+
+async function loadStatcast() {
+  const snapshotEl = document.getElementById("statcast-snapshot");
+  const hittersEl = document.getElementById("statcast-hitters-grid");
+  const pitchersEl = document.getElementById("statcast-pitchers-grid");
+  const leadersEl = document.getElementById("statcast-leaders");
+
+  try {
+    const res = await fetch("/api/players/statcast");
+    if (!res.ok) throw new Error("Failed to load Statcast data");
+    const data = await res.json();
+
+    snapshotEl.innerHTML = "";
+    snapshotEl.append(...statcastSnapshotCards(data.team_snapshot || {}));
+
+    hittersEl.innerHTML = data.hitters.length
+      ? data.hitters.map(statcastCard).join("")
+      : '<p class="muted">Not enough Statcast-qualified hitters yet.</p>';
+
+    pitchersEl.innerHTML = data.pitchers.length
+      ? data.pitchers.map(statcastCard).join("")
+      : '<p class="muted">Not enough Statcast-qualified pitchers yet.</p>';
+
+    const leaderBlocks = [
+      ...Object.entries(data.league_leaders.hitters || {}),
+      ...Object.entries(data.league_leaders.pitchers || {}),
+    ].map(([label, entries]) => leaderboardBlock(label, entries));
+    leadersEl.innerHTML = leaderBlocks.join("");
+  } catch (e) {
+    hittersEl.innerHTML = `<p class="muted">Couldn't load Statcast data: ${e.message}</p>`;
+  }
+}
+
+async function loadStatcastNotes() {
+  const btn = document.getElementById("statcast-notes-btn");
+  const textEl = document.getElementById("statcast-notes-text");
+  btn.disabled = true;
+  btn.textContent = "Generating…";
+  textEl.textContent = "Digging through the batted-ball data…";
+  try {
+    const res = await fetch("/api/players/statcast-notes");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to generate scouting notes");
+    }
+    const data = await res.json();
+    renderBulletText(textEl, data.notes);
+  } catch (e) {
+    textEl.textContent = `Couldn't generate scouting notes: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Scouting Notes";
+  }
+}
+
+document.getElementById("statcast-notes-btn").addEventListener("click", loadStatcastNotes);
+
 document.getElementById("regenerate-btn").addEventListener("click", loadRecap);
 document.getElementById("headlines-summary-btn").addEventListener("click", loadHeadlinesSummary);
 document.getElementById("analysis-btn").addEventListener("click", loadAnalysisBriefing);
@@ -745,3 +854,4 @@ loadHeroHeadline();
 loadUpcomingSchedule();
 loadPlayerHighlight();
 loadLastGameRecap();
+loadStatcast();

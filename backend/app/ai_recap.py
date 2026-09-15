@@ -320,6 +320,47 @@ GAME_RECAP_SYSTEM_PROMPT = (
 )
 
 
+STATCAST_SYSTEM_PROMPT = (
+    "You are a scouting analyst reviewing Statcast data (real, measured batted-"
+    "ball and pitch-tracking data from Baseball Savant — exit velocity, barrel "
+    "rate, xwOBA, xERA, whiff rate, sprint speed, etc.) for the Boston Red Sox "
+    "roster. Given JSON with each player's percentile rank (0-100, always "
+    "oriented so higher = better regardless of the underlying stat) and raw "
+    "value for several signature Statcast metrics, plus league-wide leader "
+    "lists for a couple of headline stats, pick the 3-5 most notable findings "
+    "and write one tight sentence each. Prioritize: (1) a big gap between a "
+    "player's Statcast profile and their traditional stats (e.g. elite exit "
+    "velocity/xwOBA despite a modest batting average — that's an underlying-"
+    "skill signal, not just a counting stat), (2) any Red Sox player who "
+    "actually cracks a league-wide top-5 leaderboard, (3) a genuinely weak "
+    "percentile that explains a real performance problem. Every claim must "
+    "trace to a specific number in the data — never invent a value or a "
+    "comparison that isn't directly supported by what's given. Output exactly "
+    "one bullet per finding, each starting with '- ', naming the player and "
+    "citing the specific percentile or value. Plain text only, no markdown "
+    "bold/italics, no headers, no preamble or closing remarks. Under 130 "
+    "words total."
+)
+
+
+def generate_statcast_notes(report: dict) -> str:
+    if not report["hitters"] and not report["pitchers"]:
+        return "- Not enough Statcast-qualified playing time on the roster yet to call out a trend."
+
+    message = _create_message(
+        model=MODEL,
+        max_tokens=6000,
+        system=STATCAST_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Statcast data:\n{json.dumps(report, indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)
+
+
 def generate_game_recap(game_data: dict) -> str:
     slim_articles = [{"title": a["title"], "source": a["source"]} for a in game_data.get("articles", [])]
     payload = {**game_data, "articles": slim_articles}

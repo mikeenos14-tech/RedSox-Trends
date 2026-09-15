@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, game_recap, league_context, mlb_client, news, player_highlight, player_stats, trends
+from . import ai_recap, game_recap, league_context, mlb_client, news, player_highlight, player_stats, statcast, trends
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -23,6 +23,10 @@ _highlight_lock = asyncio.Lock()
 _headline_lock = asyncio.Lock()
 _game_recap_cache = {"game_pk": None, "data": None}
 _game_recap_lock = asyncio.Lock()
+_statcast_cache = {"date": None, "data": None}
+_statcast_lock = asyncio.Lock()
+_statcast_notes_cache = {"date": None, "text": None}
+_statcast_notes_lock = asyncio.Lock()
 
 
 @app.exception_handler(Exception)
@@ -192,6 +196,44 @@ async def players_highlight():
         _highlight_cache["date"] = today
         _highlight_cache["data"] = result
         return result
+
+
+async def _get_statcast_report_cached() -> dict:
+    # Savant recalculates percentiles once daily after games are logged, so
+    # a same-day cache avoids re-scraping several leaderboard pages (no
+    # official API, so being a light touch matters) on every page view.
+    today = player_highlight.eastern_today().isoformat()
+    async with _statcast_lock:
+        if _statcast_cache["date"] == today and _statcast_cache["data"] is not None:
+            return _statcast_cache["data"]
+
+        report = await statcast.get_statcast_report()
+        _statcast_cache["date"] = today
+        _statcast_cache["data"] = report
+        return report
+
+
+@app.get("/api/players/statcast")
+async def players_statcast():
+    return await _get_statcast_report_cached()
+
+
+@app.get("/api/players/statcast-notes")
+async def players_statcast_notes():
+    today = player_highlight.eastern_today().isoformat()
+    async with _statcast_notes_lock:
+        if _statcast_notes_cache["date"] == today and _statcast_notes_cache["text"] is not None:
+            return {"notes": _statcast_notes_cache["text"]}
+
+        report = await _get_statcast_report_cached()
+        try:
+            notes = ai_recap.generate_statcast_notes(report)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        _statcast_notes_cache["date"] = today
+        _statcast_notes_cache["text"] = notes
+        return {"notes": notes}
 
 
 @app.get("/api/team/last-game-recap")
