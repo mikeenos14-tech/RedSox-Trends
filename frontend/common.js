@@ -1,5 +1,9 @@
 let runDiffChart = null;
 
+function teamLogo(teamId) {
+  return `<img class="team-logo-icon" src="https://www.mlbstatic.com/team-logos/${teamId}.svg" alt="" onerror="this.style.display='none'" />`;
+}
+
 async function loadHeroHeadline() {
   const el = document.getElementById("hero-headline");
   if (!el) return;
@@ -31,7 +35,7 @@ async function loadDivisionStandings() {
       const streakCls = t.streak && t.streak.startsWith("W") ? "streak-w" : t.streak && t.streak.startsWith("L") ? "streak-l" : "";
       tr.innerHTML = `
         <td class="num">${t.division_rank}</td>
-        <td class="name">${t.name}</td>
+        <td class="name">${teamLogo(t.id)}${t.name}</td>
         <td class="num">${t.wins}</td>
         <td class="num">${t.losses}</td>
         <td class="num">${t.pct}</td>
@@ -63,7 +67,7 @@ async function loadWildcardStandings() {
       const status = t.clinched ? '<span class="div-badge">CLINCH</span>' : "";
       tr.innerHTML = `
         <td class="num">${t.wildcard_rank}</td>
-        <td class="name">${t.name}${status}</td>
+        <td class="name">${teamLogo(t.id)}${t.name}${status}</td>
         <td class="num">${t.wins}</td>
         <td class="num">${t.losses}</td>
         <td class="num">${t.pct}</td>
@@ -91,7 +95,7 @@ async function loadSeasonSeries() {
       const result = s.wins > s.losses ? "Winning" : s.wins < s.losses ? "Losing" : "Even";
       const resultCls = s.wins > s.losses ? "delta-up" : s.wins < s.losses ? "delta-down" : "";
       tr.innerHTML = `
-        <td class="name">${s.opponent}</td>
+        <td class="name">${teamLogo(s.opponent_id)}${s.opponent}</td>
         <td class="num">${s.wins}</td>
         <td class="num">${s.losses}</td>
         <td class="num ${resultCls}">${result}</td>
@@ -170,7 +174,7 @@ async function loadUpcomingSchedule() {
       const seriesStr = g.season_series ? `${g.season_series.wins}-${g.season_series.losses}` : "—";
       tr.innerHTML = `
         <td>${formatGameDate(g.date)}</td>
-        <td class="name">${g.opponent}${divBadge}</td>
+        <td class="name">${teamLogo(g.opponent_id)}${g.opponent}${divBadge}</td>
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td class="num">${recStr}</td>
         <td class="num">${seriesStr}</td>
@@ -231,7 +235,7 @@ async function loadOnThisDay() {
         ${buildPerformerList("Red Sox", g.top_performers.us)}
         ${buildPerformerList(oppShort, g.top_performers.them)}
       </div>
-      <div class="game-recap-narrative"><p>${g.blurb}</p></div>
+      <div class="game-recap-narrative"><div class="ai-badge">✨ AI-written</div><p>${g.blurb}</p></div>
     `;
   } catch (e) {
     container.innerHTML = `<p class="muted">Couldn't load On This Day: ${e.message}</p>`;
@@ -276,7 +280,7 @@ async function loadPlayerHighlight() {
           <div class="highlight-facts">${facts.map((f) => `<span>${f}</span>`).join("")}</div>
         </div>
       </div>
-      <div class="highlight-narrative">${paragraphs}</div>
+      <div class="highlight-narrative"><div class="ai-badge">✨ AI-written</div>${paragraphs}</div>
     `;
   } catch (e) {
     container.innerHTML = `<p class="muted">Couldn't load today's player highlight: ${e.message}</p>`;
@@ -363,7 +367,7 @@ function renderGamesTable(games) {
     const rec = g.record_after ? `${g.record_after.wins}-${g.record_after.losses}` : "-";
     tr.innerHTML = `
       <td>${g.date}</td>
-      <td>${g.opponent}</td>
+      <td>${teamLogo(g.opponent_id)}${g.opponent}</td>
       <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
       <td>${g.our_score}-${g.their_score}</td>
       <td class="result">${g.won ? "W" : "L"}</td>
@@ -543,7 +547,7 @@ async function loadRecap() {
   const btn = document.getElementById("regenerate-btn");
   const textEl = document.getElementById("recap-text");
   btn.disabled = true;
-  btn.textContent = "Generating…";
+  btn.textContent = "✨ Generating…";
   textEl.textContent = "Generating a fresh recap…";
   try {
     const res = await fetch("/api/team/recap");
@@ -557,7 +561,7 @@ async function loadRecap() {
     textEl.textContent = `Couldn't generate a recap: ${e.message}`;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Regenerate";
+    btn.textContent = "✨ Regenerate";
   }
 }
 
@@ -592,7 +596,7 @@ async function loadHeadlinesSummary() {
   const btn = document.getElementById("headlines-summary-btn");
   const textEl = document.getElementById("headlines-summary-text");
   btn.disabled = true;
-  btn.textContent = "Summarizing…";
+  btn.textContent = "✨ Summarizing…";
   textEl.textContent = "Reading recent coverage…";
   try {
     const res = await fetch("/api/team/headlines/summary");
@@ -606,7 +610,7 @@ async function loadHeadlinesSummary() {
     textEl.textContent = `Couldn't summarize coverage: ${e.message}`;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Summarize Coverage";
+    btn.textContent = "✨ Summarize Coverage";
   }
 }
 
@@ -614,7 +618,7 @@ async function loadAnalysisBriefing() {
   const btn = document.getElementById("analysis-btn");
   const textEl = document.getElementById("analysis-text");
   btn.disabled = true;
-  btn.textContent = "Generating…";
+  btn.textContent = "✨ Generating…";
   textEl.textContent = "Running the numbers…";
   try {
     const res = await fetch("/api/team/analysis");
@@ -628,7 +632,7 @@ async function loadAnalysisBriefing() {
     textEl.textContent = `Couldn't generate a briefing: ${e.message}`;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Generate Briefing";
+    btn.textContent = "✨ Generate Briefing";
   }
 }
 
@@ -751,7 +755,7 @@ async function loadPlayerNotes() {
   const btn = document.getElementById("player-notes-btn");
   const textEl = document.getElementById("player-notes-text");
   btn.disabled = true;
-  btn.textContent = "Generating…";
+  btn.textContent = "✨ Generating…";
   textEl.textContent = "Reviewing player form data…";
   try {
     const res = await fetch("/api/players/notes");
@@ -765,7 +769,7 @@ async function loadPlayerNotes() {
     textEl.textContent = `Couldn't generate notes: ${e.message}`;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Generate Player Notes";
+    btn.textContent = "✨ Generate Player Notes";
   }
 }
 
@@ -865,7 +869,7 @@ async function loadLastGameRecap() {
         <canvas id="win-prob-chart" height="90"></canvas>
         <p class="muted small-note" id="win-prob-note">Loading win probability…</p>
       </div>
-      <div class="game-recap-narrative">${paragraphs}</div>
+      <div class="game-recap-narrative"><div class="ai-badge">✨ AI-written</div>${paragraphs}</div>
     `;
 
     loadWinProbabilityChart();
@@ -1021,7 +1025,7 @@ async function loadStatcastNotes() {
   const btn = document.getElementById("statcast-notes-btn");
   const textEl = document.getElementById("statcast-notes-text");
   btn.disabled = true;
-  btn.textContent = "Generating…";
+  btn.textContent = "✨ Generating…";
   textEl.textContent = "Digging through the batted-ball data…";
   try {
     const res = await fetch("/api/players/statcast-notes");
@@ -1035,6 +1039,6 @@ async function loadStatcastNotes() {
     textEl.textContent = `Couldn't generate scouting notes: ${e.message}`;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Generate Scouting Notes";
+    btn.textContent = "✨ Generate Scouting Notes";
   }
 }

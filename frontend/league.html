@@ -12,11 +12,11 @@
   <meta name="theme-color" content="#0d2b56" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playball&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playball&family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body class="page-league">
   <div class="top-bunting"></div>
   <div class="wall-edge left"></div>
   <div class="wall-edge right"></div>
@@ -42,18 +42,9 @@
     <section class="recap-section">
       <div class="recap-header">
         <h2>AI Trend Recap</h2>
-        <button id="regenerate-btn">Regenerate</button>
+        <button id="regenerate-btn">✨ Regenerate</button>
       </div>
       <p id="recap-text" class="recap-text">Click "Regenerate" to generate an AI recap of the team's current trends.</p>
-    </section>
-
-    <section class="headlines-section">
-      <div class="recap-header">
-        <h2>Headlines <span class="section-sub">last 3 days</span></h2>
-        <button id="headlines-summary-btn">Summarize Coverage</button>
-      </div>
-      <div id="headlines-summary-text" class="recap-text">Click "Summarize Coverage" to see what talking heads are saying.</div>
-      <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
     </section>
 
     <section class="league-section" id="league">
@@ -76,9 +67,18 @@
 
       <div class="recap-header">
         <h3>Analyst Briefing</h3>
-        <button id="analysis-btn">Generate Briefing</button>
+        <button id="analysis-btn">✨ Generate Briefing</button>
       </div>
       <p id="analysis-text" class="recap-text">Click "Generate Briefing" for a front-office-style read on roster construction and regression risk.</p>
+    </section>
+
+    <section class="headlines-section">
+      <div class="recap-header">
+        <h2>Headlines <span class="section-sub">last 3 days</span></h2>
+        <button id="headlines-summary-btn">✨ Summarize Coverage</button>
+      </div>
+      <div id="headlines-summary-text" class="recap-text">Click "Summarize Coverage" to see what talking heads are saying.</div>
+      <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
     </section>
   </main>
 

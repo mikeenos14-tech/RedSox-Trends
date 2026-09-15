@@ -14,11 +14,11 @@
   <meta name="theme-color" content="#0d2b56" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playball&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playball&family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body class="page-home">
   <div class="top-bunting"></div>
   <div class="wall-edge left"></div>
   <div class="wall-edge right"></div>
@@ -47,30 +47,32 @@
   <main>
     <section class="cards" id="overview"></section>
 
-    <section class="standings-section">
-      <h2>AL East Standings</h2>
-      <div class="table-scroll">
-        <table id="standings-table" class="stat-table">
-          <thead>
-            <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>GB</th><th>Streak</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
+    <div class="two-col-row">
+      <section class="standings-section">
+        <h2>AL East Standings</h2>
+        <div class="table-scroll">
+          <table id="standings-table" class="stat-table">
+            <thead>
+              <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>GB</th><th>Streak</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-    <section class="standings-section">
-      <h2>Wild Card Race <span class="section-sub">AL, division leaders excluded</span></h2>
-      <div class="table-scroll">
-        <table id="wildcard-table" class="stat-table">
-          <thead>
-            <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>WC GB</th><th>Elim #</th><th>Streak</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="muted small-note">The top 3 (dashed divider) hold a Wild Card spot. "WC GB" is relative to the cutoff line — a "+" means clear of it, not behind it. "Elim #" is the number of combined Sox wins + that team's losses needed to eliminate them from Wild Card contention.</p>
-    </section>
+      <section class="standings-section">
+        <h2>Wild Card Race <span class="section-sub">AL, division leaders excluded</span></h2>
+        <div class="table-scroll">
+          <table id="wildcard-table" class="stat-table">
+            <thead>
+              <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>WC GB</th><th>Elim #</th><th>Streak</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted small-note">Top 3 hold a Wild Card spot. "WC GB" is relative to the cutoff line — a "+" means clear of it. "Elim #" is combined Sox wins + that team's losses needed to eliminate them.</p>
+      </section>
+    </div>
 
     <section class="game-recap-section" id="last-game">
       <h2>Previous Game Recap</h2>
@@ -93,30 +95,32 @@
       <p class="muted small-note">Division games (vs. Yankees, Rays, Blue Jays, Orioles) are highlighted — they swing the standings twice as hard, since a win both helps Boston and costs a direct competitor. Probable pitchers are usually only announced a few days out.</p>
     </section>
 
-    <section class="series-section">
-      <h2>Season Series Tracker <span class="section-sub">every opponent faced this year</span></h2>
-      <div class="table-scroll">
-        <table id="series-table" class="stat-table">
-          <thead>
-            <tr><th>Opponent</th><th>W</th><th>L</th><th>Result</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
+    <div class="two-col-row">
+      <section class="series-section">
+        <h2>Season Series Tracker <span class="section-sub">every opponent faced this year</span></h2>
+        <div class="table-scroll">
+          <table id="series-table" class="stat-table">
+            <thead>
+              <tr><th>Opponent</th><th>W</th><th>L</th><th>Result</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-    <section class="bullpen-section">
-      <h2>Bullpen Availability <span class="section-sub">last 5 days of appearances</span></h2>
-      <div class="table-scroll">
-        <table id="bullpen-table" class="stat-table">
-          <thead>
-            <tr><th>Pitcher</th><th>Last Pitched</th><th>Days Rest</th><th>Last Outing</th><th>Last 3 Days</th><th>Status</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="muted small-note">A simple heuristic, not official — MLB doesn't publish bullpen-availability data. Flags anyone who pitched today/yesterday or three times in three days as unlikely to be available tonight.</p>
-    </section>
+      <section class="bullpen-section">
+        <h2>Bullpen Availability <span class="section-sub">last 5 days</span></h2>
+        <div class="table-scroll">
+          <table id="bullpen-table" class="stat-table">
+            <thead>
+              <tr><th>Pitcher</th><th>Last Pitched</th><th>Rest</th><th>Last Outing</th><th>L3D</th><th>Status</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted small-note">A simple heuristic, not official — MLB doesn't publish this. Flags anyone who pitched today/yesterday or 3x in 3 days as unlikely available.</p>
+      </section>
+    </div>
   </main>
 
   <script src="common.js"></script>
