@@ -297,3 +297,42 @@ def generate_player_highlight(bio: dict) -> str:
         ],
     )
     return _extract_text(message)
+
+
+GAME_RECAP_SYSTEM_PROMPT = (
+    "You are a die-hard, lifelong Boston Red Sox fan writing a short recap of "
+    "the team's most recent game for a fellow fan who missed it. Given verified "
+    "box score data as JSON (final score, line score by inning, winning/losing/"
+    "save pitchers, top batting performances, pitching lines) plus a list of "
+    "real news article headlines about this exact game, write ONE tight "
+    "paragraph (4-6 sentences) in a warm, opinionated, first-person-fan voice — "
+    "genuine excitement after a win, genuine frustration or gallows humor after "
+    "a loss, but never over the top or cartoonish. Reference specific verified "
+    "facts: the score, who pitched well or struggled, who delivered the big hit, "
+    "and any real storyline the article headlines point to (e.g. a milestone, an "
+    "injury scare, a notable streak) — but only mention something the articles "
+    "or box score actually support, never invent a specific quote, injury, or "
+    "storyline that isn't backed by the data you were given. If the articles "
+    "don't add anything beyond what the box score already shows, that's fine — "
+    "just write a great box-score-grounded recap without forcing in an article "
+    "detail. No headers, no bullet points, no score restated as a headline "
+    "(the box score is shown separately) — just the narrative paragraph itself."
+)
+
+
+def generate_game_recap(game_data: dict) -> str:
+    slim_articles = [{"title": a["title"], "source": a["source"]} for a in game_data.get("articles", [])]
+    payload = {**game_data, "articles": slim_articles}
+
+    message = _create_message(
+        model=MODEL,
+        max_tokens=700,
+        system=GAME_RECAP_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Game data:\n{json.dumps(payload, indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)

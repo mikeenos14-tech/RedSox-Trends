@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, league_context, mlb_client, news, player_highlight, player_stats, trends
+from . import ai_recap, game_recap, league_context, mlb_client, news, player_highlight, player_stats, trends
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -21,6 +21,8 @@ _headline_cache = {"text": None, "generated_at": 0.0}
 _highlight_cache = {"date": None, "data": None}
 _highlight_lock = asyncio.Lock()
 _headline_lock = asyncio.Lock()
+_game_recap_cache = {"game_pk": None, "data": None}
+_game_recap_lock = asyncio.Lock()
 
 
 @app.exception_handler(Exception)
@@ -189,6 +191,33 @@ async def players_highlight():
         result = {**bio, "narrative": narrative}
         _highlight_cache["date"] = today
         _highlight_cache["data"] = result
+        return result
+
+
+@app.get("/api/team/last-game-recap")
+async def team_last_game_recap():
+    # Cached by the actual completed game's gamePk, not calendar date: on an
+    # off-day there's no new "yesterday's game" to speak of, so this should
+    # just keep serving whatever the last real game was rather than trying
+    # (and failing) to refresh once a day.
+    data = await game_recap.get_last_game_recap_data()
+    if data is None:
+        return {"game": None}
+
+    game_pk = data["game_pk"]
+    async with _game_recap_lock:
+        cached = _game_recap_cache["data"]
+        if _game_recap_cache["game_pk"] == game_pk and cached is not None:
+            return cached
+
+        try:
+            narrative = ai_recap.generate_game_recap(data)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        result = {"game": {**data, "narrative": narrative}}
+        _game_recap_cache["game_pk"] = game_pk
+        _game_recap_cache["data"] = result
         return result
 
 

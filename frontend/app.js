@@ -627,6 +627,105 @@ async function loadPlayerNotes() {
   }
 }
 
+function buildLineScoreTable(g) {
+  const oppShort = g.opponent.split(" ").pop();
+  const topLabel = g.home_or_away === "home" ? oppShort : "BOS";
+  const bottomLabel = g.home_or_away === "home" ? "BOS" : oppShort;
+  const topRuns = g.home_or_away === "home" ? g.line_score.totals.them : g.line_score.totals.us;
+  const bottomRuns = g.home_or_away === "home" ? g.line_score.totals.us : g.line_score.totals.them;
+  const innings = g.line_score.innings;
+
+  const inningHeaders = innings.map((i) => `<th>${i.num}</th>`).join("");
+  const topInnings = innings.map((i) => `<td>${g.home_or_away === "home" ? i.them : i.us}</td>`).join("");
+  const bottomInnings = innings.map((i) => `<td>${g.home_or_away === "home" ? i.us : i.them}</td>`).join("");
+
+  return `
+    <div class="table-scroll">
+      <table class="stat-table linescore-table">
+        <thead>
+          <tr><th>Team</th>${inningHeaders}<th>R</th><th>H</th><th>E</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">${topLabel}</td>${topInnings}
+            <td class="num">${topRuns.runs}</td><td class="num">${topRuns.hits}</td><td class="num">${topRuns.errors}</td>
+          </tr>
+          <tr>
+            <td class="name">${bottomLabel}</td>${bottomInnings}
+            <td class="num">${bottomRuns.runs}</td><td class="num">${bottomRuns.hits}</td><td class="num">${bottomRuns.errors}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function buildPerformerList(title, performers) {
+  if (!performers.length) return "";
+  const items = performers
+    .map((p) => `<li><span class="name">${p.name}</span> — ${p.summary}</li>`)
+    .join("");
+  return `<div class="performer-block"><h4>${title}</h4><ul class="performer-list">${items}</ul></div>`;
+}
+
+async function loadLastGameRecap() {
+  const container = document.getElementById("last-game-body");
+  try {
+    const res = await fetch("/api/team/last-game-recap");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to load last game recap");
+    }
+    const data = await res.json();
+    const g = data.game;
+
+    if (!g) {
+      container.innerHTML = `<p class="muted">No completed game found yet this season.</p>`;
+      return;
+    }
+
+    const resultCls = g.won ? "win" : "loss";
+    const resultWord = g.won ? "W" : "L";
+    const oppShort = g.opponent.split(" ").pop();
+    const matchup = g.home_or_away === "home" ? `Red Sox vs. ${oppShort}` : `Red Sox @ ${oppShort}`;
+    const finalScore = `${g.our_score}-${g.their_score}`;
+
+    const decisions = [
+      g.winning_pitcher ? `<b>W:</b> ${g.winning_pitcher}` : null,
+      g.losing_pitcher ? `<b>L:</b> ${g.losing_pitcher}` : null,
+      g.save_pitcher ? `<b>SV:</b> ${g.save_pitcher}` : null,
+    ]
+      .filter(Boolean)
+      .join(" &nbsp;&nbsp; ");
+
+    const paragraphs = (g.narrative || "")
+      .split(/\n\s*\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => `<p>${s}</p>`)
+      .join("");
+
+    container.innerHTML = `
+      <div class="game-recap-header ${resultCls}">
+        <div class="game-recap-result">${resultWord}</div>
+        <div>
+          <h3>${matchup} &nbsp; ${finalScore}</h3>
+          <p class="muted small-note">${formatLongDate(g.date)} • ${g.venue || ""}</p>
+        </div>
+      </div>
+      ${buildLineScoreTable(g)}
+      <p class="muted small-note game-decisions">${decisions}</p>
+      <div class="performer-blocks">
+        ${buildPerformerList("Red Sox", g.top_performers.us)}
+        ${buildPerformerList(oppShort, g.top_performers.them)}
+      </div>
+      <div class="game-recap-narrative">${paragraphs}</div>
+    `;
+  } catch (e) {
+    container.innerHTML = `<p class="muted">Couldn't load the last game recap: ${e.message}</p>`;
+  }
+}
+
 document.getElementById("regenerate-btn").addEventListener("click", loadRecap);
 document.getElementById("headlines-summary-btn").addEventListener("click", loadHeadlinesSummary);
 document.getElementById("analysis-btn").addEventListener("click", loadAnalysisBriefing);
@@ -645,3 +744,4 @@ loadDivisionStandings();
 loadHeroHeadline();
 loadUpcomingSchedule();
 loadPlayerHighlight();
+loadLastGameRecap();

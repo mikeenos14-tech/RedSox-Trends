@@ -458,6 +458,75 @@ main section { scroll-margin-top: 3.5rem; }
 }
 .highlight-narrative p:last-child { margin-bottom: 0; }
 
+.game-recap-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--red);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.game-recap-section h2 { margin: 0 0 1rem; }
+
+.game-recap-header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.game-recap-header h3 { margin: 0; font-size: 1.2rem; }
+
+.game-recap-result {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  color: #fff;
+}
+.game-recap-header.win .game-recap-result { background: #2a8a3e; }
+.game-recap-header.loss .game-recap-result { background: var(--red); }
+
+.linescore-table { min-width: 100%; }
+.linescore-table th, .linescore-table td { text-align: center; }
+.linescore-table td.name { text-align: left; }
+
+.game-decisions { margin-top: 0.6rem; }
+
+.performer-blocks {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.performer-block h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.performer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+.performer-list li { margin-bottom: 0.25rem; }
+.performer-list .name { font-weight: 600; }
+
+.game-recap-narrative p {
+  line-height: 1.65;
+  margin: 0 0 1rem;
+}
+.game-recap-narrative p:last-child { margin-bottom: 0; }
+
 .small-note {
   font-size: 0.78rem;
   margin-top: 0.75rem;
