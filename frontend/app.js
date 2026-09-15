@@ -44,6 +44,95 @@ async function loadDivisionStandings() {
   }
 }
 
+async function loadWildcardStandings() {
+  const tbody = document.querySelector("#wildcard-table tbody");
+  try {
+    const res = await fetch("/api/team/wildcard-standings");
+    if (!res.ok) throw new Error("Failed to load Wild Card standings");
+    const data = await res.json();
+
+    tbody.innerHTML = "";
+    data.teams.forEach((t, i) => {
+      const tr = document.createElement("tr");
+      const classes = [];
+      if (t.is_target) classes.push("target-row");
+      if (i === 3) classes.push("wc-cutoff");
+      tr.className = classes.join(" ");
+      const streakCls = t.streak && t.streak.startsWith("W") ? "streak-w" : t.streak && t.streak.startsWith("L") ? "streak-l" : "";
+      const status = t.clinched ? '<span class="div-badge">CLINCH</span>' : "";
+      tr.innerHTML = `
+        <td class="num">${t.wildcard_rank}</td>
+        <td class="name">${t.name}${status}</td>
+        <td class="num">${t.wins}</td>
+        <td class="num">${t.losses}</td>
+        <td class="num">${t.pct}</td>
+        <td class="num">${t.wildcard_games_back}</td>
+        <td class="num">${t.elimination_number}</td>
+        <td class="num ${streakCls}">${t.streak || "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8">Couldn't load Wild Card standings: ${e.message}</td></tr>`;
+  }
+}
+
+async function loadSeasonSeries() {
+  const tbody = document.querySelector("#series-table tbody");
+  try {
+    const res = await fetch("/api/team/season-series");
+    if (!res.ok) throw new Error("Failed to load season series");
+    const data = await res.json();
+
+    tbody.innerHTML = "";
+    data.series.forEach((s) => {
+      const tr = document.createElement("tr");
+      const result = s.wins > s.losses ? "Winning" : s.wins < s.losses ? "Losing" : "Even";
+      const resultCls = s.wins > s.losses ? "delta-up" : s.wins < s.losses ? "delta-down" : "";
+      tr.innerHTML = `
+        <td class="name">${s.opponent}</td>
+        <td class="num">${s.wins}</td>
+        <td class="num">${s.losses}</td>
+        <td class="num ${resultCls}">${result}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4">Couldn't load season series: ${e.message}</td></tr>`;
+  }
+}
+
+async function loadBullpen() {
+  const tbody = document.querySelector("#bullpen-table tbody");
+  try {
+    const res = await fetch("/api/team/bullpen");
+    if (!res.ok) throw new Error("Failed to load bullpen availability");
+    const data = await res.json();
+
+    tbody.innerHTML = "";
+    if (!data.pitchers.length) {
+      tbody.innerHTML = `<tr><td colspan="6">No relief appearances in the last 5 days.</td></tr>`;
+      return;
+    }
+    data.pitchers.forEach((p) => {
+      const tr = document.createElement("tr");
+      const statusCls = p.likely_available ? "delta-up" : "delta-down";
+      const statusText = p.likely_available ? "Likely available" : "Rest likely needed";
+      tr.innerHTML = `
+        <td class="name">${p.name}</td>
+        <td>${formatGameDate(p.last_pitched)}</td>
+        <td class="num">${p.days_rest}</td>
+        <td>${p.last_outing}</td>
+        <td class="num">${p.appearances_last_3_days}</td>
+        <td class="num ${statusCls}">${statusText}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6">Couldn't load bullpen availability: ${e.message}</td></tr>`;
+  }
+}
+
 function formatGameDate(dateStr) {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
@@ -68,7 +157,7 @@ async function loadUpcomingSchedule() {
 
     tbody.innerHTML = "";
     if (!data.games.length) {
-      tbody.innerHTML = `<tr><td colspan="6">No upcoming games scheduled.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7">No upcoming games scheduled.</td></tr>`;
       return;
     }
     data.games.forEach((g) => {
@@ -77,18 +166,20 @@ async function loadUpcomingSchedule() {
       const rec = g.opponent_record;
       const recStr = rec && rec.wins != null ? `${rec.wins}-${rec.losses} (${rec.pct})` : "-";
       const divBadge = g.is_division_game ? `<span class="div-badge">DIV</span>` : "";
+      const seriesStr = g.season_series ? `${g.season_series.wins}-${g.season_series.losses}` : "—";
       tr.innerHTML = `
         <td>${formatGameDate(g.date)}</td>
         <td class="name">${g.opponent}${divBadge}</td>
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td class="num">${recStr}</td>
+        <td class="num">${seriesStr}</td>
         <td>${g.us_probable_pitcher || "TBD"}</td>
         <td>${g.opponent_probable_pitcher || "TBD"}</td>
       `;
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6">Couldn't load schedule: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7">Couldn't load schedule: ${e.message}</td></tr>`;
   }
 }
 
@@ -96,6 +187,54 @@ function formatLongDate(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+}
+
+async function loadOnThisDay() {
+  const container = document.getElementById("on-this-day-body");
+  try {
+    const res = await fetch("/api/team/on-this-day");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to load On This Day");
+    }
+    const data = await res.json();
+    const g = data.game;
+
+    if (!g) {
+      container.innerHTML = `<p class="muted">No historical game found for today's date.</p>`;
+      return;
+    }
+
+    const resultCls = g.won ? "win" : "loss";
+    const resultWord = g.won ? "W" : "L";
+    const oppShort = g.opponent.split(" ").pop();
+    const matchup = g.home_or_away === "home" ? `Red Sox vs. ${oppShort}` : `Red Sox @ ${oppShort}`;
+
+    const decisions = [
+      g.winning_pitcher ? `<b>W:</b> ${g.winning_pitcher}` : null,
+      g.losing_pitcher ? `<b>L:</b> ${g.losing_pitcher}` : null,
+      g.save_pitcher ? `<b>SV:</b> ${g.save_pitcher}` : null,
+    ]
+      .filter(Boolean)
+      .join(" &nbsp;&nbsp; ");
+
+    container.innerHTML = `
+      <div class="game-recap-header ${resultCls}">
+        <div class="game-recap-result">${resultWord}</div>
+        <div>
+          <h3>${g.year} — ${matchup} &nbsp; ${g.our_score}-${g.their_score}</h3>
+          <p class="muted small-note">${decisions}</p>
+        </div>
+      </div>
+      <div class="performer-blocks">
+        ${buildPerformerList("Red Sox", g.top_performers.us)}
+        ${buildPerformerList(oppShort, g.top_performers.them)}
+      </div>
+      <div class="game-recap-narrative"><p>${g.blurb}</p></div>
+    `;
+  } catch (e) {
+    container.innerHTML = `<p class="muted">Couldn't load On This Day: ${e.message}</p>`;
+  }
 }
 
 async function loadPlayerHighlight() {
@@ -719,10 +858,74 @@ async function loadLastGameRecap() {
         ${buildPerformerList("Red Sox", g.top_performers.us)}
         ${buildPerformerList(oppShort, g.top_performers.them)}
       </div>
+      <div class="chart-wrap">
+        <canvas id="win-prob-chart" height="90"></canvas>
+        <p class="muted small-note" id="win-prob-note">Loading win probability…</p>
+      </div>
       <div class="game-recap-narrative">${paragraphs}</div>
     `;
+
+    loadWinProbabilityChart();
   } catch (e) {
     container.innerHTML = `<p class="muted">Couldn't load the last game recap: ${e.message}</p>`;
+  }
+}
+
+let winProbChart = null;
+
+async function loadWinProbabilityChart() {
+  const ctx = document.getElementById("win-prob-chart");
+  const note = document.getElementById("win-prob-note");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  try {
+    const res = await fetch("/api/team/win-probability");
+    if (!res.ok) throw new Error("Failed to load win probability");
+    const data = await res.json();
+    const g = data.game;
+    if (!g) {
+      note.textContent = "Win probability not available for this game.";
+      return;
+    }
+
+    const labels = g.points.map((p) => `${p.half === "top" ? "T" : "B"}${p.inning}`);
+    const values = g.points.map((p) => p.us_win_pct);
+    const oppShort = g.opponent.split(" ").pop();
+
+    if (winProbChart) winProbChart.destroy();
+    winProbChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Red Sox Win Probability",
+            data: values,
+            borderColor: "#bd3039",
+            backgroundColor: "rgba(189, 48, 57, 0.12)",
+            fill: true,
+            tension: 0.15,
+            pointRadius: 0,
+            borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: {
+          y: { min: 0, max: 100, title: { display: true, text: "Win Probability %" } },
+          x: { ticks: { maxTicksLimit: 12 } },
+        },
+      },
+    });
+
+    const swing = g.biggest_swing;
+    note.textContent = swing
+      ? `Biggest swing: ${swing.description} (${swing.swing.toFixed(1)} pt shift, ${swing.half === "top" ? "top" : "bottom"} ${swing.inning} vs. ${oppShort})`
+      : "";
+  } catch (e) {
+    note.textContent = `Couldn't load win probability: ${e.message}`;
   }
 }
 
@@ -855,3 +1058,7 @@ loadUpcomingSchedule();
 loadPlayerHighlight();
 loadLastGameRecap();
 loadStatcast();
+loadWildcardStandings();
+loadSeasonSeries();
+loadBullpen();
+loadOnThisDay();

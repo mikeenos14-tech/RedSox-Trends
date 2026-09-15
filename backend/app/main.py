@@ -8,7 +8,20 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import ai_recap, game_recap, league_context, mlb_client, news, player_highlight, player_stats, statcast, trends
+from . import (
+    ai_recap,
+    bullpen,
+    game_recap,
+    league_context,
+    mlb_client,
+    news,
+    on_this_day,
+    player_highlight,
+    player_stats,
+    statcast,
+    trends,
+    win_probability,
+)
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -27,6 +40,8 @@ _statcast_cache = {"date": None, "data": None}
 _statcast_lock = asyncio.Lock()
 _statcast_notes_cache = {"date": None, "text": None}
 _statcast_notes_lock = asyncio.Lock()
+_on_this_day_cache = {"date": None, "data": None}
+_on_this_day_lock = asyncio.Lock()
 
 
 @app.exception_handler(Exception)
@@ -83,9 +98,13 @@ async def team_upcoming_schedule():
     games = await mlb_client.get_upcoming_games()
     division_teams = await mlb_client.get_division_standings()
     division_ids = {t["id"] for t in division_teams if not t["is_target"]}
+    season_games = await mlb_client.get_recent_games(days=200)
+    season_series = mlb_client.build_season_series(season_games)
 
     for g in games:
         g["is_division_game"] = g["opponent_id"] in division_ids
+        series = season_series.get(g["opponent_id"])
+        g["season_series"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
 
     pcts = [float(g["opponent_record"]["pct"]) for g in games if g["opponent_record"].get("pct")]
     home_count = sum(1 for g in games if g["home_or_away"] == "home")
@@ -99,6 +118,30 @@ async def team_upcoming_schedule():
             "division_game_count": sum(1 for g in games if g["is_division_game"]),
         },
     }
+
+
+@app.get("/api/team/wildcard-standings")
+async def team_wildcard_standings():
+    return {"teams": await mlb_client.get_wildcard_standings()}
+
+
+@app.get("/api/team/season-series")
+async def team_season_series():
+    games = await mlb_client.get_recent_games(days=200)
+    series = mlb_client.build_season_series(games)
+    result = sorted(series.values(), key=lambda s: s["wins"] + s["losses"], reverse=True)
+    return {"series": result}
+
+
+@app.get("/api/team/bullpen")
+async def team_bullpen():
+    return {"pitchers": await bullpen.get_bullpen_report()}
+
+
+@app.get("/api/team/win-probability")
+async def team_win_probability():
+    data = await win_probability.get_last_game_win_probability()
+    return {"game": data}
 
 
 @app.get("/api/team/hero-headline")
@@ -234,6 +277,31 @@ async def players_statcast_notes():
         _statcast_notes_cache["date"] = today
         _statcast_notes_cache["text"] = notes
         return {"notes": notes}
+
+
+@app.get("/api/team/on-this-day")
+async def team_on_this_day():
+    # Cached daily: finding a candidate game means checking every year of
+    # franchise history for today's month/day (~125 small requests), and
+    # the blurb itself is a paid AI call — neither should re-run per visit.
+    today = player_highlight.eastern_today()
+    async with _on_this_day_lock:
+        if _on_this_day_cache["date"] == today.isoformat() and _on_this_day_cache["data"] is not None:
+            return _on_this_day_cache["data"]
+
+        game = await on_this_day.get_on_this_day(today=today)
+        if game is None:
+            result = {"game": None}
+        else:
+            try:
+                blurb = ai_recap.generate_on_this_day_blurb(game)
+            except RuntimeError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            result = {"game": {**game, "blurb": blurb}}
+
+        _on_this_day_cache["date"] = today.isoformat()
+        _on_this_day_cache["data"] = result
+        return result
 
 
 @app.get("/api/team/last-game-recap")

@@ -12,7 +12,7 @@ BASE_URL = "https://statsapi.mlb.com/api/v1"
 RSS_URL = "https://news.google.com/rss/search"
 
 
-async def _get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
+async def get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
     """Find the most recently completed regular-season game, with linescore
     and decisions (W/L/SV) hydrated. Looks back a generous window since the
     team can have off-days (including the All-Star break) between games."""
@@ -46,7 +46,7 @@ async def _get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None
     return completed[-1]
 
 
-def _top_batting_lines(boxscore: dict, side: str, limit: int = 3) -> list[dict]:
+def top_batting_lines(boxscore: dict, side: str, limit: int = 3) -> list[dict]:
     team = boxscore["teams"][side]
     lines = []
     for pid in team.get("batters", []):
@@ -71,7 +71,7 @@ def _top_batting_lines(boxscore: dict, side: str, limit: int = 3) -> list[dict]:
     return [l for l in lines if l["rbi"] or l["home_runs"] or l["hits"] >= 2][:limit]
 
 
-def _pitching_lines(boxscore: dict, side: str) -> list[dict]:
+def pitching_lines(boxscore: dict, side: str) -> list[dict]:
     team = boxscore["teams"][side]
     lines = []
     for pid in team.get("pitchers", []):
@@ -94,7 +94,7 @@ def _pitching_lines(boxscore: dict, side: str) -> list[dict]:
     return lines
 
 
-async def _get_boxscore(game_pk: int) -> dict:
+async def get_boxscore(game_pk: int) -> dict:
     url = f"{BASE_URL}/game/{game_pk}/boxscore"
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(url)
@@ -144,7 +144,7 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
     articles about the game (for the AI narrative to draw on). Returns None
     if no completed game is found in the lookback window (e.g. season hasn't
     started, or preseason)."""
-    game = await _get_last_completed_game(team_id)
+    game = await get_last_completed_game(team_id)
     if game is None:
         return None
 
@@ -155,7 +155,7 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
     us = teams[us_side]
     them = teams[them_side]
 
-    boxscore = await _get_boxscore(game_pk)
+    boxscore = await get_boxscore(game_pk)
     decisions = game.get("decisions", {})
     linescore = game.get("linescore", {})
 
@@ -203,12 +203,12 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
         "losing_pitcher": (decisions.get("loser") or {}).get("fullName"),
         "save_pitcher": (decisions.get("save") or {}).get("fullName"),
         "top_performers": {
-            "us": _top_batting_lines(boxscore, us_side),
-            "them": _top_batting_lines(boxscore, them_side),
+            "us": top_batting_lines(boxscore, us_side),
+            "them": top_batting_lines(boxscore, them_side),
         },
         "pitching": {
-            "us": _pitching_lines(boxscore, us_side),
-            "them": _pitching_lines(boxscore, them_side),
+            "us": pitching_lines(boxscore, us_side),
+            "them": pitching_lines(boxscore, them_side),
         },
         "articles": articles,
     }

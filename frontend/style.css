@@ -375,6 +375,16 @@ main section { scroll-margin-top: 3.5rem; }
 .standings-section tr.target-row td.name { font-weight: 700; }
 .standings-section td.streak-w { color: var(--good); font-weight: 700; }
 .standings-section td.streak-l { color: var(--red); font-weight: 700; }
+.standings-section tr.wc-cutoff td { border-bottom: 2px dashed var(--muted); }
+
+.series-section, .bullpen-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.series-section h2, .bullpen-section h2 { margin: 0 0 0.75rem; }
 
 .upcoming-section {
   background: var(--card-bg);
@@ -385,7 +395,7 @@ main section { scroll-margin-top: 3.5rem; }
 }
 .upcoming-section h2 { margin: 0 0 0.75rem; }
 .upcoming-section tr.division-game { background: var(--warn-bg); }
-.upcoming-section .div-badge {
+.div-badge {
   display: inline-block;
   font-size: 0.68rem;
   font-weight: 700;

@@ -62,6 +62,19 @@
       </div>
     </section>
 
+    <section class="standings-section">
+      <h2>Wild Card Race <span class="section-sub">AL, division leaders excluded</span></h2>
+      <div class="table-scroll">
+        <table id="wildcard-table" class="stat-table">
+          <thead>
+            <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>WC GB</th><th>Elim #</th><th>Streak</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted small-note">The top 3 (dashed divider) hold a Wild Card spot. "WC GB" is relative to the cutoff line — a "+" means clear of it, not behind it. "Elim #" is the number of combined Sox wins + that team's losses needed to eliminate them from Wild Card contention.</p>
+    </section>
+
     <section class="game-recap-section" id="last-game">
       <h2>Previous Game Recap</h2>
       <div id="last-game-body">
@@ -75,12 +88,37 @@
       <div class="table-scroll">
         <table id="upcoming-table" class="stat-table">
           <thead>
-            <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Opp Record</th><th>Our SP</th><th>Their SP</th></tr>
+            <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Opp Record</th><th>Season Series</th><th>Our SP</th><th>Their SP</th></tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
       <p class="muted small-note">Division games (vs. Yankees, Rays, Blue Jays, Orioles) are highlighted — they swing the standings twice as hard, since a win both helps Boston and costs a direct competitor. Probable pitchers are usually only announced a few days out.</p>
+    </section>
+
+    <section class="series-section">
+      <h2>Season Series Tracker <span class="section-sub">every opponent faced this year</span></h2>
+      <div class="table-scroll">
+        <table id="series-table" class="stat-table">
+          <thead>
+            <tr><th>Opponent</th><th>W</th><th>L</th><th>Result</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bullpen-section">
+      <h2>Bullpen Availability <span class="section-sub">last 5 days of appearances</span></h2>
+      <div class="table-scroll">
+        <table id="bullpen-table" class="stat-table">
+          <thead>
+            <tr><th>Pitcher</th><th>Last Pitched</th><th>Days Rest</th><th>Last Outing</th><th>Last 3 Days</th><th>Status</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted small-note">A simple heuristic, not official — MLB doesn't publish bullpen-availability data. Flags anyone who pitched today/yesterday or three times in three days as unlikely to be available tonight.</p>
     </section>
 
     <section class="recap-section">
@@ -201,6 +239,13 @@
         </thead>
         <tbody></tbody>
       </table>
+    </section>
+
+    <section class="highlight-section" id="on-this-day">
+      <h2>On This Day <span class="section-sub">in Red Sox history</span></h2>
+      <div id="on-this-day-body">
+        <p class="muted">Digging through the archives…</p>
+      </div>
     </section>
 
     <section class="highlight-section" id="highlight">

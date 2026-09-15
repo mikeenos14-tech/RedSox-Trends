@@ -66,6 +66,7 @@ async def get_recent_games(
 
             games.append(
                 {
+                    "game_pk": game["gamePk"],
                     "date": game["officialDate"],
                     "opponent": them["team"]["name"],
                     "opponent_id": them["team"]["id"],
@@ -199,3 +200,56 @@ async def get_upcoming_games(team_id: int = config.TEAM_ID, count: int = 10, sea
 
     games.sort(key=lambda g: g["game_date_utc"])
     return games[:count]
+
+
+async def get_wildcard_standings(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> list[dict]:
+    """Fetch the Wild Card standings (division leaders excluded — they're
+    already in via the division race, so this is specifically who's
+    competing for the remaining playoff spots)."""
+    url = f"{BASE_URL}/standings"
+    params = {
+        "leagueId": config.LEAGUE_ID,
+        "season": season,
+        "standingsTypes": "wildCard",
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+    teams = []
+    for division in data.get("records", []):
+        for tr in division.get("teamRecords", []):
+            record = tr.get("leagueRecord", {})
+            teams.append(
+                {
+                    "id": tr["team"]["id"],
+                    "name": tr["team"]["name"],
+                    "wins": record.get("wins"),
+                    "losses": record.get("losses"),
+                    "pct": record.get("pct"),
+                    "wildcard_rank": tr.get("wildCardRank"),
+                    "wildcard_games_back": tr.get("wildCardGamesBack"),
+                    "elimination_number": tr.get("wildCardEliminationNumber"),
+                    "clinched": bool(tr.get("clinched")),
+                    "streak": (tr.get("streak") or {}).get("streakCode"),
+                    "is_target": tr["team"]["id"] == team_id,
+                }
+            )
+
+    teams.sort(key=lambda t: int(t["wildcard_rank"]))
+    return teams
+
+
+def build_season_series(games: list[dict], team_id: int = config.TEAM_ID) -> dict[int, dict]:
+    """Aggregate a game log (as returned by get_recent_games) into a
+    per-opponent won-loss record for the season."""
+    series: dict[int, dict] = {}
+    for g in games:
+        opp_id = g["opponent_id"]
+        entry = series.setdefault(opp_id, {"opponent": g["opponent"], "opponent_id": opp_id, "wins": 0, "losses": 0})
+        if g["won"]:
+            entry["wins"] += 1
+        else:
+            entry["losses"] += 1
+    return series

@@ -361,6 +361,37 @@ def generate_statcast_notes(report: dict) -> str:
     return _extract_text(message)
 
 
+ON_THIS_DAY_SYSTEM_PROMPT = (
+    "You write a short 'On This Day in Red Sox History' flashback blurb for a "
+    "fan website. Given verified box score data as JSON for a specific real "
+    "Red Sox game (year, opponent, final score, decisions, top batting "
+    "performances on both sides), write 2-3 sentences in a warm, nostalgic "
+    "tone that brings the game to life using ONLY the facts given — final "
+    "score, standout performances, who pitched. You do not have any "
+    "information beyond what's in the JSON: never invent broader context "
+    "like why the game mattered, a pennant race, a player's later career, or "
+    "any detail not present in the data. If you don't have enough to say "
+    "something specific and true, keep it simple and let the real box score "
+    "numbers carry the sentence rather than adding unsupported color. No "
+    "headers, no bullet points, just the blurb itself."
+)
+
+
+def generate_on_this_day_blurb(game_data: dict) -> str:
+    message = _create_message(
+        model=MODEL,
+        max_tokens=500,
+        system=ON_THIS_DAY_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Historical game data:\n{json.dumps(game_data, indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)
+
+
 def generate_game_recap(game_data: dict) -> str:
     slim_articles = [{"title": a["title"], "source": a["source"]} for a in game_data.get("articles", [])]
     payload = {**game_data, "articles": slim_articles}
