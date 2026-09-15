@@ -481,7 +481,7 @@ main section { scroll-margin-top: 3.5rem; }
 
 .stat-table { font-size: 0.85rem; white-space: nowrap; }
 .stat-table th, .stat-table td { padding: 0.45rem 0.6rem; }
-.stat-table td.name { font-weight: 600; white-space: normal; }
+.stat-table td.name { font-weight: 600; white-space: nowrap; }
 .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stat-table td.delta-up { color: var(--good); font-weight: 700; }
 .stat-table td.delta-down { color: var(--red); font-weight: 700; }
