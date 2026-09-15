@@ -2,6 +2,7 @@ let runDiffChart = null;
 
 async function loadHeroHeadline() {
   const el = document.getElementById("hero-headline");
+  if (!el) return;
   try {
     const res = await fetch("/api/team/hero-headline");
     if (!res.ok) {
@@ -332,13 +333,15 @@ function fmtPct(pct) {
   return `.${String(pct).replace("0.", "").padEnd(3, "0")}`;
 }
 
-function renderSummary(data) {
+function renderRecordLine(data) {
   document.getElementById("record-line").textContent =
     `${data.record.wins}-${data.record.losses} (.${data.record.pct?.replace("0.", "")}) ` +
     `• ${data.games_back === "-" ? "1st in div" : data.games_back + " GB"} ` +
     `• WC: ${data.wildcard_games_back ?? "-"} ` +
     `• Streak: ${data.streak ?? "-"}`;
+}
 
+function renderOverviewCards(data) {
   const cards = document.getElementById("overview");
   cards.innerHTML = "";
   cards.append(
@@ -349,10 +352,12 @@ function renderSummary(data) {
     card("Expected Record", data.expected_record ? `${data.expected_record.wins}-${data.expected_record.losses}` : "-"),
     card("Recent Form", data.recent_form ? data.recent_form.trending : "-")
   );
+}
 
+function renderGamesTable(games) {
   const tbody = document.querySelector("#games-table tbody");
   tbody.innerHTML = "";
-  [...data.recent_games].reverse().forEach((g) => {
+  [...games].reverse().forEach((g) => {
     const tr = document.createElement("tr");
     tr.className = g.won ? "win" : "loss";
     const rec = g.record_after ? `${g.record_after.wins}-${g.record_after.losses}` : "-";
@@ -366,8 +371,6 @@ function renderSummary(data) {
     `;
     tbody.appendChild(tr);
   });
-
-  renderAnalysis(data.analysis || {});
 }
 
 function renderAnalysis(analysis) {
@@ -1035,30 +1038,3 @@ async function loadStatcastNotes() {
     btn.textContent = "Generate Scouting Notes";
   }
 }
-
-document.getElementById("statcast-notes-btn").addEventListener("click", loadStatcastNotes);
-
-document.getElementById("regenerate-btn").addEventListener("click", loadRecap);
-document.getElementById("headlines-summary-btn").addEventListener("click", loadHeadlinesSummary);
-document.getElementById("analysis-btn").addEventListener("click", loadAnalysisBriefing);
-document.getElementById("player-notes-btn").addEventListener("click", loadPlayerNotes);
-
-loadSummary()
-  .then(renderSummary)
-  .catch((e) => {
-    document.getElementById("record-line").textContent = `Couldn't load data: ${e.message}`;
-  });
-
-loadHeadlines();
-loadPlayerHotCold();
-loadLeagueContext();
-loadDivisionStandings();
-loadHeroHeadline();
-loadUpcomingSchedule();
-loadPlayerHighlight();
-loadLastGameRecap();
-loadStatcast();
-loadWildcardStandings();
-loadSeasonSeries();
-loadBullpen();
-loadOnThisDay();

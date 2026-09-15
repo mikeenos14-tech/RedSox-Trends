@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stat Sox — League</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://midfield.mlbstatic.com/v1/team/111/spots/180" />
+  <meta name="apple-mobile-web-app-title" content="Stat Sox" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d2b56" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playball&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="top-bunting"></div>
+  <div class="wall-edge left"></div>
+  <div class="wall-edge right"></div>
+  <header>
+    <div class="header-brand">
+      <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
+      <div>
+        <h1>Stat <span class="accent">Sox</span></h1>
+        <p class="header-tagline">Boston Red Sox Season Trends &amp; Analytics</p>
+      </div>
+    </div>
+    <p id="record-line" class="subtitle">Loading…</p>
+  </header>
+
+  <nav class="site-nav">
+    <a href="/">Home</a>
+    <a href="/league.html" class="active">League</a>
+    <a href="/players.html">Players</a>
+    <a href="/games.html">Games</a>
+  </nav>
+
+  <main>
+    <section class="recap-section">
+      <div class="recap-header">
+        <h2>AI Trend Recap</h2>
+        <button id="regenerate-btn">Regenerate</button>
+      </div>
+      <p id="recap-text" class="recap-text">Click "Regenerate" to generate an AI recap of the team's current trends.</p>
+    </section>
+
+    <section class="headlines-section">
+      <div class="recap-header">
+        <h2>Headlines <span class="section-sub">last 3 days</span></h2>
+        <button id="headlines-summary-btn">Summarize Coverage</button>
+      </div>
+      <div id="headlines-summary-text" class="recap-text">Click "Summarize Coverage" to see what talking heads are saying.</div>
+      <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
+    </section>
+
+    <section class="league-section" id="league">
+      <h2>Where Boston Ranks <span class="section-sub">of 30 MLB teams</span></h2>
+      <div class="cards" id="league-cards"></div>
+      <div class="chart-wrap">
+        <canvas id="league-run-diff-chart" height="110"></canvas>
+        <p class="muted small-note">Every MLB team's season run differential, sorted. Boston highlighted in red.</p>
+      </div>
+    </section>
+
+    <section class="analysis-section">
+      <h2>Front Office Analysis</h2>
+
+      <div class="cards" id="analysis-cards"></div>
+
+      <div class="chart-wrap">
+        <canvas id="run-diff-chart" height="90"></canvas>
+      </div>
+
+      <div class="recap-header">
+        <h3>Analyst Briefing</h3>
+        <button id="analysis-btn">Generate Briefing</button>
+      </div>
+      <p id="analysis-text" class="recap-text">Click "Generate Briefing" for a front-office-style read on roster construction and regression risk.</p>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="league.js"></script>
+</body>
+</html>

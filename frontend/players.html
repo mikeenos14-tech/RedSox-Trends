@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stat Sox — Players</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://midfield.mlbstatic.com/v1/team/111/spots/180" />
+  <meta name="apple-mobile-web-app-title" content="Stat Sox" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d2b56" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playball&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="top-bunting"></div>
+  <div class="wall-edge left"></div>
+  <div class="wall-edge right"></div>
+  <header>
+    <div class="header-brand">
+      <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
+      <div>
+        <h1>Stat <span class="accent">Sox</span></h1>
+        <p class="header-tagline">Boston Red Sox Season Trends &amp; Analytics</p>
+      </div>
+    </div>
+    <p id="record-line" class="subtitle">Loading…</p>
+  </header>
+
+  <nav class="site-nav">
+    <a href="/">Home</a>
+    <a href="/league.html">League</a>
+    <a href="/players.html" class="active">Players</a>
+    <a href="/games.html">Games</a>
+  </nav>
+
+  <main>
+    <section class="players-section" id="players">
+      <div class="recap-header">
+        <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 days vs. season</span></h2>
+        <button id="player-notes-btn">Generate Player Notes</button>
+      </div>
+      <div id="player-notes-text" class="recap-text">Click "Generate Player Notes" for an analyst read on which streaks are real vs. small-sample noise.</div>
+
+      <h3>Hitters</h3>
+      <div class="table-scroll">
+        <table id="hitters-table" class="stat-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Pos</th>
+              <th>wOBA (S)</th><th>wOBA (L15)</th><th>Δ</th>
+              <th>BABIP</th><th>BB%</th><th>K%</th><th>ISO</th>
+              <th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <h3>Pitchers</h3>
+      <div class="table-scroll">
+        <table id="pitchers-table" class="stat-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Role</th>
+              <th>ERA (S)</th><th>ERA (L15)</th><th>Δ</th>
+              <th>FIP</th><th>K-BB%</th><th>BABIP-agst</th><th>LOB%</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted small-note">
+        <span class="legend-swatch heat-good">green</span> = better than the current MLB average,
+        <span class="legend-swatch heat-avg">yellow</span> = about average,
+        <span class="legend-swatch heat-bad">red</span> = below average.
+        BABIP, BABIP-against, and strand rate (LOB%) are luck/sequencing indicators rather than skill stats, so
+        <span class="legend-swatch heat-warn">amber</span> there just flags "far from typical" (~.300 BABIP, ~72% LOB%), not good-or-bad.
+        Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).
+      </p>
+    </section>
+
+    <section class="statcast-section" id="statcast">
+      <div class="recap-header">
+        <h2>Statcast Scouting Report <span class="section-sub">Red Sox vs. the league</span></h2>
+        <button id="statcast-notes-btn">Generate Scouting Notes</button>
+      </div>
+      <div id="statcast-notes-text" class="recap-text">Click "Generate Scouting Notes" for an analyst read on what the underlying batted-ball data says.</div>
+
+      <div class="cards" id="statcast-snapshot"></div>
+
+      <h3>Hitters</h3>
+      <div class="statcast-grid" id="statcast-hitters-grid"><p class="muted">Loading Statcast data…</p></div>
+
+      <h3>Pitchers</h3>
+      <div class="statcast-grid" id="statcast-pitchers-grid"></div>
+
+      <h3>League Leaders</h3>
+      <div class="leaderboard-grid" id="statcast-leaders"></div>
+
+      <p class="muted small-note">
+        Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
+      </p>
+    </section>
+
+    <section class="highlight-section" id="highlight">
+      <h2>Player Highlight <span class="section-sub">new player daily</span></h2>
+      <div id="highlight-body">
+        <p class="muted">Loading today's player highlight…</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="players.js"></script>
+</body>
+</html>

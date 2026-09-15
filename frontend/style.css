@@ -151,6 +151,8 @@ header h1 {
 }
 
 .site-nav a:hover { background: var(--good-bg); color: var(--monster-green); }
+.site-nav a.active { background: var(--red); color: #fff; }
+.site-nav a.active:hover { background: var(--red); color: #fff; }
 
 .hero-headline {
   background: linear-gradient(135deg, var(--navy), #17386e);

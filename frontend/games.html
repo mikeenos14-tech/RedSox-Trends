@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stat Sox — Games</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://midfield.mlbstatic.com/v1/team/111/spots/180" />
+  <meta name="apple-mobile-web-app-title" content="Stat Sox" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d2b56" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playball&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="top-bunting"></div>
+  <div class="wall-edge left"></div>
+  <div class="wall-edge right"></div>
+  <header>
+    <div class="header-brand">
+      <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
+      <div>
+        <h1>Stat <span class="accent">Sox</span></h1>
+        <p class="header-tagline">Boston Red Sox Season Trends &amp; Analytics</p>
+      </div>
+    </div>
+    <p id="record-line" class="subtitle">Loading…</p>
+  </header>
+
+  <nav class="site-nav">
+    <a href="/">Home</a>
+    <a href="/league.html">League</a>
+    <a href="/players.html">Players</a>
+    <a href="/games.html" class="active">Games</a>
+  </nav>
+
+  <main>
+    <section class="games-section" id="games">
+      <h2>Last 15 Games</h2>
+      <table id="games-table">
+        <thead>
+          <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Score</th><th>Result</th><th>Record</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="highlight-section" id="on-this-day">
+      <h2>On This Day <span class="section-sub">in Red Sox history</span></h2>
+      <div id="on-this-day-body">
+        <p class="muted">Digging through the archives…</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="games.js"></script>
+</body>
+</html>
