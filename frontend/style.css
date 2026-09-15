@@ -380,6 +380,12 @@ main section { scroll-margin-top: 3.5rem; }
 
 .two-col-row > section {
   margin-bottom: 0;
+  /* Grid items default to min-width: auto, meaning they won't shrink
+     narrower than their content's intrinsic width — and a table with
+     nowrap cells has a large one. Without this, the table pushes the
+     whole grid (and page) wider instead of scrolling internally within
+     its own .table-scroll wrapper. */
+  min-width: 0;
 }
 
 @media (max-width: 850px) {
@@ -482,6 +488,13 @@ main section { scroll-margin-top: 3.5rem; }
 .stat-table { font-size: 0.85rem; white-space: nowrap; }
 .stat-table th, .stat-table td { padding: 0.45rem 0.6rem; }
 .stat-table td.name { font-weight: 600; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  /* On a real phone, keeping the logo+name on one line would force the
+     table wider than the screen. Wrapping to two lines here is the
+     better tradeoff than a forced horizontal scroll. */
+  .stat-table td.name { white-space: normal; }
+}
 .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stat-table td.delta-up { color: var(--good); font-weight: 700; }
 .stat-table td.delta-down { color: var(--red); font-weight: 700; }
