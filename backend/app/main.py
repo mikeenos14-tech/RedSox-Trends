@@ -110,6 +110,10 @@ _hot_cold_cache: dict = {"result": None, "fetched_at": 0.0}
 _hot_cold_lock = asyncio.Lock()
 _season_games_cache: dict = {"result": None, "fetched_at": 0.0}
 _season_games_lock = asyncio.Lock()
+_headlines_cache: dict = {"result": None, "fetched_at": 0.0}
+_headlines_lock = asyncio.Lock()
+
+HEADLINES_CACHE_SECONDS = 600  # 10 min — news moves faster than season stats
 
 
 async def _get_season_games_cached() -> list[dict]:
@@ -126,6 +130,12 @@ async def _get_player_hot_cold_cached() -> dict:
     return await _cached_for(
         _hot_cold_cache, _hot_cold_lock, HEAVY_FETCH_CACHE_SECONDS, player_stats.get_player_hot_cold_report
     )
+
+
+async def _get_headlines_cached() -> list[dict]:
+    # The headline list and its "Summarize Coverage" button both need the
+    # same Google News RSS results; without this they'd hit it independently.
+    return await _cached_for(_headlines_cache, _headlines_lock, HEADLINES_CACHE_SECONDS, news.get_recent_headlines)
 
 
 @app.exception_handler(Exception)
@@ -294,13 +304,13 @@ async def team_analysis():
 
 @app.get("/api/team/headlines")
 async def team_headlines():
-    headlines = await news.get_recent_headlines()
+    headlines = await _get_headlines_cached()
     return {"headlines": headlines}
 
 
 @app.get("/api/team/headlines/summary")
 async def team_headlines_summary():
-    headlines = await news.get_recent_headlines()
+    headlines = await _get_headlines_cached()
     # Only the link+title actually determine what the summary should say —
     # hash those rather than the full list (which also carries publish
     # timestamps that tick over between requests without the story lineup
