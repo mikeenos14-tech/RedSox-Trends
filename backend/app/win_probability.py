@@ -14,11 +14,18 @@ async def _fetch_plays(game_pk: int) -> list[dict]:
         return resp.json()
 
 
-async def get_last_game_win_probability(team_id: int = config.TEAM_ID) -> dict | None:
+async def get_last_game_win_probability(team_id: int = config.TEAM_ID, game: dict | None = None) -> dict | None:
     """Win-probability-by-play for the most recently completed game, plus
     the single biggest swing play. Returns None if there's no completed
-    game to look at yet."""
-    game = await game_recap.get_last_completed_game(team_id)
+    game to look at yet.
+
+    Accepts an already-fetched `game` (from game_recap.get_last_completed_game)
+    so a caller who needs the game first anyway — e.g. to check the gamePk
+    against a cache before paying for this endpoint's much heavier
+    play-by-play fetch — doesn't have to look it up twice.
+    """
+    if game is None:
+        game = await game_recap.get_last_completed_game(team_id)
     if game is None:
         return None
 

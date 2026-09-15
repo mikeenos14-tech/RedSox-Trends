@@ -1,8 +1,11 @@
 import asyncio
+import hashlib
+import json
 import logging
 import time
 import traceback
 from pathlib import Path
+from typing import Awaitable, Callable, TypeVar
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -43,6 +46,87 @@ _statcast_notes_lock = asyncio.Lock()
 _on_this_day_cache = {"date": None, "data": None}
 _on_this_day_lock = asyncio.Lock()
 
+T = TypeVar("T")
+
+
+def _stable_hash(data) -> str:
+    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
+
+
+async def _cached_by_hash(cache: dict, lock: asyncio.Lock, input_data, compute: Callable[[], Awaitable[T]]) -> T:
+    """Re-runs `compute` only when `input_data` has changed since the last
+    call — used for the paid AI-generation endpoints. The underlying stats
+    are free to re-fetch, so checking whether anything actually changed
+    costs nothing; only the Claude call itself is worth avoiding. This is
+    strictly better than a time-based TTL here: a timer would still force a
+    regeneration on a schedule even when nothing changed (wasted tokens for
+    a differently-worded rehash of the same facts), while hashing the input
+    only ever calls Claude when there's something new to say.
+    """
+    input_hash = _stable_hash(input_data)
+    async with lock:
+        if cache.get("hash") == input_hash and cache.get("result") is not None:
+            return cache["result"]
+        result = await compute()
+        cache["hash"] = input_hash
+        cache["result"] = result
+        return result
+
+
+async def _cached_for(cache: dict, lock: asyncio.Lock, seconds: float, compute: Callable[[], Awaitable[T]]) -> T:
+    """Short time-based cache for endpoints with no AI cost but a heavier
+    free-API fetch (e.g. aggregating all 30 MLB teams, or every roster
+    player's game log) — avoids redoing that work for every visitor within
+    the same short window, without needing to know exactly when the
+    underlying data changes."""
+    now = time.monotonic()
+    async with lock:
+        if cache.get("result") is not None and (now - cache.get("fetched_at", 0.0)) < seconds:
+            return cache["result"]
+        result = await compute()
+        cache["result"] = result
+        cache["fetched_at"] = now
+        return result
+
+
+HEAVY_FETCH_CACHE_SECONDS = 1800  # 30 min — see _cached_for
+
+_recap_cache: dict = {"hash": None, "result": None}
+_recap_lock = asyncio.Lock()
+_analysis_cache: dict = {"hash": None, "result": None}
+_analysis_lock = asyncio.Lock()
+_headlines_summary_cache: dict = {"hash": None, "result": None}
+_headlines_summary_lock = asyncio.Lock()
+_player_notes_cache: dict = {"hash": None, "result": None}
+_player_notes_lock = asyncio.Lock()
+_win_prob_cache = {"game_pk": None, "data": None}
+_win_prob_lock = asyncio.Lock()
+
+_league_context_cache: dict = {"result": None, "fetched_at": 0.0}
+_league_context_lock = asyncio.Lock()
+_stat_benchmarks_cache: dict = {"result": None, "fetched_at": 0.0}
+_stat_benchmarks_lock = asyncio.Lock()
+_hot_cold_cache: dict = {"result": None, "fetched_at": 0.0}
+_hot_cold_lock = asyncio.Lock()
+_season_games_cache: dict = {"result": None, "fetched_at": 0.0}
+_season_games_lock = asyncio.Lock()
+
+
+async def _get_season_games_cached() -> list[dict]:
+    # Upcoming Schedule and Season Series both need the full-season game
+    # log; without this they'd each fetch the same ~150-game season
+    # schedule from MLB Stats API independently on every single Home page
+    # load.
+    return await _cached_for(
+        _season_games_cache, _season_games_lock, HEAVY_FETCH_CACHE_SECONDS, lambda: mlb_client.get_recent_games(days=200)
+    )
+
+
+async def _get_player_hot_cold_cached() -> dict:
+    return await _cached_for(
+        _hot_cold_cache, _hot_cold_lock, HEAVY_FETCH_CACHE_SECONDS, player_stats.get_player_hot_cold_report
+    )
+
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
@@ -70,17 +154,21 @@ async def team_summary():
 async def team_recap():
     summary = await _build_summary()
 
-    try:
-        recap = ai_recap.generate_recap(summary)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    async def compute():
+        try:
+            return ai_recap.generate_recap(summary)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    recap = await _cached_by_hash(_recap_cache, _recap_lock, summary, compute)
     return {"recap": recap}
 
 
 @app.get("/api/team/league-context")
 async def team_league_context():
-    return await league_context.get_league_context()
+    return await _cached_for(
+        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_league_context
+    )
 
 
 @app.get("/api/team/division-standings")
@@ -90,7 +178,9 @@ async def team_division_standings():
 
 @app.get("/api/team/stat-benchmarks")
 async def team_stat_benchmarks():
-    return await league_context.get_stat_benchmarks()
+    return await _cached_for(
+        _stat_benchmarks_cache, _stat_benchmarks_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_stat_benchmarks
+    )
 
 
 @app.get("/api/team/upcoming-schedule")
@@ -98,7 +188,7 @@ async def team_upcoming_schedule():
     games = await mlb_client.get_upcoming_games()
     division_teams = await mlb_client.get_division_standings()
     division_ids = {t["id"] for t in division_teams if not t["is_target"]}
-    season_games = await mlb_client.get_recent_games(days=200)
+    season_games = await _get_season_games_cached()
     season_series = mlb_client.build_season_series(season_games)
 
     for g in games:
@@ -127,7 +217,7 @@ async def team_wildcard_standings():
 
 @app.get("/api/team/season-series")
 async def team_season_series():
-    games = await mlb_client.get_recent_games(days=200)
+    games = await _get_season_games_cached()
     series = mlb_client.build_season_series(games)
     result = sorted(series.values(), key=lambda s: s["wins"] + s["losses"], reverse=True)
     return {"series": result}
@@ -140,8 +230,24 @@ async def team_bullpen():
 
 @app.get("/api/team/win-probability")
 async def team_win_probability():
-    data = await win_probability.get_last_game_win_probability()
-    return {"game": data}
+    # The play-by-play fetch here is the heaviest single request on the
+    # site (~1MB) and only actually changes when a new game completes, so
+    # it's cached by gamePk exactly like Previous Game Recap — cheap to
+    # check (just the schedule lookup), expensive to skip checking.
+    game = await game_recap.get_last_completed_game()
+    if game is None:
+        return {"game": None}
+
+    game_pk = game["gamePk"]
+    async with _win_prob_lock:
+        if _win_prob_cache["game_pk"] == game_pk and _win_prob_cache["data"] is not None:
+            return _win_prob_cache["data"]
+
+        data = await win_probability.get_last_game_win_probability(game=game)
+        result = {"game": data}
+        _win_prob_cache["game_pk"] = game_pk
+        _win_prob_cache["data"] = result
+        return result
 
 
 @app.get("/api/team/hero-headline")
@@ -171,14 +277,18 @@ async def team_hero_headline():
 @app.get("/api/team/analysis")
 async def team_analysis():
     summary = await _build_summary()
-    lg_ctx = await league_context.get_league_context()
+    lg_ctx = await _cached_for(
+        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_league_context
+    )
     summary["league_context"] = {k: v for k, v in lg_ctx.items() if k != "run_diff_league_chart"}
 
-    try:
-        analysis = ai_recap.generate_front_office_analysis(summary)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    async def compute():
+        try:
+            return ai_recap.generate_front_office_analysis(summary)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    analysis = await _cached_by_hash(_analysis_cache, _analysis_lock, summary, compute)
     return {"analysis": analysis, "data": summary["analysis"]}
 
 
@@ -191,30 +301,39 @@ async def team_headlines():
 @app.get("/api/team/headlines/summary")
 async def team_headlines_summary():
     headlines = await news.get_recent_headlines()
+    # Only the link+title actually determine what the summary should say —
+    # hash those rather than the full list (which also carries publish
+    # timestamps that tick over between requests without the story lineup
+    # itself having changed).
+    fingerprint = [{"title": h["title"], "source": h["source"]} for h in headlines]
 
-    try:
-        summary = ai_recap.generate_headlines_summary(headlines)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    async def compute():
+        try:
+            return ai_recap.generate_headlines_summary(headlines)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    summary = await _cached_by_hash(_headlines_summary_cache, _headlines_summary_lock, fingerprint, compute)
     return {"summary": summary}
 
 
 @app.get("/api/players/hot-cold")
 async def players_hot_cold():
-    return await player_stats.get_player_hot_cold_report()
+    return await _get_player_hot_cold_cached()
 
 
 @app.get("/api/players/notes")
 async def players_notes():
-    report = await player_stats.get_player_hot_cold_report()
+    report = await _get_player_hot_cold_cached()
     slim_report = player_stats.slim_for_ai(report)
 
-    try:
-        notes = ai_recap.generate_player_notes(slim_report)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    async def compute():
+        try:
+            return ai_recap.generate_player_notes(slim_report)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    notes = await _cached_by_hash(_player_notes_cache, _player_notes_lock, slim_report, compute)
     return {"notes": notes}
 
 
