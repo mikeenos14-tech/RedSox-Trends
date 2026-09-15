@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import datetime
 
-from . import config, game_recap, mlb_client, player_stats
+from . import config, game_recap, mlb_client, player_highlight, player_stats
 
 LOOKBACK_DAYS = 5
 
@@ -64,7 +64,11 @@ async def get_bullpen_report(team_id: int = config.TEAM_ID) -> list[dict]:
                 }
             )
 
-    today = date.today()
+    # Eastern, not server-local: the server runs on UTC, which has already
+    # rolled to "tomorrow" for several hours every evening while it's still
+    # today in Boston — using the server's raw clock here would misjudge a
+    # pitcher who threw earlier tonight as having a full day of rest.
+    today = player_highlight.eastern_today()
     report = []
     for pid, outings in appearances.items():
         outings.sort(key=lambda o: o["date"])
