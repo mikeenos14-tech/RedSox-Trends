@@ -1042,3 +1042,57 @@ async function loadStatcastNotes() {
     btn.textContent = "✨ Generate Scouting Notes";
   }
 }
+
+let liveGamePollTimer = null;
+const LIVE_GAME_POLL_MS = 15000;
+
+async function loadLiveGame() {
+  const section = document.getElementById("live-ticker");
+  if (!section) return;
+
+  try {
+    const res = await fetch("/api/team/live-game");
+    if (!res.ok) throw new Error("Failed to load live game");
+    const data = await res.json();
+    const g = data.game;
+
+    if (!g) {
+      section.hidden = true;
+      return;
+    }
+
+    section.hidden = false;
+
+    const oppShort = g.opponent.split(" ").pop();
+    document.getElementById("live-inning-label").textContent =
+      `${g.inning_half === "top" ? "Top" : "Bot"} ${ordinal(g.inning)} — ${g.home_or_away === "home" ? "vs" : "@"} ${oppShort}`;
+
+    document.getElementById("live-logo-them").src = `https://www.mlbstatic.com/team-logos/${g.opponent_id}.svg`;
+    document.getElementById("live-name-them").textContent = oppShort;
+    document.getElementById("live-score-them").textContent = g.them_score;
+    document.getElementById("live-score-us").textContent = g.us_score;
+
+    document.getElementById("base-first").classList.toggle("occupied", g.bases.first);
+    document.getElementById("base-second").classList.toggle("occupied", g.bases.second);
+    document.getElementById("base-third").classList.toggle("occupied", g.bases.third);
+
+    const outsDots = document.querySelectorAll("#live-outs-dots .out-dot");
+    outsDots.forEach((dot, i) => dot.classList.toggle("filled", i < g.outs));
+
+    document.getElementById("live-count-value").textContent = `${g.balls}-${g.strikes}`;
+
+    document.getElementById("live-pitcher").textContent = g.pitcher || "";
+    document.getElementById("live-batter").textContent = g.batter || "";
+    document.getElementById("live-last-play").textContent = g.last_play || "";
+
+    if (!liveGamePollTimer) {
+      liveGamePollTimer = setInterval(loadLiveGame, LIVE_GAME_POLL_MS);
+    }
+  } catch (e) {
+    // A transient fetch failure shouldn't yank the ticker away mid-game —
+    // just leave the last-known state showing and try again next poll.
+    if (!liveGamePollTimer) {
+      liveGamePollTimer = setInterval(loadLiveGame, LIVE_GAME_POLL_MS);
+    }
+  }
+}

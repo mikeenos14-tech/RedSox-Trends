@@ -40,6 +40,56 @@
     <a href="/games.html">Games</a>
   </nav>
 
+  <section class="live-ticker" id="live-ticker" hidden>
+    <div class="live-ticker-header">
+      <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+      <span class="live-inning-label" id="live-inning-label"></span>
+    </div>
+    <div class="live-scoreboard">
+      <div class="live-team-row" id="live-team-them">
+        <img class="team-logo-icon" id="live-logo-them" alt="" />
+        <span class="live-team-name" id="live-name-them"></span>
+        <span class="live-team-score" id="live-score-them"></span>
+      </div>
+      <div class="live-team-row live-team-row-us" id="live-team-us">
+        <img class="team-logo-icon" src="https://www.mlbstatic.com/team-logos/111.svg" alt="" />
+        <span class="live-team-name">Red Sox</span>
+        <span class="live-team-score" id="live-score-us"></span>
+      </div>
+    </div>
+    <div class="live-situation">
+      <svg class="live-diamond" viewBox="0 0 100 100" role="img" aria-label="Baserunners">
+        <path class="diamond-path" d="M50,88 L82,55 L50,22 L18,55 Z" />
+        <circle class="base" id="base-second" cx="50" cy="22" r="9" />
+        <circle class="base" id="base-third" cx="18" cy="55" r="9" />
+        <circle class="base" id="base-first" cx="82" cy="55" r="9" />
+        <rect class="home-plate" x="44" y="82" width="12" height="12" transform="rotate(45 50 88)" />
+      </svg>
+      <div class="live-situation-details">
+        <div class="live-outs">
+          <div id="live-outs-dots"><span class="out-dot"></span><span class="out-dot"></span></div>
+          <span class="live-mini-label">Outs</span>
+        </div>
+        <div class="live-count">
+          <span class="live-count-value" id="live-count-value">0-0</span>
+          <span class="live-mini-label">Count</span>
+        </div>
+      </div>
+    </div>
+    <div class="live-matchup">
+      <div class="live-matchup-side">
+        <span class="live-mini-label">Pitching</span>
+        <span id="live-pitcher"></span>
+      </div>
+      <span class="live-vs">vs</span>
+      <div class="live-matchup-side">
+        <span class="live-mini-label">At Bat</span>
+        <span id="live-batter"></span>
+      </div>
+    </div>
+    <p class="live-last-play" id="live-last-play"></p>
+  </section>
+
   <div class="hero-headline" id="hero-headline">
     <span class="hero-spinner"></span> Reading the numbers…
   </div>

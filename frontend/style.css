@@ -850,3 +850,201 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
   font-weight: 700;
 }
 .leaderboard li.is-sox .lb-team { color: var(--red); }
+
+.live-ticker {
+  background: linear-gradient(135deg, var(--navy), #071b3d);
+  border: 2px solid var(--red);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin: 0 auto 2rem;
+  max-width: 900px;
+  color: white;
+  animation: live-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes live-glow {
+  0%, 100% { box-shadow: 0 0 18px rgba(189, 48, 57, 0.25); }
+  50% { box-shadow: 0 0 32px rgba(189, 48, 57, 0.55); }
+}
+
+.live-ticker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--red);
+  color: white;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+  animation: live-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
+
+.live-inning-label {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #c9d4e6;
+  letter-spacing: 0.03em;
+}
+
+.live-scoreboard { margin-bottom: 1.5rem; }
+
+.live-team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.live-team-row .team-logo-icon {
+  width: 32px;
+  height: 32px;
+  margin-right: 0;
+}
+
+.live-team-name {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.live-team-row-us {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.live-team-score {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  min-width: 2ch;
+  text-align: right;
+}
+
+.live-situation {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.live-diamond { width: 60px; height: 60px; flex-shrink: 0; }
+
+.diamond-path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 3;
+}
+
+.base {
+  fill: rgba(255, 255, 255, 0.12);
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 2;
+  transition: fill 0.3s, stroke 0.3s;
+}
+
+.base.occupied { fill: #f4c542; stroke: #f4c542; }
+
+.home-plate { fill: rgba(255, 255, 255, 0.5); }
+
+.live-situation-details {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.live-outs, .live-count {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.out-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  margin-right: 0.3rem;
+}
+
+.out-dot.filled { background: #f4c542; border-color: #f4c542; }
+
+.live-mini-label {
+  font-size: 0.68rem;
+  color: #8fa3c4;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.live-count-value {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.live-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.live-matchup-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.live-matchup-side span:not(.live-mini-label) {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.live-vs {
+  color: #8fa3c4;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  font-family: "Inter", sans-serif;
+}
+
+.live-last-play {
+  text-align: center;
+  color: #c9d4e6;
+  font-size: 0.85rem;
+  margin: 0;
+  font-style: italic;
+}

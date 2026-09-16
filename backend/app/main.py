@@ -16,6 +16,7 @@ from . import (
     bullpen,
     game_recap,
     league_context,
+    live_game,
     mlb_client,
     news,
     on_this_day,
@@ -258,6 +259,15 @@ async def team_win_probability():
         _win_prob_cache["game_pk"] = game_pk
         _win_prob_cache["data"] = result
         return result
+
+
+@app.get("/api/team/live-game")
+async def team_live_game():
+    # Deliberately uncached — this is the one endpoint on the site whose
+    # whole purpose is "what's true right now," polled by the frontend
+    # every ~15s while a game is in progress. Almost always returns null
+    # (no game live at this moment), which is cheap: one schedule lookup.
+    return {"game": await live_game.get_live_game()}
 
 
 @app.get("/api/team/hero-headline")
