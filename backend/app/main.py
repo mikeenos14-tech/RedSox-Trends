@@ -42,6 +42,8 @@ _game_recap_cache = {"game_pk": None, "data": None}
 _game_recap_lock = asyncio.Lock()
 _statcast_cache = {"date": None, "data": None}
 _statcast_lock = asyncio.Lock()
+_league_data_cache = {"date": None, "data": None}
+_league_data_lock = asyncio.Lock()
 _statcast_notes_cache = {"date": None, "text": None}
 _statcast_notes_lock = asyncio.Lock()
 _on_this_day_cache = {"date": None, "data": None}
@@ -380,16 +382,31 @@ async def players_highlight():
         return result
 
 
-async def _get_statcast_report_cached() -> dict:
+async def _get_league_data_cached() -> dict:
     # Savant recalculates percentiles once daily after games are logged, so
     # a same-day cache avoids re-scraping several leaderboard pages (no
-    # official API, so being a light touch matters) on every page view.
+    # official API, so being a light touch matters) on every page view —
+    # shared by the team report, player search, and player comparison so
+    # only the first of those hit today pays the Savant round-trip.
+    today = player_highlight.eastern_today().isoformat()
+    async with _league_data_lock:
+        if _league_data_cache["date"] == today and _league_data_cache["data"] is not None:
+            return _league_data_cache["data"]
+
+        data = await statcast.fetch_league_data()
+        _league_data_cache["date"] = today
+        _league_data_cache["data"] = data
+        return data
+
+
+async def _get_statcast_report_cached() -> dict:
     today = player_highlight.eastern_today().isoformat()
     async with _statcast_lock:
         if _statcast_cache["date"] == today and _statcast_cache["data"] is not None:
             return _statcast_cache["data"]
 
-        report = await statcast.get_statcast_report()
+        league_data = await _get_league_data_cached()
+        report = await statcast.get_statcast_report(league_data)
         _statcast_cache["date"] = today
         _statcast_cache["data"] = report
         return report
@@ -398,6 +415,23 @@ async def _get_statcast_report_cached() -> dict:
 @app.get("/api/players/statcast")
 async def players_statcast():
     return await _get_statcast_report_cached()
+
+
+@app.get("/api/players/search")
+async def players_search(q: str = ""):
+    league_data = await _get_league_data_cached()
+    return {"results": statcast.search_players(q, league_data)}
+
+
+@app.get("/api/players/compare")
+async def players_compare(player_id: int, type: str):
+    if type not in ("hitter", "pitcher"):
+        raise HTTPException(status_code=400, detail="type must be 'hitter' or 'pitcher'")
+    league_data = await _get_league_data_cached()
+    profile = statcast.get_player_comparison_data(player_id, type, league_data)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Player not found in this year's qualifying leaderboard")
+    return profile
 
 
 @app.get("/api/players/statcast-notes")

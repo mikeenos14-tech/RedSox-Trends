@@ -101,9 +101,36 @@
       <h3>League Leaders</h3>
       <div class="leaderboard-grid" id="statcast-leaders"></div>
 
+      <div class="leaderboard-explorer">
+        <label for="leaderboard-picker">Explore another leaderboard</label>
+        <select id="leaderboard-picker"></select>
+        <div class="leaderboard-grid" id="leaderboard-explorer-result"></div>
+      </div>
+
       <p class="muted small-note">
         Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
       </p>
+    </section>
+
+    <section class="compare-section" id="compare">
+      <h2>Player Comparison Tool <span class="section-sub">Statcast tale of the tape</span></h2>
+      <p class="muted small-note">Search any 2026 qualified hitter or pitcher — not just Red Sox — and compare their Statcast profiles side by side. Works best comparing two hitters or two pitchers, since that's where the same metrics apply to both.</p>
+
+      <div class="compare-pickers">
+        <div class="compare-picker">
+          <input type="text" id="compare-search-a" placeholder="Search a player…" autocomplete="off" />
+          <div class="compare-results" id="compare-results-a" hidden></div>
+          <div class="compare-selected" id="compare-selected-a"></div>
+        </div>
+        <div class="compare-vs">VS</div>
+        <div class="compare-picker">
+          <input type="text" id="compare-search-b" placeholder="Search a player…" autocomplete="off" />
+          <div class="compare-results" id="compare-results-b" hidden></div>
+          <div class="compare-selected" id="compare-selected-b"></div>
+        </div>
+      </div>
+
+      <div id="compare-tape"></div>
     </section>
 
     <section class="highlight-section" id="highlight">

@@ -40,19 +40,32 @@ PITCHER_STATS = [
     ("percent_rank_fastball_velo", "fastball_avg_speed", "Fastball Velo", lambda v: f"{v:.1f} mph"),
 ]
 
-# Headline stats worth a league-wide "who leads MLB" callout.
+# Every signature stat, available as a league-wide "who leads MLB"
+# leaderboard — not just the two flagship ones shown by default.
 # (custom CSV field, label, formatter, higher_is_better)
 HITTER_LEADER_STATS = [
     ("xwoba", "xwOBA", lambda v: f"{v:.3f}".lstrip("0"), True),
     ("barrel_batted_rate", "Barrel%", lambda v: f"{v:.1f}%", True),
+    ("hard_hit_percent", "Hard-Hit%", lambda v: f"{v:.1f}%", True),
+    ("exit_velocity_avg", "Avg Exit Velo", lambda v: f"{v:.1f} mph", True),
+    ("sprint_speed", "Sprint Speed", lambda v: f"{v:.1f} ft/sec", True),
+    ("whiff_percent", "Whiff%", lambda v: f"{v:.1f}%", False),
 ]
 PITCHER_LEADER_STATS = [
     ("xera", "xERA", lambda v: f"{v:.2f}", False),
+    ("whiff_percent", "Whiff%", lambda v: f"{v:.1f}%", True),
+    ("hard_hit_percent", "Hard-Hit% Allowed", lambda v: f"{v:.1f}%", False),
+    ("k_percent", "K%", lambda v: f"{v:.1f}%", True),
     ("fastball_avg_speed", "Fastball Velo", lambda v: f"{v:.1f} mph", True),
 ]
 
+# The two shown by default in the flagship "League Leaders" grid — the rest
+# are only surfaced through the "explore any leaderboard" picker.
+FLAGSHIP_HITTER_LEADER_LABELS = ["xwOBA", "Barrel%"]
+FLAGSHIP_PITCHER_LEADER_LABELS = ["xERA", "Fastball Velo"]
 
-async def _fetch_percentile_rankings(player_type: str) -> list[dict]:
+
+async def fetch_percentile_rankings(player_type: str) -> list[dict]:
     async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
         resp = await client.get(PERCENTILE_URL, params={"year": config.SEASON, "type": player_type})
         resp.raise_for_status()
@@ -67,7 +80,7 @@ async def _fetch_percentile_rankings(player_type: str) -> list[dict]:
     return json.loads(match.group(1))
 
 
-async def _fetch_custom_leaderboard(player_type: str, selections: list[str]) -> dict[str, dict]:
+async def fetch_custom_leaderboard(player_type: str, selections: list[str]) -> dict[str, dict]:
     async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
         resp = await client.get(
             CUSTOM_URL,
@@ -100,7 +113,7 @@ async def _fetch_custom_leaderboard(player_type: str, selections: list[str]) -> 
     return rows
 
 
-def _display_name(savant_name: str) -> str:
+def display_name(savant_name: str) -> str:
     # Savant formats names as "Last, First" — flip to "First Last".
     parts = savant_name.split(", ", 1)
     return f"{parts[1]} {parts[0]}" if len(parts) == 2 else savant_name
@@ -115,6 +128,21 @@ def _display_name(savant_name: str) -> str:
 MIN_STATS_FOR_INCLUSION = 3
 
 
+def build_stats_for_row(row: dict, custom_values: dict[str, dict], stat_defs: list[tuple]) -> dict:
+    pid = row.get("player_id")
+    stats = {}
+    for pct_field, custom_field, label, fmt in stat_defs:
+        percentile = row.get(pct_field)
+        if percentile is None:
+            continue
+        value = (custom_values.get(pid) or {}).get(custom_field)
+        stats[label] = {
+            "percentile": int(percentile),
+            "value": fmt(value) if value is not None else None,
+        }
+    return stats
+
+
 def _build_player_entries(
     roster_ids: set[str],
     percentile_rows: list[dict],
@@ -127,24 +155,14 @@ def _build_player_entries(
         if pid not in roster_ids:
             continue
 
-        stats = {}
-        for pct_field, custom_field, label, fmt in stat_defs:
-            percentile = row.get(pct_field)
-            if percentile is None:
-                continue
-            value = (custom_values.get(pid) or {}).get(custom_field)
-            stats[label] = {
-                "percentile": int(percentile),
-                "value": fmt(value) if value is not None else None,
-            }
-
+        stats = build_stats_for_row(row, custom_values, stat_defs)
         if len(stats) < MIN_STATS_FOR_INCLUSION:
             continue
 
         entries.append(
             {
                 "player_id": int(pid),
-                "name": _display_name(row["player_name"]),
+                "name": display_name(row["player_name"]),
                 "stats": stats,
             }
         )
@@ -164,7 +182,7 @@ def _build_league_leaders(
     limit: int = 5,
 ) -> dict[str, list[dict]]:
     team_by_id = {row["player_id"]: row["team_name"] for row in percentile_rows}
-    name_by_id = {row["player_id"]: _display_name(row["player_name"]) for row in percentile_rows}
+    name_by_id = {row["player_id"]: display_name(row["player_name"]) for row in percentile_rows}
 
     leaders: dict[str, list[dict]] = {}
     for field, label, fmt, higher_is_better in leader_defs:
@@ -190,10 +208,11 @@ def _team_snapshot(entries: list[dict]) -> dict[str, float]:
     return {label: round(sum(vals) / len(vals)) for label, vals in totals.items()}
 
 
-async def get_statcast_report() -> dict:
-    roster = await player_stats.get_roster()
-    roster_ids = {str(entry["person"]["id"]) for entry in roster}
-
+async def fetch_league_data() -> dict:
+    """Every Savant fetch needed across the team report, player search, and
+    player comparison — grouped into one call so a day-scoped cache upstream
+    only has to hit Savant once, regardless of which of those three features
+    is used first."""
     hitter_selections = [c for _, c, _, _ in HITTER_STATS]
     pitcher_selections = [c for _, c, _, _ in PITCHER_STATS]
 
@@ -203,11 +222,28 @@ async def get_statcast_report() -> dict:
         custom_batters,
         custom_pitchers,
     ) = await asyncio.gather(
-        _fetch_percentile_rankings("batter"),
-        _fetch_percentile_rankings("pitcher"),
-        _fetch_custom_leaderboard("batter", hitter_selections),
-        _fetch_custom_leaderboard("pitcher", pitcher_selections),
+        fetch_percentile_rankings("batter"),
+        fetch_percentile_rankings("pitcher"),
+        fetch_custom_leaderboard("batter", hitter_selections),
+        fetch_custom_leaderboard("pitcher", pitcher_selections),
     )
+
+    return {
+        "percentile_batters": percentile_batters,
+        "percentile_pitchers": percentile_pitchers,
+        "custom_batters": custom_batters,
+        "custom_pitchers": custom_pitchers,
+    }
+
+
+async def get_statcast_report(league_data: dict) -> dict:
+    roster = await player_stats.get_roster()
+    roster_ids = {str(entry["person"]["id"]) for entry in roster}
+
+    percentile_batters = league_data["percentile_batters"]
+    percentile_pitchers = league_data["percentile_pitchers"]
+    custom_batters = league_data["custom_batters"]
+    custom_pitchers = league_data["custom_pitchers"]
 
     hitters = _build_player_entries(roster_ids, percentile_batters, custom_batters, HITTER_STATS)
     pitchers = _build_player_entries(roster_ids, percentile_pitchers, custom_pitchers, PITCHER_STATS)
@@ -223,4 +259,66 @@ async def get_statcast_report() -> dict:
             "hitters": _build_league_leaders(percentile_batters, custom_batters, HITTER_LEADER_STATS),
             "pitchers": _build_league_leaders(percentile_pitchers, custom_pitchers, PITCHER_LEADER_STATS),
         },
+        "flagship_leader_labels": {
+            "hitters": FLAGSHIP_HITTER_LEADER_LABELS,
+            "pitchers": FLAGSHIP_PITCHER_LEADER_LABELS,
+        },
+    }
+
+
+def search_players(query: str, league_data: dict) -> list[dict]:
+    """Name-substring search across this year's qualifying batters and
+    pitchers, for the comparison tool's player picker."""
+    query = query.strip().lower()
+    if not query:
+        return []
+
+    matches = []
+    seen: set[tuple[str, str]] = set()
+    sources = (
+        ("hitter", league_data["percentile_batters"]),
+        ("pitcher", league_data["percentile_pitchers"]),
+    )
+    for player_type, rows in sources:
+        for row in rows:
+            name = display_name(row["player_name"])
+            pid = row.get("player_id")
+            key = (pid, player_type)
+            if query not in name.lower() or key in seen:
+                continue
+            seen.add(key)
+            matches.append(
+                {
+                    "player_id": int(pid),
+                    "name": name,
+                    "team": row.get("team_name", "?"),
+                    "type": player_type,
+                }
+            )
+
+    matches.sort(key=lambda m: m["name"])
+    return matches[:20]
+
+
+def get_player_comparison_data(player_id: int, player_type: str, league_data: dict) -> dict | None:
+    """A single player's Statcast percentile profile, for the head-to-head
+    comparison tool. Unlike the team report, there's no MIN_STATS_FOR_INCLUSION
+    gate here — a specific player the user asked to see should show whatever
+    stats are available, even if sparse."""
+    stat_defs = HITTER_STATS if player_type == "hitter" else PITCHER_STATS
+    percentile_rows = league_data["percentile_batters"] if player_type == "hitter" else league_data["percentile_pitchers"]
+    custom_values = league_data["custom_batters"] if player_type == "hitter" else league_data["custom_pitchers"]
+
+    pid = str(player_id)
+    row = next((r for r in percentile_rows if r.get("player_id") == pid), None)
+    if row is None:
+        return None
+
+    stats = build_stats_for_row(row, custom_values, stat_defs)
+    return {
+        "player_id": player_id,
+        "name": display_name(row["player_name"]),
+        "team": row.get("team_name", "?"),
+        "type": player_type,
+        "stats": stats,
     }

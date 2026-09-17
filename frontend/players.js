@@ -10,3 +10,7 @@ document.getElementById("statcast-notes-btn").addEventListener("click", loadStat
 loadPlayerHotCold();
 loadStatcast();
 loadPlayerHighlight();
+
+initSortableTable("hitters-table");
+initSortableTable("pitchers-table");
+initCompareTool();

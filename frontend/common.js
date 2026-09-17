@@ -751,6 +751,45 @@ async function loadPlayerHotCold() {
   }
 }
 
+function sortTableByColumn(table, colIndex, th) {
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const dir = th.dataset.sortDir === "asc" ? "desc" : "asc";
+
+  table.querySelectorAll("thead th").forEach((h) => {
+    h.dataset.sortDir = "";
+    h.classList.remove("sort-asc", "sort-desc");
+  });
+  th.dataset.sortDir = dir;
+  th.classList.add(dir === "asc" ? "sort-asc" : "sort-desc");
+
+  const valueOf = (tr) => {
+    const cell = tr.children[colIndex];
+    const raw = cell ? cell.textContent.trim() : "";
+    const num = parseFloat(raw.replace(/[%,]/g, ""));
+    return raw && !Number.isNaN(num) ? num : raw.toLowerCase();
+  };
+
+  rows.sort((a, b) => {
+    const va = valueOf(a);
+    const vb = valueOf(b);
+    const cmp = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb));
+    return dir === "asc" ? cmp : -cmp;
+  });
+
+  rows.forEach((r) => tbody.appendChild(r));
+}
+
+function initSortableTable(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table || table.dataset.sortableInit) return;
+  table.dataset.sortableInit = "1";
+  table.querySelectorAll("thead th").forEach((th, idx) => {
+    th.classList.add("sortable");
+    th.addEventListener("click", () => sortTableByColumn(table, idx, th));
+  });
+}
+
 async function loadPlayerNotes() {
   const btn = document.getElementById("player-notes-btn");
   const textEl = document.getElementById("player-notes-text");
@@ -989,6 +1028,52 @@ function leaderboardBlock(label, entries) {
   return `<div class="leaderboard"><h4>${label}</h4><ol>${items}</ol></div>`;
 }
 
+let statcastLeagueLeaders = null;
+
+function populateLeaderboardPicker(leagueLeaders, flagshipLabels) {
+  const picker = document.getElementById("leaderboard-picker");
+  if (!picker) return;
+
+  picker.innerHTML = "";
+  const groups = [
+    ["Hitters", leagueLeaders.hitters || {}, flagshipLabels.hitters || []],
+    ["Pitchers", leagueLeaders.pitchers || {}, flagshipLabels.pitchers || []],
+  ];
+
+  let firstValue = null;
+  groups.forEach(([groupLabel, leaders, flagship]) => {
+    const labels = Object.keys(leaders).filter((label) => !flagship.includes(label));
+    if (!labels.length) return;
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = groupLabel;
+    labels.forEach((label) => {
+      const opt = document.createElement("option");
+      opt.value = `${groupLabel}::${label}`;
+      opt.textContent = label;
+      optgroup.appendChild(opt);
+      if (!firstValue) firstValue = opt.value;
+    });
+    picker.appendChild(optgroup);
+  });
+
+  if (firstValue) {
+    picker.value = firstValue;
+    renderPickedLeaderboard(firstValue);
+  }
+}
+
+function renderPickedLeaderboard(value) {
+  const resultEl = document.getElementById("leaderboard-explorer-result");
+  if (!resultEl || !value || !statcastLeagueLeaders) return;
+  const [groupLabel, label] = value.split("::");
+  const leaders = groupLabel === "Hitters" ? statcastLeagueLeaders.hitters : statcastLeagueLeaders.pitchers;
+  resultEl.innerHTML = leaderboardBlock(label, (leaders || {})[label] || []);
+}
+
+document.getElementById("leaderboard-picker")?.addEventListener("change", (e) => {
+  renderPickedLeaderboard(e.target.value);
+});
+
 async function loadStatcast() {
   const snapshotEl = document.getElementById("statcast-snapshot");
   const hittersEl = document.getElementById("statcast-hitters-grid");
@@ -1011,11 +1096,15 @@ async function loadStatcast() {
       ? data.pitchers.map(statcastCard).join("")
       : '<p class="muted">Not enough Statcast-qualified pitchers yet.</p>';
 
+    const flagship = data.flagship_leader_labels || { hitters: [], pitchers: [] };
     const leaderBlocks = [
-      ...Object.entries(data.league_leaders.hitters || {}),
-      ...Object.entries(data.league_leaders.pitchers || {}),
+      ...Object.entries(data.league_leaders.hitters || {}).filter(([label]) => flagship.hitters.includes(label)),
+      ...Object.entries(data.league_leaders.pitchers || {}).filter(([label]) => flagship.pitchers.includes(label)),
     ].map(([label, entries]) => leaderboardBlock(label, entries));
     leadersEl.innerHTML = leaderBlocks.join("");
+
+    statcastLeagueLeaders = data.league_leaders;
+    populateLeaderboardPicker(data.league_leaders, flagship);
   } catch (e) {
     hittersEl.innerHTML = `<p class="muted">Couldn't load Statcast data: ${e.message}</p>`;
   }
@@ -1095,4 +1184,143 @@ async function loadLiveGame() {
       liveGamePollTimer = setInterval(loadLiveGame, LIVE_GAME_POLL_MS);
     }
   }
+}
+
+const compareSelection = { a: null, b: null };
+const compareSearchTimers = { a: null, b: null };
+
+function debounceSearch(side, query) {
+  clearTimeout(compareSearchTimers[side]);
+  const resultsEl = document.getElementById(`compare-results-${side}`);
+  if (!query.trim()) {
+    resultsEl.hidden = true;
+    resultsEl.innerHTML = "";
+    return;
+  }
+  compareSearchTimers[side] = setTimeout(() => runCompareSearch(side, query), 300);
+}
+
+async function runCompareSearch(side, query) {
+  const resultsEl = document.getElementById(`compare-results-${side}`);
+  try {
+    const res = await fetch(`/api/players/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error("Search failed");
+    const data = await res.json();
+    const results = data.results || [];
+
+    resultsEl.innerHTML = results.length
+      ? results
+          .map(
+            (p, i) => `
+        <div class="compare-result" data-idx="${i}">
+          <span class="compare-result-name">${p.name}</span>
+          <span class="compare-result-meta">${p.team} · ${p.type === "hitter" ? "Hitter" : "Pitcher"}</span>
+        </div>
+      `
+          )
+          .join("")
+      : '<div class="compare-result-empty">No matches</div>';
+    resultsEl.hidden = false;
+
+    resultsEl.querySelectorAll(".compare-result").forEach((el, i) => {
+      el.addEventListener("click", () => selectComparePlayer(side, results[i]));
+    });
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="compare-result-empty">Couldn't search: ${e.message}</div>`;
+    resultsEl.hidden = false;
+  }
+}
+
+async function selectComparePlayer(side, player) {
+  const resultsEl = document.getElementById(`compare-results-${side}`);
+  const selectedEl = document.getElementById(`compare-selected-${side}`);
+  const inputEl = document.getElementById(`compare-search-${side}`);
+  resultsEl.hidden = true;
+  resultsEl.innerHTML = "";
+  inputEl.value = "";
+
+  selectedEl.innerHTML = `<div class="compare-chip">${player.name} <span class="compare-chip-meta">(${player.team})</span> <button class="compare-chip-clear" aria-label="Clear">×</button></div>`;
+  selectedEl.querySelector(".compare-chip-clear").addEventListener("click", () => clearComparePlayer(side));
+
+  try {
+    const res = await fetch(`/api/players/compare?player_id=${player.player_id}&type=${player.type}`);
+    if (!res.ok) throw new Error("Failed to load player profile");
+    compareSelection[side] = await res.json();
+  } catch (e) {
+    compareSelection[side] = null;
+    selectedEl.innerHTML += `<p class="muted small-note">Couldn't load stats: ${e.message}</p>`;
+  }
+
+  renderCompareTape();
+}
+
+function clearComparePlayer(side) {
+  compareSelection[side] = null;
+  document.getElementById(`compare-selected-${side}`).innerHTML = "";
+  renderCompareTape();
+}
+
+function tapeStatRow(label, statA, statB) {
+  return `
+    <div class="tape-stat">
+      <div class="tape-label">${label}</div>
+      <div class="tape-row">
+        <span class="tape-val tape-val-a">${statA.value ?? "-"} <span class="tape-pctl">(${ordinal(statA.percentile)})</span></span>
+        <div class="tape-track">
+          <div class="tape-half tape-half-a"><div class="tape-fill" style="width:${statA.percentile}%"></div></div>
+          <div class="tape-half tape-half-b"><div class="tape-fill" style="width:${statB.percentile}%"></div></div>
+        </div>
+        <span class="tape-val tape-val-b">${statB.value ?? "-"} <span class="tape-pctl">(${ordinal(statB.percentile)})</span></span>
+      </div>
+    </div>
+  `;
+}
+
+function renderCompareTape() {
+  const tapeEl = document.getElementById("compare-tape");
+  if (!tapeEl) return;
+
+  const a = compareSelection.a;
+  const b = compareSelection.b;
+
+  if (!a || !b) {
+    tapeEl.innerHTML = "";
+    return;
+  }
+
+  if (a.type !== b.type) {
+    tapeEl.innerHTML = `<p class="muted small-note">${a.name} (${a.type}) and ${b.name} (${b.type}) don't share the same Statcast metrics — pick two hitters or two pitchers to compare.</p>`;
+    return;
+  }
+
+  const sharedLabels = Object.keys(a.stats).filter((label) => label in b.stats);
+  if (!sharedLabels.length) {
+    tapeEl.innerHTML = `<p class="muted small-note">Not enough shared Statcast data between ${a.name} and ${b.name} to compare.</p>`;
+    return;
+  }
+
+  const rows = sharedLabels.map((label) => tapeStatRow(label, a.stats[label], b.stats[label])).join("");
+  tapeEl.innerHTML = `
+    <div class="tape-header">
+      <span class="tape-header-name tape-header-a">${a.name}</span>
+      <span class="tape-header-name tape-header-b">${b.name}</span>
+    </div>
+    ${rows}
+  `;
+}
+
+function initCompareTool() {
+  ["a", "b"].forEach((side) => {
+    const input = document.getElementById(`compare-search-${side}`);
+    if (!input) return;
+    input.addEventListener("input", (e) => debounceSearch(side, e.target.value));
+    input.addEventListener("focus", (e) => {
+      if (e.target.value.trim()) debounceSearch(side, e.target.value);
+    });
+    document.addEventListener("click", (e) => {
+      const resultsEl = document.getElementById(`compare-results-${side}`);
+      if (!resultsEl || resultsEl.hidden) return;
+      if (!resultsEl.contains(e.target) && e.target !== input) resultsEl.hidden = true;
+    });
+  });
 }
