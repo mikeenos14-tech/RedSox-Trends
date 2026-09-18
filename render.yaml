@@ -9,4 +9,4 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: PYTHON_VERSION
-        value: 3.12.7
+        value: 3.12.8
