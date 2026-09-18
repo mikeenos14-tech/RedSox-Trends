@@ -22,6 +22,13 @@ function teamLogo(teamId) {
   return `<img class="team-logo-icon" src="https://www.mlbstatic.com/team-logos/${teamId}.svg" alt="" onerror="this.style.display='none'" />`;
 }
 
+// player.html only serves the current 40-man Red Sox roster, so this only
+// links when an id is actually available — falls back to plain text rather
+// than pointing at a page that would 404.
+function playerLink(id, name) {
+  return id ? `<a href="/player.html?id=${id}" class="player-link">${name}</a>` : name;
+}
+
 async function loadHeroHeadline() {
   const el = document.getElementById("hero-headline");
   if (!el) return;
@@ -314,7 +321,7 @@ async function loadPlayerHighlight() {
       <div class="highlight-header">
         <img class="highlight-headshot" src="${p.headshot_url}" alt="${p.name}" onerror="this.style.display='none'" />
         <div>
-          <h3 class="highlight-name">${p.name} ${p.jersey_number ? `<span class="jersey">#${p.jersey_number}</span>` : ""}</h3>
+          <h3 class="highlight-name">${playerLink(p.id, p.name)} ${p.jersey_number ? `<span class="jersey">#${p.jersey_number}</span>` : ""}</h3>
           <div class="highlight-facts">${facts.map((f) => `<span>${f}</span>`).join("")}</div>
         </div>
       </div>
@@ -819,7 +826,7 @@ async function loadPlayerHotCold() {
       const kCls = s ? tierClass(s.k_pct, b.k_pct, false) : "";
       const isoCls = s ? tierClass(s.iso, b.iso, true) : "";
       tr.innerHTML = `
-        <td class="name">${h.name}</td>
+        <td class="name">${playerLink(h.id, h.name)}</td>
         <td>${h.position || "-"}</td>
         ${formBadge(h.form_delta_woba, h.small_sample, HITTER_HOT_THRESHOLD)}
         ${deltaCell(h.form_delta_woba, true, h.small_sample)}
@@ -851,7 +858,7 @@ async function loadPlayerHotCold() {
       const babipAgstCls = s ? warnIfFar(s.babip_against, b.babip ?? 0.3, 0.03) : "";
       const lobCls = s ? warnIfFar(s.lob_pct, b.lob_pct ?? 0.72, 0.08) : "";
       tr.innerHTML = `
-        <td class="name">${p.name}</td>
+        <td class="name">${playerLink(p.id, p.name)}</td>
         <td>${p.role}</td>
         <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
         ${formBadge(p.form_delta_era, p.small_sample, PITCHER_HOT_THRESHOLD)}
@@ -991,7 +998,7 @@ async function loadFullRoster() {
       const il = h.active ? "" : ' <span class="il-badge">IL</span>';
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="name">${h.name}${il}</td>
+        <td class="name">${playerLink(h.id, h.name)}${il}</td>
         <td>${h.position || "-"}</td>
         <td class="num">${pctStr(s.avg)}</td>
         <td class="num">${pctStr(s.ops)}</td>
@@ -1009,7 +1016,7 @@ async function loadFullRoster() {
       const il = p.active ? "" : ' <span class="il-badge">IL</span>';
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="name">${p.name}${il}</td>
+        <td class="name">${playerLink(p.id, p.name)}${il}</td>
         <td>${p.role}</td>
         <td class="num">${s.era ?? "-"}</td>
         <td class="num">${s.fip ?? "-"}</td>
@@ -1248,7 +1255,7 @@ function statcastCard(player) {
     .join("");
   return `
     <div class="statcast-card">
-      <div class="statcast-card-name">${player.name}</div>
+      <div class="statcast-card-name">${playerLink(player.player_id, player.name)}</div>
       ${metrics}
     </div>
   `;
@@ -1270,7 +1277,7 @@ function leaderboardBlock(label, entries) {
     .map(
       (e) => `
       <li class="${e.is_red_sox ? "is-sox" : ""}">
-        <span class="lb-name">${e.name}</span>
+        <span class="lb-name">${e.is_red_sox ? playerLink(e.id, e.name) : e.name}</span>
         <span class="lb-team">${e.team}</span>
         <span class="lb-value">${e.value}</span>
       </li>

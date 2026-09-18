@@ -190,6 +190,7 @@ def _build_league_leaders(
         ranked.sort(key=lambda t: t[1], reverse=higher_is_better)
         leaders[label] = [
             {
+                "id": int(pid),
                 "name": name_by_id[pid],
                 "team": team_by_id.get(pid, "?"),
                 "value": fmt(val),

@@ -78,7 +78,7 @@ async def _get_people_with_stats(person_ids: list[int], season: int = config.SEA
         return resp.json().get("people", [])
 
 
-async def _get_game_log(client: httpx.AsyncClient, person_id: int, season: int, group: str) -> list[dict]:
+async def get_game_log(client: httpx.AsyncClient, person_id: int, season: int, group: str) -> list[dict]:
     resp = await client.get(
         f"{BASE_URL}/people/{person_id}/stats", params={"stats": "gameLog", "group": group, "season": season}
     )
@@ -267,10 +267,10 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
 
     async with httpx.AsyncClient(timeout=20) as client:
         hitting_logs = await asyncio.gather(
-            *(_get_game_log(client, pid, season, "hitting") for pid in person_ids), return_exceptions=True
+            *(get_game_log(client, pid, season, "hitting") for pid in person_ids), return_exceptions=True
         )
         pitching_logs = await asyncio.gather(
-            *(_get_game_log(client, pid, season, "pitching") for pid in person_ids), return_exceptions=True
+            *(get_game_log(client, pid, season, "pitching") for pid in person_ids), return_exceptions=True
         )
     hitting_log_by_id = {pid: log for pid, log in zip(person_ids, hitting_logs) if not isinstance(log, Exception)}
     pitching_log_by_id = {pid: log for pid, log in zip(person_ids, pitching_logs) if not isinstance(log, Exception)}
@@ -291,6 +291,7 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
             enough_sample = (recent_metrics["pa"] or 0) >= MIN_RECENT_PA
             hitters.append(
                 {
+                    "id": pid,
                     "name": name,
                     "position": position_by_id.get(pid),
                     "season": season_metrics,
@@ -320,6 +321,7 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
             starts = (season_pitch or {}).get("gamesStarted") or 0
             pitchers.append(
                 {
+                    "id": pid,
                     "name": name,
                     "role": "SP" if starts >= games / 2 else "RP",
                     "season": season_metrics,
@@ -376,6 +378,7 @@ async def get_full_roster_report() -> dict:
         if season_hit and (season_hit.get("plateAppearances") or 0) > 0:
             hitters.append(
                 {
+                    "id": pid,
                     "name": name,
                     "position": position_by_id.get(pid),
                     "active": is_active,
@@ -389,6 +392,7 @@ async def get_full_roster_report() -> dict:
             starts = season_pitch.get("gamesStarted") or 0
             pitchers.append(
                 {
+                    "id": pid,
                     "name": name,
                     "role": "SP" if starts >= games / 2 else "RP",
                     "active": is_active,

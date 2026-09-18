@@ -21,6 +21,7 @@ from . import (
     news,
     on_this_day,
     player_highlight,
+    player_profile,
     player_stats,
     significance,
     statcast,
@@ -38,6 +39,8 @@ HEADLINE_CACHE_SECONDS = 3600
 _headline_cache = {"text": None, "generated_at": 0.0}
 _highlight_cache = {"date": None, "data": None}
 _highlight_lock = asyncio.Lock()
+_player_profile_cache: dict[int, dict] = {}
+_player_profile_lock = asyncio.Lock()
 _headline_lock = asyncio.Lock()
 _game_recap_cache = {"game_pk": None, "data": None}
 _game_recap_lock = asyncio.Lock()
@@ -413,6 +416,25 @@ async def players_highlight():
         _highlight_cache["date"] = today
         _highlight_cache["data"] = result
         return result
+
+
+@app.get("/api/players/profile")
+async def players_profile(id: int):
+    # Day-cached per player (Eastern) — a player's page doesn't need to
+    # recompute career/game-log/Statcast data on every single visit, only
+    # once the calendar day actually turns over.
+    today = player_highlight.eastern_today().isoformat()
+    async with _player_profile_lock:
+        cached = _player_profile_cache.get(id)
+        if cached and cached["date"] == today:
+            return cached["data"]
+
+        profile = await player_profile.get_player_profile(id)
+        if profile is None:
+            raise HTTPException(status_code=404, detail="Player not found on the current 40-man roster")
+
+        _player_profile_cache[id] = {"date": today, "data": profile}
+        return profile
 
 
 async def _get_league_data_cached() -> dict:

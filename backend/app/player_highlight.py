@@ -27,7 +27,7 @@ def _pick_daily_player_id(roster: list[dict], for_date: date) -> int:
     return ids[index]
 
 
-async def _get_person_bio(person_id: int) -> dict:
+async def get_person_bio(person_id: int) -> dict:
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/people/{person_id}")
         resp.raise_for_status()
@@ -36,7 +36,7 @@ async def _get_person_bio(person_id: int) -> dict:
     return people[0] if people else {}
 
 
-async def _get_draft_info(person_id: int, draft_year: int | None) -> dict | None:
+async def get_draft_info(person_id: int, draft_year: int | None) -> dict | None:
     """Real drafting team/round/pick/school, when the player was drafted
     (vs. signed as an international free agent, which has no draft record).
     This is exactly the kind of specific claim ('drafted by the Yankees')
@@ -66,7 +66,7 @@ async def _get_draft_info(person_id: int, draft_year: int | None) -> dict | None
     return None
 
 
-async def _get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
+async def get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
     """Real season + career stat lines (whichever of hitting/pitching applies
     to this player) — grounds 'what they've been doing' in actual numbers
     instead of vague narrative filler."""
@@ -149,9 +149,9 @@ async def get_daily_highlight(for_date: date | None = None) -> dict:
     }
 
     person_id = _pick_daily_player_id(roster, for_date)
-    bio = await _get_person_bio(person_id)
-    draft_info = await _get_draft_info(person_id, bio.get("draftYear"))
-    stat_lines = await _get_stat_lines(person_id)
+    bio = await get_person_bio(person_id)
+    draft_info = await get_draft_info(person_id, bio.get("draftYear"))
+    stat_lines = await get_stat_lines(person_id)
 
     bat_side = (bio.get("batSide") or {}).get("description")
     pitch_hand = (bio.get("pitchHand") or {}).get("description")

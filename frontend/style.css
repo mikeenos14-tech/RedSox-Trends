@@ -546,8 +546,30 @@ main section { scroll-margin-top: 3.5rem; }
 @media (max-width: 600px) {
   /* On a real phone, keeping the logo+name on one line would force the
      table wider than the screen. Wrapping to two lines here is the
-     better tradeoff than a forced horizontal scroll. */
-  .stat-table td.name { white-space: normal; }
+     better tradeoff than a forced horizontal scroll — but only when the
+     rest of the row is narrow enough to fit after that one column
+     shrinks. The game log has too many columns for that (date, opponent,
+     H/A, result, box-score line): letting name wrap there just starves
+     the other nowrap columns of room and they overflow uncontained
+     instead. Kept fully nowrap, it overflows as a whole and scrolls
+     properly within .table-scroll instead, same as the Splits table. */
+  .stat-table td.name {
+    white-space: normal;
+  }
+  #player-gamelog-table td.name {
+    white-space: nowrap;
+  }
+  /* table { width: 100% } above stops an auto-layout table from ever
+     growing past its container to expose real horizontal scroll, even
+     with nowrap cells that need more room — it just clips instead. These
+     two tables have enough nowrap columns to need that growth on a phone
+     screen, so let them size to their content and scroll within
+     .table-scroll rather than silently losing columns off the edge. */
+  #player-gamelog-table,
+  #player-splits-table {
+    width: max-content;
+    min-width: 100%;
+  }
 }
 .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stat-table td.delta-up { color: var(--good); font-weight: 700; }
@@ -649,6 +671,50 @@ main section { scroll-margin-top: 3.5rem; }
   flex-wrap: wrap;
   margin-bottom: 1.25rem;
 }
+
+.player-back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+.player-back-link:hover { color: var(--monster-green); }
+
+.player-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--muted);
+}
+.player-link:hover {
+  color: var(--monster-green);
+  border-bottom-color: var(--monster-green);
+}
+
+.player-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--monster-green);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.player-hero-info h2 { margin: 0; font-size: 1.5rem; }
+.player-hero-info p { margin: 0.4rem 0 0; font-size: 0.85rem; }
+
+.player-stats-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--monster-green);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.player-stats-section h2 { margin: 0 0 1rem; }
 
 .highlight-headshot {
   width: 110px;

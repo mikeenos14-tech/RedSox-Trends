@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Fenway Almanac — Player</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://midfield.mlbstatic.com/v1/team/111/spots/180" />
+  <meta name="apple-mobile-web-app-title" content="Fenway Almanac" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d2b56" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="page-players">
+  <div class="top-bunting"></div>
+  <div class="wall-edge left"></div>
+  <div class="wall-edge right"></div>
+  <header>
+    <div class="header-brand">
+      <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
+      <div>
+        <h1>The <span class="accent-green">Fenway</span> <span class="accent">Almanac</span></h1>
+        <p class="header-tagline">Boston Red Sox Season Trends &amp; Analytics</p>
+      </div>
+    </div>
+    <p id="record-line" class="subtitle">Loading…</p>
+  </header>
+
+  <nav class="site-nav">
+    <a href="/">Home<span class="nav-live-dot" hidden></span></a>
+    <a href="/league.html">League</a>
+    <a href="/players.html" class="active">Players</a>
+    <a href="/games.html">Games</a>
+  </nav>
+
+  <main>
+    <a href="/players.html" class="player-back-link">&larr; Back to Players</a>
+
+    <section class="player-hero" id="player-hero">
+      <div class="skeleton" style="width: 110px; height: 110px; border-radius: 50%;"></div>
+      <div class="player-hero-info">
+        <div class="skeleton skeleton-line long" style="width: 240px; height: 1.8rem;"></div>
+        <div class="skeleton skeleton-line medium" style="margin-top: 0.6rem;"></div>
+      </div>
+    </section>
+
+    <section class="player-stats-section" id="player-season-stats">
+      <h2>Season Stats <span class="section-sub" id="player-season-year"></span></h2>
+      <div class="cards" id="player-season-cards">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
+    </section>
+
+    <section class="player-stats-section" id="player-career-stats" hidden>
+      <h2>Career Stats</h2>
+      <div class="cards" id="player-career-cards"></div>
+    </section>
+
+    <section class="statcast-section" id="player-statcast-section" hidden>
+      <h2>Statcast Profile <span class="section-sub">percentile vs. the league</span></h2>
+      <div class="statcast-grid" id="player-statcast-grid"></div>
+    </section>
+
+    <section class="player-stats-section" id="player-splits-section">
+      <h2>Splits <span class="section-sub" id="player-splits-year"></span></h2>
+      <div class="table-scroll">
+        <table id="player-splits-table" class="stat-table">
+          <thead id="player-splits-head"></thead>
+          <tbody>
+            <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="player-stats-section" id="player-gamelog-section">
+      <h2>Recent Games</h2>
+      <div class="table-scroll">
+        <table id="player-gamelog-table" class="stat-table">
+          <thead>
+            <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Result</th><th>Line</th></tr>
+          </thead>
+          <tbody>
+            <tr class="skeleton-row"><td colspan="5"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="5"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="5"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="5"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="5"><span class="skeleton"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
