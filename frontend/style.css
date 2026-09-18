@@ -1221,6 +1221,14 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
   font-weight: 600;
 }
 
+.live-matchup-side.is-us .live-mini-label {
+  color: #ff8a8a;
+  font-weight: 700;
+}
+.live-matchup-side:not(.is-us) .live-mini-label {
+  color: #8fa3c4;
+}
+
 .live-vs {
   color: #8fa3c4;
   font-size: 0.8rem;

@@ -1174,6 +1174,18 @@ async function loadLiveGame() {
     document.getElementById("live-batter").textContent = g.batter || "";
     document.getElementById("live-last-play").textContent = g.last_play || "";
 
+    // The pitcher is always on defense and the batter always on offense, so
+    // whichever side is "us" flips every half-inning — label each side by
+    // team so it's clear who's who, not just what role they're playing.
+    const pitcherLabel = document.getElementById("live-pitcher-label");
+    const batterLabel = document.getElementById("live-batter-label");
+    const pitcherSide = document.getElementById("live-pitcher-side");
+    const batterSide = document.getElementById("live-batter-side");
+    pitcherLabel.textContent = g.batting_team_is_us ? `${oppShort} Pitching` : "Red Sox Pitching";
+    batterLabel.textContent = g.batting_team_is_us ? "Red Sox At Bat" : `${oppShort} At Bat`;
+    pitcherSide.classList.toggle("is-us", !g.batting_team_is_us);
+    batterSide.classList.toggle("is-us", g.batting_team_is_us);
+
     if (!liveGamePollTimer) {
       liveGamePollTimer = setInterval(loadLiveGame, LIVE_GAME_POLL_MS);
     }
