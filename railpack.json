@@ -1,15 +1,7 @@
 {
   "$schema": "https://schema.railpack.com",
   "provider": "python",
-  "steps": {
-    "install": {
-      "commands": [
-        "echo '--- install cwd ---' && pwd && ls -la",
-        "pip install -r requirements.txt"
-      ]
-    }
-  },
   "deploy": {
-    "startCommand": "echo '--- deploy cwd ---' && pwd && ls -la && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    "startCommand": "python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT"
   }
 }
