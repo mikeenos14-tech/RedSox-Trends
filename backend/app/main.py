@@ -94,8 +94,6 @@ async def _cached_for(cache: dict, lock: asyncio.Lock, seconds: float, compute: 
 
 HEAVY_FETCH_CACHE_SECONDS = 1800  # 30 min — see _cached_for
 
-_recap_cache: dict = {"hash": None, "result": None}
-_recap_lock = asyncio.Lock()
 _analysis_cache: dict = {"hash": None, "result": None}
 _analysis_lock = asyncio.Lock()
 _headlines_summary_cache: dict = {"hash": None, "result": None}
@@ -161,20 +159,6 @@ async def _build_summary() -> dict:
 @app.get("/api/team/summary")
 async def team_summary():
     return await _build_summary()
-
-
-@app.get("/api/team/recap")
-async def team_recap():
-    summary = await _build_summary()
-
-    async def compute():
-        try:
-            return ai_recap.generate_recap(summary)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    recap = await _cached_by_hash(_recap_cache, _recap_lock, summary, compute)
-    return {"recap": recap}
 
 
 @app.get("/api/team/league-context")
@@ -298,6 +282,10 @@ async def team_hero_headline():
 
 @app.get("/api/team/analysis")
 async def team_analysis():
+    # Merged with what used to be the separate "AI Trend Recap" — both took
+    # the same trend data and produced overlapping paragraphs (team status +
+    # analytical read), just in two different voices. One richer paragraph
+    # serves both purposes without repeating itself.
     summary = await _build_summary()
     lg_ctx = await _cached_for(
         _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_league_context
@@ -306,12 +294,12 @@ async def team_analysis():
 
     async def compute():
         try:
-            return ai_recap.generate_front_office_analysis(summary)
+            return ai_recap.generate_team_analysis(summary)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     analysis = await _cached_by_hash(_analysis_cache, _analysis_lock, summary, compute)
-    return {"analysis": analysis, "data": summary["analysis"]}
+    return {"analysis": analysis}
 
 
 @app.get("/api/team/headlines")

@@ -548,22 +548,6 @@ function addAiBadge(el) {
   el.insertAdjacentHTML("afterbegin", '<div class="ai-badge">✨ AI-written</div>');
 }
 
-async function loadRecap() {
-  const textEl = document.getElementById("recap-text");
-  try {
-    const res = await fetch("/api/team/recap");
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Failed to generate recap");
-    }
-    const data = await res.json();
-    textEl.textContent = data.recap;
-    addAiBadge(textEl);
-  } catch (e) {
-    textEl.textContent = `Couldn't generate a recap: ${e.message}`;
-  }
-}
-
 async function loadHeadlines() {
   const list = document.getElementById("headlines-list");
   try {

@@ -9,6 +9,5 @@ loadSummary()
 
 loadHeadlines();
 loadLeagueContext();
-loadRecap();
 loadHeadlinesSummary();
 loadAnalysisBriefing();

@@ -195,7 +195,6 @@ header h1 {
   border-top: 4px solid var(--red);
 }
 
-.page-league .recap-section,
 .page-league .headlines-section,
 .page-league .league-section,
 .page-league .analysis-section {
@@ -313,13 +312,6 @@ main section { scroll-margin-top: 3.5rem; }
 
 .league-section h2 { margin-top: 0; }
 
-.recap-section {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-bottom: 2rem;
-}
 
 
 .ai-badge {
