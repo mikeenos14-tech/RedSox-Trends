@@ -221,6 +221,7 @@ def _pitching_metrics(stat: dict) -> dict:
         "games": stat.get("gamesPitched"),
         "games_started": stat.get("gamesStarted"),
         "ip": ip,
+        "ip_display": stat.get("inningsPitched"),
         "era": _f(stat.get("era")),
         "whip": _f(stat.get("whip")),
         "fip": fip,
@@ -344,6 +345,61 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
         "hitters": hitters,
         "pitchers": pitchers,
     }
+
+
+async def get_full_roster_report() -> dict:
+    """Every player on the 40-man roster with real season stats — a plain
+    reference list, independent of recent form (unlike the Hot/Cold
+    tracker, which deliberately only surfaces notable movers). Flags
+    whether each player is currently on the active (26-man) roster so an
+    IL stint is visible rather than silently blended in with everyone
+    else's season totals."""
+    season = config.SEASON
+    full_roster, active_roster = await asyncio.gather(
+        get_roster(roster_type="40Man"),
+        get_roster(roster_type="active"),
+    )
+    active_ids = {entry["person"]["id"] for entry in active_roster}
+    position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in full_roster}
+    person_ids = [entry["person"]["id"] for entry in full_roster]
+
+    people = await _get_people_with_stats(person_ids, season)
+
+    hitters = []
+    pitchers = []
+    for person in people:
+        pid = person["id"]
+        name = person["fullName"]
+        is_active = pid in active_ids
+
+        season_hit = _first_split(person, "season", "hitting")
+        if season_hit and (season_hit.get("plateAppearances") or 0) > 0:
+            hitters.append(
+                {
+                    "name": name,
+                    "position": position_by_id.get(pid),
+                    "active": is_active,
+                    "season": _hitting_metrics(season_hit),
+                }
+            )
+
+        season_pitch = _first_split(person, "season", "pitching")
+        if season_pitch and _parse_innings(season_pitch.get("inningsPitched")) > 0:
+            games = season_pitch.get("gamesPitched") or 1
+            starts = season_pitch.get("gamesStarted") or 0
+            pitchers.append(
+                {
+                    "name": name,
+                    "role": "SP" if starts >= games / 2 else "RP",
+                    "active": is_active,
+                    "season": _pitching_metrics(season_pitch),
+                }
+            )
+
+    hitters.sort(key=lambda h: h["season"]["ops"] if h["season"]["ops"] is not None else -1, reverse=True)
+    pitchers.sort(key=lambda p: p["season"]["era"] if p["season"]["era"] is not None else 99)
+
+    return {"hitters": hitters, "pitchers": pitchers}
 
 
 def slim_for_ai(report: dict) -> dict:

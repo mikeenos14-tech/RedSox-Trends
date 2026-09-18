@@ -295,6 +295,41 @@ main section { scroll-margin-top: 3.5rem; }
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
 }
 
+.card-clickable {
+  cursor: pointer;
+  position: relative;
+}
+.card-clickable::after {
+  content: "▾";
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.card-clickable.card-active {
+  border-top-color: var(--red);
+}
+.card-clickable.card-active::after {
+  content: "▴";
+  color: var(--red);
+}
+
+.overview-detail {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--red);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+  animation: tab-fade-in 0.2s ease;
+}
+.overview-detail h4 {
+  margin: 0 0 0.75rem;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.1rem;
+}
+
 .card .label {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 0.85rem;
@@ -585,6 +620,16 @@ main section { scroll-margin-top: 3.5rem; }
   border-radius: 4px;
   padding: 0 0.3rem;
   margin-left: 0.35rem;
+}
+
+.il-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  padding: 0 0.3rem;
 }
 
 .highlight-section {

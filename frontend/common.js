@@ -370,6 +370,65 @@ function card(label, value) {
   return el;
 }
 
+// A card that expands a shared detail panel below the grid when clicked —
+// clicking the same card again collapses it. `onExpand(cardEl)` is
+// responsible for actually filling in the panel via toggleOverviewDetail.
+function expandableCard(label, value, cardId, onExpand) {
+  const el = document.createElement("div");
+  el.className = "card card-clickable";
+  el.dataset.cardId = cardId;
+  el.innerHTML = `<div class="label">${label}</div><div class="value">${value}</div>`;
+  el.addEventListener("click", () => onExpand(el));
+  return el;
+}
+
+function toggleOverviewDetail(cardEl, title, bodyHtml) {
+  const detail = document.getElementById("overview-detail");
+  if (!detail) return;
+  const cards = document.getElementById("overview");
+  const alreadyOpen = !detail.hidden && detail.dataset.openCard === cardEl.dataset.cardId;
+
+  cards.querySelectorAll(".card-clickable").forEach((c) => c.classList.remove("card-active"));
+
+  if (alreadyOpen) {
+    detail.hidden = true;
+    detail.dataset.openCard = "";
+    return;
+  }
+
+  cardEl.classList.add("card-active");
+  detail.innerHTML = `<h4>${title}</h4>${bodyHtml}`;
+  detail.dataset.openCard = cardEl.dataset.cardId;
+  detail.hidden = false;
+}
+
+function renderGameListDetail(games) {
+  if (!games || !games.length) return '<p class="muted">No games to show.</p>';
+  const rows = [...games]
+    .reverse()
+    .map((g) => {
+      const cls = g.won ? "win" : "loss";
+      return `
+        <tr class="${cls}">
+          <td>${g.date}</td>
+          <td class="name">${teamLogo(g.opponent_id)}${g.opponent}</td>
+          <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
+          <td class="num">${g.our_score}-${g.their_score}</td>
+          <td class="result">${g.won ? "W" : "L"}</td>
+        </tr>
+      `;
+    })
+    .join("");
+  return `
+    <div class="table-scroll">
+      <table class="stat-table">
+        <thead><tr><th>Date</th><th>Opp</th><th>H/A</th><th>Score</th><th>Result</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function fmtPct(pct) {
   if (pct == null) return "-";
   return `.${String(pct).replace("0.", "").padEnd(3, "0")}`;
@@ -385,9 +444,19 @@ function renderRecordLine(data) {
 
 function renderOverviewCards(data) {
   const cards = document.getElementById("overview");
+  const detail = document.getElementById("overview-detail");
   cards.innerHTML = "";
+  if (detail) {
+    detail.hidden = true;
+    detail.dataset.openCard = "";
+  }
+
+  const recentGames = data.recent_games || [];
+
   cards.append(
-    card("Last 10", data.last_10 ? `${data.last_10.wins}-${data.last_10.losses}` : "-"),
+    expandableCard("Last 10", data.last_10 ? `${data.last_10.wins}-${data.last_10.losses}` : "-", "last10", (el) =>
+      toggleOverviewDetail(el, "Last 10 Games", renderGameListDetail(recentGames.slice(-10)))
+    ),
     card("Home Record", data.home_record ? `${data.home_record.wins}-${data.home_record.losses}` : "-"),
     card("Away Record", data.away_record ? `${data.away_record.wins}-${data.away_record.losses}` : "-"),
     card("Run Differential", data.run_differential > 0 ? `+${data.run_differential}` : data.run_differential),
@@ -709,11 +778,20 @@ function deltaCell(delta, higherIsBetter, smallSample, extraClass = "") {
 // A quick, plain-language read (🔥/🧊/steady) for the default "simple" view
 // — the precise delta number lives behind "Show advanced stats" instead of
 // being the only signal a casual visitor gets.
+const HITTER_HOT_THRESHOLD = 0.025;
+const PITCHER_HOT_THRESHOLD = 0.5;
+
 function formBadge(delta, smallSample, hotThreshold) {
   if (smallSample || delta == null) return `<td class="form-cell muted">–</td>`;
   if (delta >= hotThreshold) return `<td class="form-cell form-hot">🔥 Hot</td>`;
   if (delta <= -hotThreshold) return `<td class="form-cell form-cold">🧊 Cold</td>`;
   return `<td class="form-cell form-steady">Steady</td>`;
+}
+
+// The table is a "who's actually trending" list, not a full roster
+// reference — a player sitting near zero delta isn't the point of it.
+function isNotableForm(delta, smallSample, hotThreshold) {
+  return !smallSample && delta != null && Math.abs(delta) >= hotThreshold;
 }
 
 async function loadPlayerHotCold() {
@@ -728,7 +806,10 @@ async function loadPlayerHotCold() {
     const data = await res.json();
 
     hittersBody.innerHTML = "";
-    data.hitters.forEach((h) => {
+    const notableHitters = data.hitters.filter((h) =>
+      isNotableForm(h.form_delta_woba, h.small_sample, HITTER_HOT_THRESHOLD)
+    );
+    notableHitters.forEach((h) => {
       const s = h.season;
       const r = h.recent;
       const tr = document.createElement("tr");
@@ -740,7 +821,7 @@ async function loadPlayerHotCold() {
       tr.innerHTML = `
         <td class="name">${h.name}</td>
         <td>${h.position || "-"}</td>
-        ${formBadge(h.form_delta_woba, h.small_sample, 0.025)}
+        ${formBadge(h.form_delta_woba, h.small_sample, HITTER_HOT_THRESHOLD)}
         ${deltaCell(h.form_delta_woba, true, h.small_sample)}
         <td class="num">${s ? pctStr(s.avg) : "-"}</td>
         <td class="num">${s ? pctStr(s.ops) : "-"}</td>
@@ -757,7 +838,10 @@ async function loadPlayerHotCold() {
     });
 
     pitchersBody.innerHTML = "";
-    data.pitchers.forEach((p) => {
+    const notablePitchers = data.pitchers.filter((p) =>
+      isNotableForm(p.form_delta_era, p.small_sample, PITCHER_HOT_THRESHOLD)
+    );
+    notablePitchers.forEach((p) => {
       const s = p.season;
       const r = p.recent;
       const tr = document.createElement("tr");
@@ -770,7 +854,7 @@ async function loadPlayerHotCold() {
         <td class="name">${p.name}</td>
         <td>${p.role}</td>
         <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
-        ${formBadge(p.form_delta_era, p.small_sample, 0.5)}
+        ${formBadge(p.form_delta_era, p.small_sample, PITCHER_HOT_THRESHOLD)}
         ${deltaCell(p.form_delta_era, true, p.small_sample)}
         <td class="num adv-col">${r.era ?? "-"}</td>
         <td class="num adv-col ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
@@ -891,6 +975,52 @@ function initExpandSection(detailsId, showLabel, hideLabel) {
   details.addEventListener("toggle", () => {
     summary.textContent = details.open ? hideLabel : showLabel;
   });
+}
+
+async function loadFullRoster() {
+  const hittersBody = document.querySelector("#roster-hitters-table tbody");
+  const pitchersBody = document.querySelector("#roster-pitchers-table tbody");
+  try {
+    const res = await fetch("/api/players/full-roster");
+    if (!res.ok) throw new Error("Failed to load the full roster");
+    const data = await res.json();
+
+    hittersBody.innerHTML = "";
+    data.hitters.forEach((h) => {
+      const s = h.season;
+      const il = h.active ? "" : ' <span class="il-badge">IL</span>';
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="name">${h.name}${il}</td>
+        <td>${h.position || "-"}</td>
+        <td class="num">${pctStr(s.avg)}</td>
+        <td class="num">${pctStr(s.ops)}</td>
+        <td class="num">${s.hr ?? "-"}</td>
+        <td class="num">${s.rbi ?? "-"}</td>
+        <td class="num">${pctStr(s.bb_pct)}</td>
+        <td class="num">${pctStr(s.k_pct)}</td>
+      `;
+      hittersBody.appendChild(tr);
+    });
+
+    pitchersBody.innerHTML = "";
+    data.pitchers.forEach((p) => {
+      const s = p.season;
+      const il = p.active ? "" : ' <span class="il-badge">IL</span>';
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="name">${p.name}${il}</td>
+        <td>${p.role}</td>
+        <td class="num">${s.era ?? "-"}</td>
+        <td class="num">${s.fip ?? "-"}</td>
+        <td class="num">${pctStr(s.k_bb_pct)}</td>
+        <td class="num">${s.ip_display ?? "-"}</td>
+      `;
+      pitchersBody.appendChild(tr);
+    });
+  } catch (e) {
+    hittersBody.innerHTML = `<tr><td colspan="8">Couldn't load the roster: ${e.message}</td></tr>`;
+  }
 }
 
 async function loadPlayerNotes() {

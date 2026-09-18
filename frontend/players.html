@@ -95,12 +95,66 @@
         </div>
       </div>
       <p class="muted small-note">
+        Only players trending notably hot or cold are shown here — for the
+        full active roster and season stats, see the
+        <a href="#roster">Full Roster</a> section below.
         <span class="legend-swatch heat-good">green</span> = better than the current MLB average,
         <span class="legend-swatch heat-avg">yellow</span> = about average,
         <span class="legend-swatch heat-bad">red</span> = below average.
         BABIP, BABIP-against, and strand rate (LOB%) are luck/sequencing indicators rather than skill stats, so
         <span class="legend-swatch heat-warn">amber</span> there just flags "far from typical" (~.300 BABIP, ~72% LOB%), not good-or-bad.
         Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).
+      </p>
+    </section>
+
+    <section class="players-section" id="roster">
+      <h2>Full Roster <span class="section-sub">40-man, season stats</span></h2>
+
+      <div class="tab-group" id="roster-tabs">
+        <div class="tab-switcher">
+          <button class="tab-btn active" data-tab="hitters">Hitters</button>
+          <button class="tab-btn" data-tab="pitchers">Pitchers</button>
+        </div>
+
+        <div data-tab-panel="hitters">
+          <div class="table-scroll">
+            <table id="roster-hitters-table" class="stat-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Pos</th><th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th><th>BB%</th><th>K%</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div data-tab-panel="pitchers" hidden>
+          <div class="table-scroll">
+            <table id="roster-pitchers-table" class="stat-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Role</th><th>ERA</th><th>FIP</th><th>K-BB%</th><th>IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p class="muted small-note">
+        Every player on the 40-man roster with a real season sample, regardless of recent playing time.
+        <span class="il-badge">IL</span> marks a player currently off the active 26-man roster.
       </p>
     </section>
 

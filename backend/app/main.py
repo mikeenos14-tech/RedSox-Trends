@@ -112,6 +112,8 @@ _stat_benchmarks_cache: dict = {"result": None, "fetched_at": 0.0}
 _stat_benchmarks_lock = asyncio.Lock()
 _hot_cold_cache: dict = {"result": None, "fetched_at": 0.0}
 _hot_cold_lock = asyncio.Lock()
+_full_roster_cache: dict = {"result": None, "fetched_at": 0.0}
+_full_roster_lock = asyncio.Lock()
 _season_games_cache: dict = {"result": None, "fetched_at": 0.0}
 _season_games_lock = asyncio.Lock()
 _headlines_cache: dict = {"result": None, "fetched_at": 0.0}
@@ -133,6 +135,12 @@ async def _get_season_games_cached() -> list[dict]:
 async def _get_player_hot_cold_cached() -> dict:
     return await _cached_for(
         _hot_cold_cache, _hot_cold_lock, HEAVY_FETCH_CACHE_SECONDS, player_stats.get_player_hot_cold_report
+    )
+
+
+async def _get_full_roster_cached() -> dict:
+    return await _cached_for(
+        _full_roster_cache, _full_roster_lock, HEAVY_FETCH_CACHE_SECONDS, player_stats.get_full_roster_report
     )
 
 
@@ -362,6 +370,11 @@ async def team_headlines_summary():
 @app.get("/api/players/hot-cold")
 async def players_hot_cold():
     return await _get_player_hot_cold_cached()
+
+
+@app.get("/api/players/full-roster")
+async def players_full_roster():
+    return await _get_full_roster_cached()
 
 
 @app.get("/api/players/notes")
