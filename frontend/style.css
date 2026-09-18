@@ -13,6 +13,8 @@
   --warn: #b8860b;
   --warn-bg: rgba(184, 134, 11, 0.14);
   --statcast-cold: #4f7fc9;
+  --skeleton-base: #e3e0da;
+  --skeleton-shine: rgba(0, 0, 0, 0.06);
   --stitch-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='none' stroke='%23bd3039' stroke-width='1.6' stroke-linecap='round' opacity='0.09'%3E%3Cpath d='M12 22 q4 4 0 8 M18 22 q4 4 0 8 M24 22 q4 4 0 8'/%3E%3Cpath d='M58 62 q4 4 0 8 M64 62 q4 4 0 8 M70 62 q4 4 0 8'/%3E%3C/g%3E%3C/svg%3E");
 }
 
@@ -30,6 +32,8 @@
     --warn-bg: rgba(234, 179, 8, 0.16);
     --monster-green: #1c8c5c;
     --statcast-cold: #6ea1e8;
+    --skeleton-base: #2a2d33;
+    --skeleton-shine: rgba(255, 255, 255, 0.08);
     --stitch-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='none' stroke='%23ff6b6b' stroke-width='1.6' stroke-linecap='round' opacity='0.07'%3E%3Cpath d='M12 22 q4 4 0 8 M18 22 q4 4 0 8 M24 22 q4 4 0 8'/%3E%3Cpath d='M58 62 q4 4 0 8 M64 62 q4 4 0 8 M70 62 q4 4 0 8'/%3E%3C/g%3E%3C/svg%3E");
   }
 }
@@ -172,6 +176,24 @@ header h1 {
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
   white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  animation: nav-live-pulse 1.6s ease-in-out infinite;
+}
+.nav-live-dot[hidden] { display: none; }
+.site-nav a.active .nav-live-dot { background: #fff; }
+@keyframes nav-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(1.4); }
 }
 
 .site-nav a:hover { background: var(--good-bg); color: var(--monster-green); }
@@ -274,6 +296,11 @@ main section { scroll-margin-top: 3.5rem; }
   border-top: 3px solid var(--monster-green);
   border-radius: 10px;
   padding: 1rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
 }
 
 .card .label {
@@ -369,6 +396,39 @@ main section { scroll-margin-top: 3.5rem; }
 }
 
 .muted { color: var(--muted); }
+
+/* Skeleton loading placeholders — a shine sweep over a solid block, shaped
+   like the real content that'll replace it. Static markup only: it lives in
+   the page's initial HTML and simply gets overwritten when a load function
+   sets .innerHTML on success, the same way the old "Loading…" text did. */
+@keyframes skeleton-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--skeleton-base);
+  border-radius: 5px;
+  display: block;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+  animation: skeleton-shine 1.4s ease-in-out infinite;
+}
+.skeleton-line { height: 0.85em; margin: 0.5em 0; }
+.skeleton-line.short { width: 35%; }
+.skeleton-line.medium { width: 60%; }
+.skeleton-line.long { width: 92%; }
+.skeleton-card { height: 68px; border-radius: 10px; }
+.skeleton-row td { padding: 0.55rem 0.6rem; }
+.skeleton-row .skeleton { height: 0.8em; width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
 
 .recap-text ul.bullet-list {
   margin: 0;
@@ -747,6 +807,11 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
   border-radius: 8px;
   padding: 0.9rem 1rem;
   background: var(--bg);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.statcast-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
 }
 
 .statcast-card-name {
@@ -891,6 +956,16 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
 }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--text); border-bottom-color: var(--red); }
+.tab-btn { transition: color 0.15s ease, border-bottom-color 0.15s ease; }
+
+@keyframes tab-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+[data-tab-panel]:not([hidden]) { animation: tab-fade-in 0.2s ease; }
+@media (prefers-reduced-motion: reduce) {
+  [data-tab-panel]:not([hidden]) { animation: none; }
+}
 
 .show-more-btn {
   display: block;

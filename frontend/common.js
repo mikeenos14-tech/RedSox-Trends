@@ -1405,3 +1405,24 @@ function initCompareTool() {
     });
   });
 }
+
+// Runs on every page (common.js is shared) so a live game is visible from
+// the nav even while browsing League/Players/Games, not just Home.
+const NAV_LIVE_CHECK_MS = 60000;
+
+async function updateNavLiveIndicator() {
+  const dot = document.querySelector(".nav-live-dot");
+  if (!dot) return;
+  try {
+    const res = await fetch("/api/team/live-game");
+    if (!res.ok) return;
+    const data = await res.json();
+    dot.hidden = !data.game;
+  } catch (e) {
+    // Leave the indicator as-is on a transient failure — no need to flicker
+    // it off just because one poll dropped.
+  }
+}
+
+updateNavLiveIndicator();
+setInterval(updateNavLiveIndicator, NAV_LIVE_CHECK_MS);

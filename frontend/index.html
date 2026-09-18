@@ -34,7 +34,7 @@
   </header>
 
   <nav class="site-nav">
-    <a href="/" class="active">Home</a>
+    <a href="/" class="active">Home<span class="nav-live-dot" hidden></span></a>
     <a href="/league.html">League</a>
     <a href="/players.html">Players</a>
     <a href="/games.html">Games</a>
@@ -97,7 +97,14 @@
   </div>
 
   <main>
-    <section class="cards" id="overview"></section>
+    <section class="cards" id="overview">
+      <div class="card"><span class="skeleton skeleton-card"></span></div>
+      <div class="card"><span class="skeleton skeleton-card"></span></div>
+      <div class="card"><span class="skeleton skeleton-card"></span></div>
+      <div class="card"><span class="skeleton skeleton-card"></span></div>
+      <div class="card"><span class="skeleton skeleton-card"></span></div>
+      <div class="card"><span class="skeleton skeleton-card"></span></div>
+    </section>
 
     <div class="two-col-row">
       <section class="standings-section">
@@ -107,7 +114,13 @@
             <thead>
               <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>GB</th><th>Streak</th></tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+            </tbody>
           </table>
         </div>
       </section>
@@ -119,7 +132,12 @@
             <thead>
               <tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>WC GB</th><th>Elim #</th><th>Streak</th></tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+              <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+            </tbody>
           </table>
         </div>
         <p class="muted small-note">Top 3 hold a Wild Card spot. "WC GB" is relative to the cutoff line — a "+" means clear of it. "Elim #" is combined Sox wins + that team's losses needed to eliminate them.</p>
@@ -129,7 +147,9 @@
     <section class="game-recap-section" id="last-game">
       <h2>Previous Game Recap</h2>
       <div id="last-game-body">
-        <p class="muted">Loading the last game…</p>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
       </div>
     </section>
 
@@ -140,13 +160,21 @@
 
     <section class="upcoming-section">
       <h2>Upcoming Schedule <span class="section-sub">next 10 games</span></h2>
-      <div class="cards" id="upcoming-cards"></div>
+      <div class="cards" id="upcoming-cards">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
       <div class="table-scroll">
         <table id="upcoming-table" class="stat-table">
           <thead>
             <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Opp Record</th><th>Season Series</th><th>Our SP</th><th>Their SP</th></tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+            <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="7"><span class="skeleton"></span></td></tr>
+          </tbody>
         </table>
       </div>
       <p class="muted small-note">Division games (vs. Yankees, Rays, Blue Jays, Orioles) are highlighted — they swing the standings twice as hard, since a win both helps Boston and costs a direct competitor. Probable pitchers are usually only announced a few days out.</p>
@@ -160,7 +188,11 @@
             <thead>
               <tr><th>Opponent</th><th>W</th><th>L</th><th>Result</th></tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+              <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+            </tbody>
           </table>
         </div>
       </section>
@@ -172,7 +204,11 @@
             <thead>
               <tr><th>Pitcher</th><th>Last Pitched</th><th>Rest</th><th>Last Outing</th><th>L3D</th><th>Status</th></tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+              <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+              <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+            </tbody>
           </table>
         </div>
         <p class="muted small-note">A simple heuristic, not official — MLB doesn't publish this. Flags anyone who pitched today/yesterday or 3x in 3 days as unlikely available.</p>

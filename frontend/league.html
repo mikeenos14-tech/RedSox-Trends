@@ -32,7 +32,7 @@
   </header>
 
   <nav class="site-nav">
-    <a href="/">Home</a>
+    <a href="/">Home<span class="nav-live-dot" hidden></span></a>
     <a href="/league.html" class="active">League</a>
     <a href="/players.html">Players</a>
     <a href="/games.html">Games</a>
@@ -41,7 +41,16 @@
   <main>
     <section class="league-section" id="league">
       <h2>Where Boston Ranks <span class="section-sub">of 30 MLB teams</span></h2>
-      <div class="cards" id="league-cards"></div>
+      <div class="cards" id="league-cards">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
       <div class="chart-wrap">
         <canvas id="league-run-diff-chart" height="110"></canvas>
         <p class="muted small-note">Every MLB team's season run differential, sorted. Boston highlighted in red.</p>
@@ -51,20 +60,37 @@
     <section class="analysis-section">
       <h2>Front Office Analysis</h2>
 
-      <div class="cards" id="analysis-cards"></div>
+      <div class="cards" id="analysis-cards">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
 
       <div class="chart-wrap">
         <canvas id="run-diff-chart" height="90"></canvas>
       </div>
 
       <h3>Analyst Briefing</h3>
-      <div id="analysis-text" class="recap-text muted">Running the numbers…</div>
+      <div id="analysis-text" class="recap-text muted">
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
     </section>
 
     <section class="headlines-section">
       <h2>Headlines <span class="section-sub">last 3 days</span></h2>
-      <div id="headlines-summary-text" class="recap-text muted">Reading recent coverage…</div>
-      <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
+      <div id="headlines-summary-text" class="recap-text muted">
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
+      <ul id="headlines-list" class="headlines-list">
+        <li class="skeleton-row"><span class="skeleton skeleton-line long"></span></li>
+        <li class="skeleton-row"><span class="skeleton skeleton-line medium"></span></li>
+        <li class="skeleton-row"><span class="skeleton skeleton-line long"></span></li>
+      </ul>
     </section>
   </main>
 

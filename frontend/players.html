@@ -31,7 +31,7 @@
   </header>
 
   <nav class="site-nav">
-    <a href="/">Home</a>
+    <a href="/">Home<span class="nav-live-dot" hidden></span></a>
     <a href="/league.html">League</a>
     <a href="/players.html" class="active">Players</a>
     <a href="/games.html">Games</a>
@@ -40,7 +40,10 @@
   <main>
     <section class="players-section" id="players">
       <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 days vs. season</span></h2>
-      <div id="player-notes-text" class="recap-text muted">Reviewing player form data…</div>
+      <div id="player-notes-text" class="recap-text muted">
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
 
       <div class="tab-group" id="hotcold-tabs">
         <div class="tab-switcher">
@@ -59,7 +62,13 @@
                   <th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th>
                 </tr>
               </thead>
-              <tbody></tbody>
+              <tbody>
+                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -74,7 +83,11 @@
                   <th>FIP</th><th>K-BB%</th><th>BABIP-agst</th><th>LOB%</th>
                 </tr>
               </thead>
-              <tbody></tbody>
+              <tbody>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -91,9 +104,17 @@
 
     <section class="statcast-section" id="statcast">
       <h2>Statcast Scouting Report <span class="section-sub">Red Sox vs. the league</span></h2>
-      <div id="statcast-notes-text" class="recap-text muted">Digging through the batted-ball data…</div>
+      <div id="statcast-notes-text" class="recap-text muted">
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
 
-      <div class="cards" id="statcast-snapshot"></div>
+      <div class="cards" id="statcast-snapshot">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
 
       <details class="expand-section" id="statcast-full-report">
         <summary>Show full scouting report</summary>
@@ -105,7 +126,11 @@
           </div>
 
           <div data-tab-panel="hitters">
-            <div class="statcast-grid" id="statcast-hitters-grid"><p class="muted">Loading Statcast data…</p></div>
+            <div class="statcast-grid" id="statcast-hitters-grid">
+              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+            </div>
           </div>
           <div data-tab-panel="pitchers" hidden>
             <div class="statcast-grid" id="statcast-pitchers-grid"></div>
@@ -151,7 +176,10 @@
     <section class="highlight-section" id="highlight">
       <h2>Player Highlight <span class="section-sub">new player daily</span></h2>
       <div id="highlight-body">
-        <p class="muted">Loading today's player highlight…</p>
+        <span class="skeleton" style="width: 96px; height: 96px; border-radius: 50%; display: inline-block;"></span>
+        <div class="skeleton skeleton-line medium" style="margin-top: 1rem;"></div>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line long"></div>
       </div>
     </section>
   </main>

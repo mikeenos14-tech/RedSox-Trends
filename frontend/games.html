@@ -31,7 +31,7 @@
   </header>
 
   <nav class="site-nav">
-    <a href="/">Home</a>
+    <a href="/">Home<span class="nav-live-dot" hidden></span></a>
     <a href="/league.html">League</a>
     <a href="/players.html">Players</a>
     <a href="/games.html" class="active">Games</a>
@@ -44,14 +44,22 @@
         <thead>
           <tr><th>Date</th><th>Opp</th><th>H/A</th><th>Score</th><th>Result</th><th>Record</th></tr>
         </thead>
-        <tbody></tbody>
+        <tbody>
+          <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+          <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+          <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+          <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+          <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
+        </tbody>
       </table>
     </section>
 
     <section class="highlight-section" id="on-this-day">
       <h2>On This Day <span class="section-sub">in Red Sox history</span></h2>
       <div id="on-this-day-body">
-        <p class="muted">Digging through the archives…</p>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
       </div>
     </section>
   </main>
