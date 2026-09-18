@@ -543,12 +543,13 @@ function renderLeagueRunDiffChart(teams) {
   });
 }
 
+function addAiBadge(el) {
+  el.classList.remove("muted");
+  el.insertAdjacentHTML("afterbegin", '<div class="ai-badge">✨ AI-written</div>');
+}
+
 async function loadRecap() {
-  const btn = document.getElementById("regenerate-btn");
   const textEl = document.getElementById("recap-text");
-  btn.disabled = true;
-  btn.textContent = "✨ Generating…";
-  textEl.textContent = "Generating a fresh recap…";
   try {
     const res = await fetch("/api/team/recap");
     if (!res.ok) {
@@ -557,11 +558,9 @@ async function loadRecap() {
     }
     const data = await res.json();
     textEl.textContent = data.recap;
+    addAiBadge(textEl);
   } catch (e) {
     textEl.textContent = `Couldn't generate a recap: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "✨ Regenerate";
   }
 }
 
@@ -593,11 +592,7 @@ async function loadHeadlines() {
 }
 
 async function loadHeadlinesSummary() {
-  const btn = document.getElementById("headlines-summary-btn");
   const textEl = document.getElementById("headlines-summary-text");
-  btn.disabled = true;
-  btn.textContent = "✨ Summarizing…";
-  textEl.textContent = "Reading recent coverage…";
   try {
     const res = await fetch("/api/team/headlines/summary");
     if (!res.ok) {
@@ -606,20 +601,14 @@ async function loadHeadlinesSummary() {
     }
     const data = await res.json();
     renderBulletText(textEl, data.summary);
+    addAiBadge(textEl);
   } catch (e) {
     textEl.textContent = `Couldn't summarize coverage: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "✨ Summarize Coverage";
   }
 }
 
 async function loadAnalysisBriefing() {
-  const btn = document.getElementById("analysis-btn");
   const textEl = document.getElementById("analysis-text");
-  btn.disabled = true;
-  btn.textContent = "✨ Generating…";
-  textEl.textContent = "Running the numbers…";
   try {
     const res = await fetch("/api/team/analysis");
     if (!res.ok) {
@@ -628,11 +617,9 @@ async function loadAnalysisBriefing() {
     }
     const data = await res.json();
     textEl.textContent = data.analysis;
+    addAiBadge(textEl);
   } catch (e) {
     textEl.textContent = `Couldn't generate a briefing: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "✨ Generate Briefing";
   }
 }
 
@@ -791,11 +778,7 @@ function initSortableTable(tableId) {
 }
 
 async function loadPlayerNotes() {
-  const btn = document.getElementById("player-notes-btn");
   const textEl = document.getElementById("player-notes-text");
-  btn.disabled = true;
-  btn.textContent = "✨ Generating…";
-  textEl.textContent = "Reviewing player form data…";
   try {
     const res = await fetch("/api/players/notes");
     if (!res.ok) {
@@ -804,11 +787,9 @@ async function loadPlayerNotes() {
     }
     const data = await res.json();
     renderBulletText(textEl, data.notes);
+    addAiBadge(textEl);
   } catch (e) {
     textEl.textContent = `Couldn't generate notes: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "✨ Generate Player Notes";
   }
 }
 
@@ -1111,11 +1092,7 @@ async function loadStatcast() {
 }
 
 async function loadStatcastNotes() {
-  const btn = document.getElementById("statcast-notes-btn");
   const textEl = document.getElementById("statcast-notes-text");
-  btn.disabled = true;
-  btn.textContent = "✨ Generating…";
-  textEl.textContent = "Digging through the batted-ball data…";
   try {
     const res = await fetch("/api/players/statcast-notes");
     if (!res.ok) {
@@ -1124,11 +1101,9 @@ async function loadStatcastNotes() {
     }
     const data = await res.json();
     renderBulletText(textEl, data.notes);
+    addAiBadge(textEl);
   } catch (e) {
     textEl.textContent = `Couldn't generate scouting notes: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "✨ Generate Scouting Notes";
   }
 }
 

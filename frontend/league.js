@@ -7,9 +7,8 @@ loadSummary()
     document.getElementById("record-line").textContent = `Couldn't load data: ${e.message}`;
   });
 
-document.getElementById("regenerate-btn").addEventListener("click", loadRecap);
-document.getElementById("headlines-summary-btn").addEventListener("click", loadHeadlinesSummary);
-document.getElementById("analysis-btn").addEventListener("click", loadAnalysisBriefing);
-
 loadHeadlines();
 loadLeagueContext();
+loadRecap();
+loadHeadlinesSummary();
+loadAnalysisBriefing();

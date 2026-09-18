@@ -321,33 +321,6 @@ main section { scroll-margin-top: 3.5rem; }
   margin-bottom: 2rem;
 }
 
-.recap-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.recap-header h2 { margin: 0; }
-
-#regenerate-btn, #headlines-summary-btn, #analysis-btn, #player-notes-btn, #statcast-notes-btn {
-  background: var(--red);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-#regenerate-btn:disabled, #headlines-summary-btn:disabled, #analysis-btn:disabled, #player-notes-btn:disabled, #statcast-notes-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
 
 .ai-badge {
   display: inline-block;
@@ -402,6 +375,8 @@ main section { scroll-margin-top: 3.5rem; }
   line-height: 1.6;
   color: var(--text);
 }
+
+.muted { color: var(--muted); }
 
 .recap-text ul.bullet-list {
   margin: 0;

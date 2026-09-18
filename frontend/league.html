@@ -40,11 +40,8 @@
 
   <main>
     <section class="recap-section">
-      <div class="recap-header">
-        <h2>AI Trend Recap</h2>
-        <button id="regenerate-btn">✨ Regenerate</button>
-      </div>
-      <p id="recap-text" class="recap-text">Click "Regenerate" to generate an AI recap of the team's current trends.</p>
+      <h2>AI Trend Recap</h2>
+      <div id="recap-text" class="recap-text muted">Generating a fresh recap…</div>
     </section>
 
     <section class="league-section" id="league">
@@ -65,19 +62,13 @@
         <canvas id="run-diff-chart" height="90"></canvas>
       </div>
 
-      <div class="recap-header">
-        <h3>Analyst Briefing</h3>
-        <button id="analysis-btn">✨ Generate Briefing</button>
-      </div>
-      <p id="analysis-text" class="recap-text">Click "Generate Briefing" for a front-office-style read on roster construction and regression risk.</p>
+      <h3>Analyst Briefing</h3>
+      <div id="analysis-text" class="recap-text muted">Running the numbers…</div>
     </section>
 
     <section class="headlines-section">
-      <div class="recap-header">
-        <h2>Headlines <span class="section-sub">last 3 days</span></h2>
-        <button id="headlines-summary-btn">✨ Summarize Coverage</button>
-      </div>
-      <div id="headlines-summary-text" class="recap-text">Click "Summarize Coverage" to see what talking heads are saying.</div>
+      <h2>Headlines <span class="section-sub">last 3 days</span></h2>
+      <div id="headlines-summary-text" class="recap-text muted">Reading recent coverage…</div>
       <ul id="headlines-list" class="headlines-list"><li class="muted">Loading headlines…</li></ul>
     </section>
   </main>
