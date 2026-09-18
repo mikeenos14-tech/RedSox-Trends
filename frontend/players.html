@@ -39,11 +39,13 @@
 
   <main>
     <section class="players-section" id="players">
-      <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 days vs. season</span></h2>
+      <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 games played vs. season</span></h2>
       <div id="player-notes-text" class="recap-text muted">
         <div class="skeleton skeleton-line long"></div>
         <div class="skeleton skeleton-line medium"></div>
       </div>
+
+      <button type="button" id="hotcold-advanced-btn" class="show-more-btn">Show advanced stats</button>
 
       <div class="tab-group" id="hotcold-tabs">
         <div class="tab-switcher">
@@ -56,18 +58,18 @@
             <table id="hitters-table" class="stat-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Pos</th>
-                  <th>wOBA (S)</th><th>wOBA (L15)</th><th>Δ</th>
-                  <th>BABIP</th><th>BB%</th><th>K%</th><th>ISO</th>
+                  <th>Name</th><th>Pos</th><th>Form</th>
                   <th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th>
+                  <th class="adv-col">wOBA (S)</th><th class="adv-col">wOBA (L15)</th><th class="adv-col">Δ</th>
+                  <th class="adv-col">BABIP</th><th class="adv-col">BB%</th><th class="adv-col">K%</th><th class="adv-col">ISO</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="13"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="14"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="14"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="14"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="14"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="14"><span class="skeleton"></span></td></tr>
               </tbody>
             </table>
           </div>
@@ -78,15 +80,15 @@
             <table id="pitchers-table" class="stat-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Role</th>
-                  <th>ERA (S)</th><th>ERA (L15)</th><th>Δ</th>
-                  <th>FIP</th><th>K-BB%</th><th>BABIP-agst</th><th>LOB%</th>
+                  <th>Name</th><th>Role</th><th>ERA (S)</th><th>Form</th>
+                  <th class="adv-col">ERA (L15)</th><th class="adv-col">Δ</th>
+                  <th class="adv-col">FIP</th><th class="adv-col">K-BB%</th><th class="adv-col">BABIP-agst</th><th class="adv-col">LOB%</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="10"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="10"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="10"><span class="skeleton"></span></td></tr>
               </tbody>
             </table>
           </div>

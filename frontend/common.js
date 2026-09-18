@@ -68,14 +68,15 @@ async function loadDivisionStandings() {
 }
 
 async function loadWildcardStandings() {
-  const tbody = document.querySelector("#wildcard-table tbody");
+  const table = document.getElementById("wildcard-table");
+  const tbody = table.querySelector("tbody");
   try {
     const res = await fetch("/api/team/wildcard-standings");
     if (!res.ok) throw new Error("Failed to load Wild Card standings");
     const data = await res.json();
 
     tbody.innerHTML = "";
-    data.teams.forEach((t, i) => {
+    const rows = data.teams.map((t, i) => {
       const tr = document.createElement("tr");
       const classes = [];
       if (t.is_target) classes.push("target-row");
@@ -94,21 +95,31 @@ async function loadWildcardStandings() {
         <td class="num ${streakCls}">${t.streak || "-"}</td>
       `;
       tbody.appendChild(tr);
+      return tr;
     });
+
+    // Always show at least through the Red Sox's own row, even if they've
+    // slid outside the top 6 — the whole point of this table is "where do
+    // we stand," so their own line should never be the thing hidden.
+    const WC_VISIBLE = 6;
+    const targetIdx = data.teams.findIndex((t) => t.is_target);
+    const visibleCount = targetIdx >= 0 ? Math.max(WC_VISIBLE, targetIdx + 1) : WC_VISIBLE;
+    addShowMoreToggle(rows, table.closest(".table-scroll") || table, visibleCount, `Show ${rows.length - visibleCount} more teams`);
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="8">Couldn't load Wild Card standings: ${e.message}</td></tr>`;
   }
 }
 
 async function loadSeasonSeries() {
-  const tbody = document.querySelector("#series-table tbody");
+  const table = document.getElementById("series-table");
+  const tbody = table.querySelector("tbody");
   try {
     const res = await fetch("/api/team/season-series");
     if (!res.ok) throw new Error("Failed to load season series");
     const data = await res.json();
 
     tbody.innerHTML = "";
-    data.series.forEach((s) => {
+    const rows = data.series.map((s) => {
       const tr = document.createElement("tr");
       const result = s.wins > s.losses ? "Winning" : s.wins < s.losses ? "Losing" : "Even";
       const resultCls = s.wins > s.losses ? "delta-up" : s.wins < s.losses ? "delta-down" : "";
@@ -119,7 +130,16 @@ async function loadSeasonSeries() {
         <td class="num ${resultCls}">${result}</td>
       `;
       tbody.appendChild(tr);
+      return tr;
     });
+
+    const SERIES_VISIBLE = 8;
+    addShowMoreToggle(
+      rows,
+      table.closest(".table-scroll") || table,
+      SERIES_VISIBLE,
+      `Show ${rows.length - SERIES_VISIBLE} more opponents`
+    );
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="4">Couldn't load season series: ${e.message}</td></tr>`;
   }
@@ -631,7 +651,7 @@ async function loadAnalysisBriefing() {
       throw new Error(err.detail || "Failed to generate analysis");
     }
     const data = await res.json();
-    textEl.textContent = data.analysis;
+    renderBulletText(textEl, data.analysis);
     addAiBadge(textEl);
   } catch (e) {
     textEl.textContent = `Couldn't generate a briefing: ${e.message}`;
@@ -677,13 +697,23 @@ async function loadStatBenchmarks() {
   }
 }
 
-function deltaCell(delta, higherIsBetter, smallSample) {
-  if (smallSample) return `<td class="num flag">small sample</td>`;
-  if (delta == null) return `<td class="num">-</td>`;
+function deltaCell(delta, higherIsBetter, smallSample, extraClass = "") {
+  if (smallSample) return `<td class="num flag ${extraClass}">small sample</td>`;
+  if (delta == null) return `<td class="num ${extraClass}">-</td>`;
   const good = higherIsBetter ? delta > 0 : delta > 0;
   const cls = delta === 0 ? "" : good ? "delta-up" : "delta-down";
   const sign = delta > 0 ? "+" : "";
-  return `<td class="num ${cls}">${sign}${delta}</td>`;
+  return `<td class="num ${cls} ${extraClass}">${sign}${delta}</td>`;
+}
+
+// A quick, plain-language read (🔥/🧊/steady) for the default "simple" view
+// — the precise delta number lives behind "Show advanced stats" instead of
+// being the only signal a casual visitor gets.
+function formBadge(delta, smallSample, hotThreshold) {
+  if (smallSample || delta == null) return `<td class="form-cell muted">–</td>`;
+  if (delta >= hotThreshold) return `<td class="form-cell form-hot">🔥 Hot</td>`;
+  if (delta <= -hotThreshold) return `<td class="form-cell form-cold">🧊 Cold</td>`;
+  return `<td class="form-cell form-steady">Steady</td>`;
 }
 
 async function loadPlayerHotCold() {
@@ -710,17 +740,18 @@ async function loadPlayerHotCold() {
       tr.innerHTML = `
         <td class="name">${h.name}</td>
         <td>${h.position || "-"}</td>
-        <td class="num ${wobaCls}">${s ? pctStr(s.woba) : "-"}</td>
-        <td class="num">${pctStr(r.woba)}</td>
-        ${deltaCell(h.form_delta_woba, true, h.small_sample)}
-        <td class="num ${babipCls}">${s ? pctStr(s.babip) : "-"}</td>
-        <td class="num ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
-        <td class="num ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
-        <td class="num ${isoCls}">${s ? pctStr(s.iso) : "-"}</td>
+        ${formBadge(h.form_delta_woba, h.small_sample, 0.025)}
         <td class="num">${s ? pctStr(s.avg) : "-"}</td>
         <td class="num">${s ? pctStr(s.ops) : "-"}</td>
         <td class="num">${s && s.hr != null ? s.hr : "-"}</td>
         <td class="num">${s && s.rbi != null ? s.rbi : "-"}</td>
+        <td class="num adv-col ${wobaCls}">${s ? pctStr(s.woba) : "-"}</td>
+        <td class="num adv-col">${pctStr(r.woba)}</td>
+        ${deltaCell(h.form_delta_woba, true, h.small_sample, "adv-col")}
+        <td class="num adv-col ${babipCls}">${s ? pctStr(s.babip) : "-"}</td>
+        <td class="num adv-col ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
+        <td class="num adv-col ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
+        <td class="num adv-col ${isoCls}">${s ? pctStr(s.iso) : "-"}</td>
       `;
       hittersBody.appendChild(tr);
     });
@@ -739,17 +770,18 @@ async function loadPlayerHotCold() {
         <td class="name">${p.name}</td>
         <td>${p.role}</td>
         <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
-        <td class="num">${r.era ?? "-"}</td>
-        ${deltaCell(p.form_delta_era, true, p.small_sample)}
-        <td class="num ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
-        <td class="num ${kbbCls}">${s ? pctStr(s.k_bb_pct) : "-"}</td>
-        <td class="num ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
-        <td class="num ${lobCls}">${s ? pctStr(s.lob_pct) : "-"}</td>
+        ${formBadge(p.form_delta_era, p.small_sample, 0.5)}
+        <td class="num adv-col">${r.era ?? "-"}</td>
+        ${deltaCell(p.form_delta_era, true, p.small_sample, "adv-col")}
+        <td class="num adv-col ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
+        <td class="num adv-col ${kbbCls}">${s ? pctStr(s.k_bb_pct) : "-"}</td>
+        <td class="num adv-col ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
+        <td class="num adv-col ${lobCls}">${s ? pctStr(s.lob_pct) : "-"}</td>
       `;
       pitchersBody.appendChild(tr);
     });
   } catch (e) {
-    hittersBody.innerHTML = `<tr><td colspan="13">Couldn't load: ${e.message}</td></tr>`;
+    hittersBody.innerHTML = `<tr><td colspan="14">Couldn't load: ${e.message}</td></tr>`;
   }
 }
 
@@ -810,6 +842,21 @@ function initTabGroup(groupId) {
         p.hidden = p.dataset.tabPanel !== btn.dataset.tab;
       });
     });
+  });
+}
+
+// Toggles a shared "show the dense sabermetric columns" mode: default view
+// stays simple (traditional stats + a plain-language Form read), and the
+// `.adv-col` columns (wOBA, BABIP, K%, FIP, etc.) only appear once asked
+// for, rather than being busy by default.
+function initAdvancedToggle(buttonId, groupId, showLabel, hideLabel) {
+  const btn = document.getElementById(buttonId);
+  const group = document.getElementById(groupId);
+  if (!btn || !group || btn.dataset.advInit) return;
+  btn.dataset.advInit = "1";
+  btn.addEventListener("click", () => {
+    const showing = group.classList.toggle("show-advanced");
+    btn.textContent = showing ? hideLabel : showLabel;
   });
 }
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+import asyncio
 
 import httpx
 
@@ -56,20 +56,81 @@ async def get_roster(season: int = config.SEASON) -> list[dict]:
         return resp.json().get("roster", [])
 
 
-async def _get_people_with_stats(person_ids: list[int], start: date, end: date, season: int = config.SEASON) -> list[dict]:
+async def _get_people_with_stats(person_ids: list[int], season: int = config.SEASON) -> list[dict]:
     if not person_ids:
         return []
 
-    hydrate = (
-        f"stats(group=[hitting,pitching],type=[season,byDateRange],"
-        f"startDate={start.isoformat()},endDate={end.isoformat()},season={season})"
-    )
+    hydrate = f"stats(group=[hitting,pitching],type=[season],season={season})"
     params = {"personIds": ",".join(str(pid) for pid in person_ids), "hydrate": hydrate}
 
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.get(f"{BASE_URL}/people", params=params)
         resp.raise_for_status()
         return resp.json().get("people", [])
+
+
+async def _get_game_log(client: httpx.AsyncClient, person_id: int, season: int, group: str) -> list[dict]:
+    resp = await client.get(
+        f"{BASE_URL}/people/{person_id}/stats", params={"stats": "gameLog", "group": group, "season": season}
+    )
+    resp.raise_for_status()
+    stats = resp.json().get("stats") or []
+    splits = stats[0].get("splits", []) if stats else []
+    return sorted(splits, key=lambda g: g["date"])
+
+
+def _format_innings(decimal_ip: float) -> str:
+    outs = round(decimal_ip * 3)
+    whole, part = divmod(outs, 3)
+    return f"{whole}.{part}"
+
+
+def _sum_hitting_games(games: list[dict]) -> dict:
+    """Aggregate raw counting stats across a set of individual game-log
+    entries into the same shape MLB's own 'season'/'byDateRange' stat
+    blocks use, so it can flow through _hitting_metrics() unchanged."""
+    fields = [
+        "atBats", "plateAppearances", "baseOnBalls", "intentionalWalks", "hitByPitch", "sacFlies",
+        "hits", "doubles", "triples", "homeRuns", "strikeOuts", "rbi",
+    ]
+    totals = {f: sum((g["stat"].get(f) or 0) for g in games) for f in fields}
+    totals["gamesPlayed"] = len(games)
+
+    ab = totals["atBats"]
+    h = totals["hits"]
+    hr = totals["homeRuns"]
+    doubles = totals["doubles"]
+    triples = totals["triples"]
+    singles = h - doubles - triples - hr
+    total_bases = singles + 2 * doubles + 3 * triples + 4 * hr
+
+    avg = h / ab if ab else None
+    obp_denom = ab + totals["baseOnBalls"] + totals["hitByPitch"] + totals["sacFlies"]
+    obp = (h + totals["baseOnBalls"] + totals["hitByPitch"]) / obp_denom if obp_denom else None
+    slg = total_bases / ab if ab else None
+    babip_denom = ab - totals["strikeOuts"] - hr + totals["sacFlies"]
+
+    totals["avg"] = round(avg, 3) if avg is not None else None
+    totals["obp"] = round(obp, 3) if obp is not None else None
+    totals["slg"] = round(slg, 3) if slg is not None else None
+    totals["ops"] = round(obp + slg, 3) if obp is not None and slg is not None else None
+    totals["babip"] = round((h - hr) / babip_denom, 3) if babip_denom > 0 else None
+    return totals
+
+
+def _sum_pitching_games(games: list[dict]) -> dict:
+    fields = ["homeRuns", "baseOnBalls", "hitByPitch", "strikeOuts", "hits", "atBats", "sacFlies", "runs", "earnedRuns", "battersFaced"]
+    totals = {f: sum((g["stat"].get(f) or 0) for g in games) for f in fields}
+    ip = sum(_parse_innings(g["stat"].get("inningsPitched")) for g in games)
+    totals["inningsPitched"] = _format_innings(ip)
+    totals["gamesPitched"] = len(games)
+    totals["gamesStarted"] = sum(1 for g in games if (g["stat"].get("gamesStarted") or 0) > 0)
+
+    totals["era"] = round(totals["earnedRuns"] * 9 / ip, 2) if ip > 0 else None
+    totals["whip"] = round((totals["baseOnBalls"] + totals["hits"]) / ip, 2) if ip > 0 else None
+    totals["strikeoutsPer9Inn"] = round(totals["strikeOuts"] * 9 / ip, 1) if ip > 0 else None
+    totals["walksPer9Inn"] = round(totals["baseOnBalls"] * 9 / ip, 1) if ip > 0 else None
+    return totals
 
 
 def _first_split(person: dict, stat_type: str, group: str) -> dict | None:
@@ -162,22 +223,37 @@ def _pitching_metrics(stat: dict) -> dict:
     }
 
 
-async def get_player_hot_cold_report(recent_days: int = 15) -> dict:
-    """Every roster player with at least one plate appearance or inning
-    pitched in the last `recent_days` days — a rolling snapshot of whoever
-    is actually active right now, not just the season's leaders. This is
-    what makes sure a mid-season callup (e.g. a rookie who missed half the
-    year) or a low-innings reliever still shows up if they've played
-    recently, instead of being crowded out by season-long counting stats.
-    """
-    end = date.today()
-    start = end - timedelta(days=recent_days)
+RECENT_GAMES_WINDOW = 15
 
+
+async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) -> dict:
+    """Every roster player with at least one plate appearance or inning
+    pitched among their own last `recent_games` games actually played — a
+    rolling per-player window of real appearances, not a shared calendar
+    window. A calendar window (e.g. "last 15 days") understates a player's
+    recent form the moment they missed time inside it (a day off, a short
+    IL stint) — two players who both "played in the last 15 days" can have
+    wildly different real sample sizes. Keying off each player's own last N
+    games played keeps the sample consistent, and still surfaces a mid-season
+    callup or a low-innings reliever the moment they have enough of a log to
+    judge, instead of being crowded out by season-long counting stats.
+    """
     roster = await get_roster()
     person_ids = [entry["person"]["id"] for entry in roster]
     position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in roster}
+    season = config.SEASON
 
-    people = await _get_people_with_stats(person_ids, start, end)
+    people = await _get_people_with_stats(person_ids, season)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        hitting_logs = await asyncio.gather(
+            *(_get_game_log(client, pid, season, "hitting") for pid in person_ids), return_exceptions=True
+        )
+        pitching_logs = await asyncio.gather(
+            *(_get_game_log(client, pid, season, "pitching") for pid in person_ids), return_exceptions=True
+        )
+    hitting_log_by_id = {pid: log for pid, log in zip(person_ids, hitting_logs) if not isinstance(log, Exception)}
+    pitching_log_by_id = {pid: log for pid, log in zip(person_ids, pitching_logs) if not isinstance(log, Exception)}
 
     hitters = []
     pitchers = []
@@ -186,10 +262,11 @@ async def get_player_hot_cold_report(recent_days: int = 15) -> dict:
         pid = person["id"]
         name = person["fullName"]
 
-        recent_hit = _first_split(person, "byDateRange", "hitting")
-        if recent_hit and (recent_hit.get("plateAppearances") or 0) > 0:
+        hitting_log = hitting_log_by_id.get(pid, [])
+        recent_hit_games = [g for g in hitting_log if (g["stat"].get("plateAppearances") or 0) > 0][-recent_games:]
+        if recent_hit_games:
             season_hit = _first_split(person, "season", "hitting")
-            recent_metrics = _hitting_metrics(recent_hit)
+            recent_metrics = _hitting_metrics(_sum_hitting_games(recent_hit_games))
             season_metrics = _hitting_metrics(season_hit) if season_hit else None
             enough_sample = (recent_metrics["pa"] or 0) >= MIN_RECENT_PA
             hitters.append(
@@ -210,14 +287,17 @@ async def get_player_hot_cold_report(recent_days: int = 15) -> dict:
                 }
             )
 
-        recent_pitch = _first_split(person, "byDateRange", "pitching")
-        if recent_pitch and _parse_innings(recent_pitch.get("inningsPitched")) > 0:
+        pitching_log = pitching_log_by_id.get(pid, [])
+        recent_pitch_games = [
+            g for g in pitching_log if _parse_innings(g["stat"].get("inningsPitched")) > 0
+        ][-recent_games:]
+        if recent_pitch_games:
             season_pitch = _first_split(person, "season", "pitching")
-            recent_metrics = _pitching_metrics(recent_pitch)
+            recent_metrics = _pitching_metrics(_sum_pitching_games(recent_pitch_games))
             season_metrics = _pitching_metrics(season_pitch) if season_pitch else None
             enough_sample = (recent_metrics["ip"] or 0) >= MIN_RECENT_IP
-            games = (season_pitch or recent_pitch).get("gamesPitched") or 1
-            starts = (season_pitch or recent_pitch).get("gamesStarted") or 0
+            games = (season_pitch or {}).get("gamesPitched") or len(recent_pitch_games)
+            starts = (season_pitch or {}).get("gamesStarted") or 0
             pitchers.append(
                 {
                     "name": name,
@@ -241,7 +321,7 @@ async def get_player_hot_cold_report(recent_days: int = 15) -> dict:
 
     return {
         "league_avg_babip": LEAGUE_AVG_BABIP,
-        "window_days": recent_days,
+        "window_games": recent_games,
         "hitters": hitters,
         "pitchers": pitchers,
     }
@@ -278,7 +358,7 @@ def slim_for_ai(report: dict) -> dict:
 
     return {
         "league_avg_babip": report["league_avg_babip"],
-        "window_days": report["window_days"],
+        "window_games": report["window_games"],
         "hitters": [slim_hitter(h) for h in report["hitters"] if not h["small_sample"]],
         "pitchers": [slim_pitcher(p) for p in report["pitchers"] if not p["small_sample"]],
     }

@@ -105,16 +105,21 @@ ANALYSIS_SYSTEM_PROMPT = (
     "recent schedule, a rolling run-differential series, and a 'league_context' "
     "block with Boston's rank out of 30 MLB teams (plus league average) in runs "
     "scored/allowed, team wOBA/OPS, walk/strikeout rate, ERA, FIP, and pitching "
-    "K-BB% — write one tight analytical paragraph (6-8 sentences).\n\n"
-    "Open by grounding the read in the team's actual record and recent form, "
-    "then move into the leaguewide picture (e.g. elite run prevention vs. "
-    "middling raw offense despite a good wOBA — that kind of gap is worth "
-    "calling out explicitly, not just Boston's own trend in isolation). Close "
-    "on what the data implies for sustainability of form and regression risk. "
-    "Be direct and specific, citing real numbers and ranks rather than speaking "
-    "vaguely — confident and analytical, not a dry front-office memo, but don't "
-    "shy from technical detail either. No headers or bullet points, just the "
-    "paragraph.\n\n"
+    "K-BB% — write exactly 4 tight bullets, each one sentence:\n"
+    "1. Current status: record, streak, and recent form in plain terms.\n"
+    "2. The leaguewide picture: where Boston actually ranks, especially any "
+    "gap worth calling out (e.g. elite run prevention vs. middling raw "
+    "offense despite a good wOBA) — not just Boston's own trend in isolation.\n"
+    "3. Sustainability: what the data implies about regression risk — is the "
+    "record ahead of or behind what the underlying numbers support.\n"
+    "4. Playoff stakes, if `playoff_context` makes them relevant this week — "
+    "otherwise use this bullet for the single most notable split (platoon, "
+    "home/away, one-run/extra-innings) instead.\n\n"
+    "Be direct and specific, citing real numbers and ranks rather than "
+    "speaking vaguely — confident and analytical, not a dry front-office "
+    "memo, but don't shy from technical detail either. Output exactly one "
+    "bullet per line, each starting with '- ', no headers, no preamble or "
+    "closing remarks.\n\n"
     "If you reference playoff stakes, `playoff_context` is the only authoritative "
     "source — `games_back` alone is division standing only and can be misleading "
     "(a team can be far back in the division while holding a Wild Card spot). "
@@ -126,7 +131,7 @@ ANALYSIS_SYSTEM_PROMPT = (
 def generate_team_analysis(trends_summary: dict) -> str:
     message = _create_message(
         model=MODEL,
-        max_tokens=700,
+        max_tokens=1500,
         system=ANALYSIS_SYSTEM_PROMPT,
         messages=[
             {
@@ -142,7 +147,7 @@ PLAYER_NOTES_SYSTEM_PROMPT = (
     "You are a statistical analyst for the Boston Red Sox front office, reviewing "
     "player-level form data for every player on the active roster with a large "
     "enough recent sample to be meaningful. Given JSON with each hitter's and "
-    "pitcher's season stats vs. their last-15-day stats (wOBA, BABIP, BB%/K%, ISO "
+    "pitcher's season stats vs. their last-15-games-played stats (wOBA, BABIP, BB%/K%, ISO "
     "for hitters; ERA, FIP, K-BB%, BABIP-against, strand rate for pitchers), pick "
     "ONLY the 3-5 single most notable form changes across the whole list (hot or "
     "cold, whichever stand out most — don't force an even split). For each, say "

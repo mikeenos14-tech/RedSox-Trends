@@ -982,6 +982,17 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
 }
 .show-more-btn:hover { border-color: var(--muted); }
 
+/* Progressive disclosure for the Hot/Cold tracker: the dense sabermetric
+   columns (wOBA, BABIP, K%, FIP, ...) stay out of the default view and only
+   render once "Show advanced stats" is clicked. */
+.adv-col { display: none; }
+.show-advanced .adv-col { display: table-cell; }
+
+.form-cell { font-weight: 700; white-space: nowrap; }
+.form-hot { color: var(--red); }
+.form-cold { color: var(--statcast-cold); }
+.form-steady { color: var(--muted); font-weight: 400; }
+
 .expand-section {
   margin-top: 1.25rem;
 }
