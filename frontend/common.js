@@ -1,5 +1,23 @@
 let runDiffChart = null;
 
+// iOS keeps a frozen snapshot of a home-screen-saved page when you switch
+// away and back, and JS timers (like the live ticker's poll) get suspended
+// in the background too — so returning after a while can show stale data
+// even though a real reload would fetch fine. A full reload after a
+// meaningful absence fixes both; anything shorter (a quick app-switch) is
+// left alone so a normal glance-away doesn't cause a jarring reload.
+(function watchForStaleReturn() {
+  const STALE_AFTER_MS = 5 * 60 * 1000;
+  let hiddenAt = null;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      hiddenAt = Date.now();
+    } else if (hiddenAt && Date.now() - hiddenAt > STALE_AFTER_MS) {
+      location.reload();
+    }
+  });
+})();
+
 function teamLogo(teamId) {
   return `<img class="team-logo-icon" src="https://www.mlbstatic.com/team-logos/${teamId}.svg" alt="" onerror="this.style.display='none'" />`;
 }
