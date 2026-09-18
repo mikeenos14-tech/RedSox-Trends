@@ -967,6 +967,31 @@ async function loadLastGameRecap() {
   }
 }
 
+async function loadGameSignificance() {
+  const section = document.getElementById("significance");
+  const body = document.getElementById("significance-body");
+  if (!section) return;
+
+  try {
+    const res = await fetch("/api/team/last-game-significance");
+    if (!res.ok) throw new Error("Failed to load game significance");
+    const data = await res.json();
+
+    // No real callouts this game (the common, correct case) — stay hidden
+    // rather than show an empty section.
+    if (!data.narration) {
+      section.hidden = true;
+      return;
+    }
+
+    renderBulletText(body, data.narration);
+    addAiBadge(body);
+    section.hidden = false;
+  } catch (e) {
+    section.hidden = true;
+  }
+}
+
 let winProbChart = null;
 
 async function loadWinProbabilityChart() {

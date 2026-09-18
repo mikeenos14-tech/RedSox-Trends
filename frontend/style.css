@@ -609,6 +609,16 @@ main section { scroll-margin-top: 3.5rem; }
 }
 .game-recap-section h2 { margin: 0 0 1rem; }
 
+.significance-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--warn);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.significance-section h2 { margin: 0 0 1rem; }
+
 .game-recap-header {
   display: flex;
   gap: 1rem;

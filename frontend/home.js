@@ -11,6 +11,7 @@ loadHeroHeadline();
 loadDivisionStandings();
 loadWildcardStandings();
 loadLastGameRecap();
+loadGameSignificance();
 loadUpcomingSchedule();
 loadSeasonSeries();
 loadBullpen();

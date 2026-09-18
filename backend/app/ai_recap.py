@@ -205,6 +205,39 @@ def generate_headlines_summary(headlines: list[dict]) -> str:
     return _extract_text(message)
 
 
+SIGNIFICANCE_SYSTEM_PROMPT = (
+    "You are writing the 'What Stood Out' callouts for a Red Sox fan website, "
+    "shown right after a recap of the team's most recent game. You are given a "
+    "JSON list of real, already-computed facts about that game — streaks, rare "
+    "stat lines, career milestones — each as a plain sentence. These facts are "
+    "the ONLY things you're allowed to mention; never add a stat, date, or "
+    "detail that isn't already stated in one of them, and never invent why "
+    "something is significant beyond what the sentence already says.\n\n"
+    "If there are more than 3 facts, pick the 3 most genuinely interesting to "
+    "a die-hard fan (a career milestone or a long streak snapping usually "
+    "outranks a single big game) — you may drop the rest, but never add to "
+    "them. Rewrite each kept fact as one punchy, conversational sentence (you "
+    "can rephrase for flow, but every number and name must still match the "
+    "original exactly). Output one bullet per fact, each starting with '- ', "
+    "no intro or closing remarks, no markdown formatting beyond the bullet dash."
+)
+
+
+def generate_significance_narration(findings: list[dict]) -> str:
+    message = _create_message(
+        model=MODEL,
+        max_tokens=500,
+        system=SIGNIFICANCE_SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Facts from the game:\n{json.dumps([f['detail'] for f in findings], indent=2)}",
+            }
+        ],
+    )
+    return _extract_text(message)
+
+
 PLAYER_HIGHLIGHT_SYSTEM_PROMPT = (
     "You are writing a 'Player Highlight' feature for a Red Sox fan website — "
     "a condensed, warm version of a Wikipedia 'early life' + 'career' summary, "

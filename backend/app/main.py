@@ -22,6 +22,7 @@ from . import (
     on_this_day,
     player_highlight,
     player_stats,
+    significance,
     statcast,
     trends,
     win_probability,
@@ -102,6 +103,8 @@ _player_notes_cache: dict = {"hash": None, "result": None}
 _player_notes_lock = asyncio.Lock()
 _win_prob_cache = {"game_pk": None, "data": None}
 _win_prob_lock = asyncio.Lock()
+_significance_cache = {"game_pk": None, "data": None}
+_significance_lock = asyncio.Lock()
 
 _league_context_cache: dict = {"result": None, "fetched_at": 0.0}
 _league_context_lock = asyncio.Lock()
@@ -244,6 +247,35 @@ async def team_win_probability():
         result = {"game": data}
         _win_prob_cache["game_pk"] = game_pk
         _win_prob_cache["data"] = result
+        return result
+
+
+@app.get("/api/team/last-game-significance")
+async def team_last_game_significance():
+    # Cached forever by gamePk, same as the win-probability/recap endpoints —
+    # a completed game's real facts never change, so there's nothing to
+    # recompute on a later request for the same game. The one AI call inside
+    # (narration only, never invention) only fires on a genuine cache miss.
+    async with _significance_lock:
+        cached = _significance_cache["data"]
+        report = await significance.get_game_significance()
+        if report is None:
+            return {"game_pk": None, "narration": None}
+
+        game_pk = report["game_pk"]
+        if _significance_cache["game_pk"] == game_pk and cached is not None:
+            return cached
+
+        narration = None
+        if report["findings"]:
+            try:
+                narration = ai_recap.generate_significance_narration(report["findings"])
+            except RuntimeError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        result = {"game_pk": game_pk, "date": report["date"], "narration": narration}
+        _significance_cache["game_pk"] = game_pk
+        _significance_cache["data"] = result
         return result
 
 
