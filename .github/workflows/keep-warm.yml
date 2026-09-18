@@ -1,0 +1,17 @@
+name: Keep Render service warm
+
+on:
+  schedule:
+    # Render's free tier spins the service down after ~15 min idle; pinging
+    # every 10 min keeps it from ever fully going cold. GitHub's scheduler is
+    # best-effort (can slip a few minutes under load), which is fine here —
+    # the goal is "never idle 15 straight minutes," not a precise cadence.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the live site
+        run: curl -sS -o /dev/null -w "HTTP %{http_code}\n" --max-time 30 https://fenway-form-finder.onrender.com/
