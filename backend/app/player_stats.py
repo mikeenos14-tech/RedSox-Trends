@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date, timedelta
 
 import httpx
 
@@ -24,6 +25,11 @@ LEAGUE_AVG_BABIP = 0.300
 MIN_RECENT_PA = 20
 MIN_RECENT_IP = 5.0
 
+# A player whose last qualifying game is older than this isn't "recently
+# hot or cold" in any meaningful sense, regardless of what their last 15
+# games (whenever they were) looked like.
+STALE_AFTER_DAYS = 12
+
 
 def _f(val, default=None) -> float | None:
     """Parse MLB's stat strings (e.g. '.282', '-.--', '.---') to float."""
@@ -44,12 +50,15 @@ def _parse_innings(ip_str: str | None) -> float:
     return outs / 3
 
 
-async def get_roster(season: int = config.SEASON) -> list[dict]:
+async def get_roster(season: int = config.SEASON, roster_type: str = "40Man") -> list[dict]:
     # 40Man, not fullSeason — fullSeason includes anyone who passed through
     # the org this year (trades, DFAs, releases included), which surfaces
     # players no longer with the team. 40Man reflects who's actually still
-    # rostered right now.
-    params = {"rosterType": "40Man", "season": season}
+    # rostered right now. Callers that specifically care about who's
+    # currently playable (not injured, not optioned down) should pass
+    # roster_type="active" instead — the 40-man roster includes IL players,
+    # which is exactly wrong for a "recent form" report.
+    params = {"rosterType": roster_type, "season": season}
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/teams/{config.TEAM_ID}/roster", params=params)
         resp.raise_for_status()
@@ -238,10 +247,20 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
     callup or a low-innings reliever the moment they have enough of a log to
     judge, instead of being crowded out by season-long counting stats.
     """
-    roster = await get_roster()
+    # "active", not the default 40-man — the 40-man roster keeps injured
+    # players on it for the length of their IL stint, which is exactly wrong
+    # here: an IL player's last real game could be from months ago, and
+    # comparing that stale stretch to their season line produces a
+    # confidently wrong "hot" or "cold" read for someone who hasn't
+    # actually played recently at all.
+    roster = await get_roster(roster_type="active")
     person_ids = [entry["person"]["id"] for entry in roster]
     position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in roster}
     season = config.SEASON
+    # Belt-and-suspenders on top of the active-roster filter: skip anyone
+    # whose last qualifying game is older than this, in case the active-
+    # roster snapshot hasn't caught up with a very recent IL move yet.
+    stale_cutoff = date.today() - timedelta(days=STALE_AFTER_DAYS)
 
     people = await _get_people_with_stats(person_ids, season)
 
@@ -264,7 +283,7 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
 
         hitting_log = hitting_log_by_id.get(pid, [])
         recent_hit_games = [g for g in hitting_log if (g["stat"].get("plateAppearances") or 0) > 0][-recent_games:]
-        if recent_hit_games:
+        if recent_hit_games and date.fromisoformat(recent_hit_games[-1]["date"]) >= stale_cutoff:
             season_hit = _first_split(person, "season", "hitting")
             recent_metrics = _hitting_metrics(_sum_hitting_games(recent_hit_games))
             season_metrics = _hitting_metrics(season_hit) if season_hit else None
@@ -291,7 +310,7 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
         recent_pitch_games = [
             g for g in pitching_log if _parse_innings(g["stat"].get("inningsPitched")) > 0
         ][-recent_games:]
-        if recent_pitch_games:
+        if recent_pitch_games and date.fromisoformat(recent_pitch_games[-1]["date"]) >= stale_cutoff:
             season_pitch = _first_split(person, "season", "pitching")
             recent_metrics = _pitching_metrics(_sum_pitching_games(recent_pitch_games))
             season_metrics = _pitching_metrics(season_pitch) if season_pitch else None

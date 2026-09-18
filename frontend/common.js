@@ -741,13 +741,13 @@ async function loadPlayerHotCold() {
         <td class="name">${h.name}</td>
         <td>${h.position || "-"}</td>
         ${formBadge(h.form_delta_woba, h.small_sample, 0.025)}
+        ${deltaCell(h.form_delta_woba, true, h.small_sample)}
         <td class="num">${s ? pctStr(s.avg) : "-"}</td>
         <td class="num">${s ? pctStr(s.ops) : "-"}</td>
         <td class="num">${s && s.hr != null ? s.hr : "-"}</td>
         <td class="num">${s && s.rbi != null ? s.rbi : "-"}</td>
         <td class="num adv-col ${wobaCls}">${s ? pctStr(s.woba) : "-"}</td>
         <td class="num adv-col">${pctStr(r.woba)}</td>
-        ${deltaCell(h.form_delta_woba, true, h.small_sample, "adv-col")}
         <td class="num adv-col ${babipCls}">${s ? pctStr(s.babip) : "-"}</td>
         <td class="num adv-col ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
         <td class="num adv-col ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
@@ -771,8 +771,8 @@ async function loadPlayerHotCold() {
         <td>${p.role}</td>
         <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
         ${formBadge(p.form_delta_era, p.small_sample, 0.5)}
+        ${deltaCell(p.form_delta_era, true, p.small_sample)}
         <td class="num adv-col">${r.era ?? "-"}</td>
-        ${deltaCell(p.form_delta_era, true, p.small_sample, "adv-col")}
         <td class="num adv-col ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
         <td class="num adv-col ${kbbCls}">${s ? pctStr(s.k_bb_pct) : "-"}</td>
         <td class="num adv-col ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
