@@ -42,33 +42,42 @@
       <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 days vs. season</span></h2>
       <div id="player-notes-text" class="recap-text muted">Reviewing player form data…</div>
 
-      <h3>Hitters</h3>
-      <div class="table-scroll">
-        <table id="hitters-table" class="stat-table">
-          <thead>
-            <tr>
-              <th>Name</th><th>Pos</th>
-              <th>wOBA (S)</th><th>wOBA (L15)</th><th>Δ</th>
-              <th>BABIP</th><th>BB%</th><th>K%</th><th>ISO</th>
-              <th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <div class="tab-group" id="hotcold-tabs">
+        <div class="tab-switcher">
+          <button class="tab-btn active" data-tab="hitters">Hitters</button>
+          <button class="tab-btn" data-tab="pitchers">Pitchers</button>
+        </div>
 
-      <h3>Pitchers</h3>
-      <div class="table-scroll">
-        <table id="pitchers-table" class="stat-table">
-          <thead>
-            <tr>
-              <th>Name</th><th>Role</th>
-              <th>ERA (S)</th><th>ERA (L15)</th><th>Δ</th>
-              <th>FIP</th><th>K-BB%</th><th>BABIP-agst</th><th>LOB%</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div data-tab-panel="hitters">
+          <div class="table-scroll">
+            <table id="hitters-table" class="stat-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Pos</th>
+                  <th>wOBA (S)</th><th>wOBA (L15)</th><th>Δ</th>
+                  <th>BABIP</th><th>BB%</th><th>K%</th><th>ISO</th>
+                  <th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div data-tab-panel="pitchers" hidden>
+          <div class="table-scroll">
+            <table id="pitchers-table" class="stat-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Role</th>
+                  <th>ERA (S)</th><th>ERA (L15)</th><th>Δ</th>
+                  <th>FIP</th><th>K-BB%</th><th>BABIP-agst</th><th>LOB%</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
       <p class="muted small-note">
         <span class="legend-swatch heat-good">green</span> = better than the current MLB average,
@@ -86,24 +95,36 @@
 
       <div class="cards" id="statcast-snapshot"></div>
 
-      <h3>Hitters</h3>
-      <div class="statcast-grid" id="statcast-hitters-grid"><p class="muted">Loading Statcast data…</p></div>
+      <details class="expand-section" id="statcast-full-report">
+        <summary>Show full scouting report</summary>
 
-      <h3>Pitchers</h3>
-      <div class="statcast-grid" id="statcast-pitchers-grid"></div>
+        <div class="tab-group" id="statcast-tabs">
+          <div class="tab-switcher">
+            <button class="tab-btn active" data-tab="hitters">Hitters</button>
+            <button class="tab-btn" data-tab="pitchers">Pitchers</button>
+          </div>
 
-      <h3>League Leaders</h3>
-      <div class="leaderboard-grid" id="statcast-leaders"></div>
+          <div data-tab-panel="hitters">
+            <div class="statcast-grid" id="statcast-hitters-grid"><p class="muted">Loading Statcast data…</p></div>
+          </div>
+          <div data-tab-panel="pitchers" hidden>
+            <div class="statcast-grid" id="statcast-pitchers-grid"></div>
+          </div>
+        </div>
 
-      <div class="leaderboard-explorer">
-        <label for="leaderboard-picker">Explore another leaderboard</label>
-        <select id="leaderboard-picker"></select>
-        <div class="leaderboard-grid" id="leaderboard-explorer-result"></div>
-      </div>
+        <h3>League Leaders</h3>
+        <div class="leaderboard-grid" id="statcast-leaders"></div>
 
-      <p class="muted small-note">
-        Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
-      </p>
+        <div class="leaderboard-explorer">
+          <label for="leaderboard-picker">Explore another leaderboard</label>
+          <select id="leaderboard-picker"></select>
+          <div class="leaderboard-grid" id="leaderboard-explorer-result"></div>
+        </div>
+
+        <p class="muted small-note">
+          Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
+        </p>
+      </details>
     </section>
 
     <section class="compare-section" id="compare">

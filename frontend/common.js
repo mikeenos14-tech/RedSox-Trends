@@ -359,9 +359,10 @@ function renderOverviewCards(data) {
 }
 
 function renderGamesTable(games) {
-  const tbody = document.querySelector("#games-table tbody");
+  const table = document.getElementById("games-table");
+  const tbody = table.querySelector("tbody");
   tbody.innerHTML = "";
-  [...games].reverse().forEach((g) => {
+  const rows = [...games].reverse().map((g) => {
     const tr = document.createElement("tr");
     tr.className = g.won ? "win" : "loss";
     const rec = g.record_after ? `${g.record_after.wins}-${g.record_after.losses}` : "-";
@@ -374,7 +375,11 @@ function renderGamesTable(games) {
       <td>${rec}</td>
     `;
     tbody.appendChild(tr);
+    return tr;
   });
+
+  const GAMES_VISIBLE = 5;
+  addShowMoreToggle(rows, table, GAMES_VISIBLE, `Show all ${rows.length} games`);
 }
 
 function renderAnalysis(analysis) {
@@ -570,6 +575,14 @@ async function loadHeadlines() {
       `;
       list.appendChild(li);
     });
+
+    const HEADLINES_VISIBLE = 5;
+    addShowMoreToggle(
+      [...list.children],
+      list,
+      HEADLINES_VISIBLE,
+      `Show ${data.headlines.length - HEADLINES_VISIBLE} more headlines`
+    );
   } catch (e) {
     list.innerHTML = `<li class="muted">Couldn't load headlines: ${e.message}</li>`;
   }
@@ -758,6 +771,60 @@ function initSortableTable(tableId) {
   table.querySelectorAll("thead th").forEach((th, idx) => {
     th.classList.add("sortable");
     th.addEventListener("click", () => sortTableByColumn(table, idx, th));
+  });
+}
+
+// Generic Hitters/Pitchers-style tab switcher — a `.tab-group` wraps one
+// `.tab-switcher` of `.tab-btn[data-tab]` buttons plus any number of
+// `[data-tab-panel]` panels; clicking a button shows the matching panel and
+// hides the rest. Works regardless of how deeply the panels are nested,
+// since it queries within the group rather than assuming direct children.
+function initTabGroup(groupId) {
+  const group = document.getElementById(groupId);
+  if (!group || group.dataset.tabInit) return;
+  group.dataset.tabInit = "1";
+  const buttons = group.querySelectorAll(".tab-btn");
+  const panels = group.querySelectorAll("[data-tab-panel]");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      buttons.forEach((b) => b.classList.toggle("active", b === btn));
+      panels.forEach((p) => {
+        p.hidden = p.dataset.tabPanel !== btn.dataset.tab;
+      });
+    });
+  });
+}
+
+// Hides everything past `visibleCount` in `items` and appends a "Show N
+// more" button after `anchorEl` that reveals the rest on click. No-op if
+// there's nothing to hide.
+function addShowMoreToggle(items, anchorEl, visibleCount, moreLabel) {
+  if (items.length <= visibleCount) return;
+  items.forEach((el, i) => {
+    if (i >= visibleCount) el.hidden = true;
+  });
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "show-more-btn";
+  btn.textContent = moreLabel || `Show ${items.length - visibleCount} more`;
+  btn.addEventListener("click", () => {
+    items.forEach((el) => (el.hidden = false));
+    btn.remove();
+  });
+  anchorEl.insertAdjacentElement("afterend", btn);
+}
+
+// Wires a <details class="expand-section"> so its <summary> label flips
+// between show/hide text — purely cosmetic, the native element handles
+// the actual expand/collapse.
+function initExpandSection(detailsId, showLabel, hideLabel) {
+  const details = document.getElementById(detailsId);
+  if (!details || details.dataset.expandInit) return;
+  details.dataset.expandInit = "1";
+  const summary = details.querySelector("summary");
+  details.addEventListener("toggle", () => {
+    summary.textContent = details.open ? hideLabel : showLabel;
   });
 }
 
