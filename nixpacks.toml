@@ -9,4 +9,9 @@ providers = ["python"]
 cmds = ["pip install -r backend/requirements.txt"]
 
 [start]
-cmd = "uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT"
+# Nixpacks' install-phase virtualenv PATH doesn't reliably carry into the
+# start phase's shell, so the bare "uvicorn" console script isn't found
+# there even though pip installed it fine at build time. "python -m
+# uvicorn" only needs python itself on PATH and finds the package via
+# site-packages either way.
+cmd = "python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT"
