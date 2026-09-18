@@ -5,6 +5,15 @@
 # working in render.yaml.
 providers = ["python"]
 
+# mise (the tool Nixpacks uses under the hood to install the pinned Python
+# version) fails outright on every recent python-build-standalone release
+# on Railway's builder right now — "No GitHub artifact attestations found"
+# for 3.12.7 *and* 3.12.8, so it's not a bad version pin, it's this specific
+# verification step being broken/unreachable in that build environment.
+# This is the fix the error message itself points at.
+[variables]
+MISE_PYTHON_GITHUB_ATTESTATIONS = "false"
+
 [phases.install]
 cmds = ["pip install -r backend/requirements.txt"]
 
