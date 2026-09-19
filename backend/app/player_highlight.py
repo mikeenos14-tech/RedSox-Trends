@@ -137,6 +137,13 @@ async def get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
 # (deliberately cautious) judgment call, which is the safer default at scale.
 KNOWN_NICKNAMES: dict[int, str] = {
     678011: "Tony Seagulls",  # per the Red Sox's own Instagram: "Seigler stays loving the Tony Seagulls nickname"
+    676979: "The Pig",  # Crochet himself confirmed he likes it (Sportskeeda: "I like the pig nickname... my wife thinks it's hilarious"); widely used by Red Sox fans/media since his trade to Boston
+    807799: "Macho Man",  # from his Village People walk-up song in Japan (NPB); fans still wave inflatable dumbbells for him now (NESN, Nippon.com)
+    547973: "The Cuban Missile",  # his defining nickname for over a decade, tied to his fastball velocity and Cuban heritage (Bleacher Report, Dallas News, and many others)
+    668939: "Clutchman",  # earned at the 2018 College World Series with Oregon State; still widely used (multiple dedicated write-ups)
+    624133: "The Cooler",  # his agent Scott Boras's nickname for him, highlighting his composure and consistency on the mound
+    643396: "Hawaiian Hustle",  # tied to his Honolulu, HI birthplace and his all-out style of play
+    701350: "Roman Empire",  # obvious pun on his first name, used since his 2025 MLB debut
 }
 
 
