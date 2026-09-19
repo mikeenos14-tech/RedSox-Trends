@@ -169,7 +169,7 @@ async function loadBullpen() {
       const statusCls = p.likely_available ? "delta-up" : "delta-down";
       const statusText = p.likely_available ? "Likely available" : "Rest likely needed";
       tr.innerHTML = `
-        <td class="name">${p.name}</td>
+        <td class="name">${playerLink(p.player_id, p.name)}</td>
         <td>${formatGameDate(p.last_pitched)}</td>
         <td class="num">${p.days_rest}</td>
         <td>${p.last_outing}</td>
@@ -223,7 +223,7 @@ async function loadUpcomingSchedule() {
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td class="num">${recStr}</td>
         <td class="num">${seriesStr}</td>
-        <td>${g.us_probable_pitcher || "TBD"}</td>
+        <td>${g.us_probable_pitcher ? playerLink(g.us_probable_pitcher_id, g.us_probable_pitcher) : "TBD"}</td>
         <td>${g.opponent_probable_pitcher || "TBD"}</td>
       `;
       tbody.appendChild(tr);
@@ -1079,10 +1079,10 @@ function buildLineScoreTable(g) {
   `;
 }
 
-function buildPerformerList(title, performers) {
+function buildPerformerList(title, performers, isUs = false) {
   if (!performers.length) return "";
   const items = performers
-    .map((p) => `<li><span class="name">${p.name}</span> — ${p.summary}</li>`)
+    .map((p) => `<li><span class="name">${isUs ? playerLink(p.id, p.name) : p.name}</span> — ${p.summary}</li>`)
     .join("");
   return `<div class="performer-block"><h4>${title}</h4><ul class="performer-list">${items}</ul></div>`;
 }
@@ -1135,7 +1135,7 @@ async function loadLastGameRecap() {
       ${buildLineScoreTable(g)}
       <p class="muted small-note game-decisions">${decisions}</p>
       <div class="performer-blocks">
-        ${buildPerformerList("Red Sox", g.top_performers.us)}
+        ${buildPerformerList("Red Sox", g.top_performers.us, true)}
         ${buildPerformerList(oppShort, g.top_performers.them)}
       </div>
       <div class="chart-wrap">

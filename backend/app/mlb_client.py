@@ -192,6 +192,7 @@ async def get_upcoming_games(team_id: int = config.TEAM_ID, count: int = 10, sea
                         "pct": them_record.get("pct"),
                     },
                     "us_probable_pitcher": (us.get("probablePitcher") or {}).get("fullName"),
+                    "us_probable_pitcher_id": (us.get("probablePitcher") or {}).get("id"),
                     "opponent_probable_pitcher": (them.get("probablePitcher") or {}).get("fullName"),
                     "venue": (game.get("venue") or {}).get("name"),
                     "game_number": game.get("gameNumber", 1),

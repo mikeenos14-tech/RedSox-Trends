@@ -58,6 +58,7 @@ def top_batting_lines(boxscore: dict, side: str, limit: int = 3) -> list[dict]:
             continue
         lines.append(
             {
+                "id": player["person"]["id"],
                 "name": player["person"]["fullName"],
                 "summary": stats.get("summary", ""),
                 "hits": stats.get("hits", 0),
@@ -83,6 +84,7 @@ def pitching_lines(boxscore: dict, side: str) -> list[dict]:
             continue
         lines.append(
             {
+                "id": player["person"]["id"],
                 "name": player["person"]["fullName"],
                 "summary": stats.get("summary", ""),
                 "note": stats.get("note"),
