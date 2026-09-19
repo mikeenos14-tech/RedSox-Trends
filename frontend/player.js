@@ -86,6 +86,7 @@ function renderCareerStats(p) {
       statTile("Career SV", c.saves),
       statTile("Career SO", c.strikeouts),
       statTile("Career IP", c.innings_pitched),
+      statTile("Career Games", c.games),
     ].join("");
   }
 }

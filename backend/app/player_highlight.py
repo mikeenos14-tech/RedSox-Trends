@@ -118,6 +118,7 @@ async def get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
             "saves": pitching_season.get("saves"),
             "strikeouts": pitching_season.get("strikeOuts"),
             "innings_pitched": pitching_season.get("inningsPitched"),
+            "games": pitching_season.get("gamesPitched"),
         }
         if pitching_career:
             result["pitching_career"] = {
@@ -127,6 +128,7 @@ async def get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
                 "saves": pitching_career.get("saves"),
                 "strikeouts": pitching_career.get("strikeOuts"),
                 "innings_pitched": pitching_career.get("inningsPitched"),
+                "games": pitching_career.get("gamesPitched"),
             }
     return result
 
