@@ -10,22 +10,26 @@ BASE_URL = "https://statsapi.mlb.com/api/v1"
 
 
 async def get_team_standings(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> dict:
-    """Fetch the AL standings and return this team's record entry."""
+    """Fetch this team's standings record entry. Red Sox callers only ever
+    need the AL (id 103), but a clicked-into opponent — e.g. an interleague
+    matchup — can be an NL team (104), so this tries both leagues rather
+    than assuming AL like the original Red Sox-only version did."""
     url = f"{BASE_URL}/standings"
-    params = {
-        "leagueId": config.LEAGUE_ID,
-        "season": season,
-        "standingsTypes": "regularSeason",
-    }
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
+    for league_id in (config.LEAGUE_ID, 104 if config.LEAGUE_ID == 103 else 103):
+        params = {
+            "leagueId": league_id,
+            "season": season,
+            "standingsTypes": "regularSeason",
+        }
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
 
-    for division in data.get("records", []):
-        for team_record in division.get("teamRecords", []):
-            if team_record["team"]["id"] == team_id:
-                return team_record
+        for division in data.get("records", []):
+            for team_record in division.get("teamRecords", []):
+                if team_record["team"]["id"] == team_id:
+                    return team_record
 
     raise ValueError(f"Team {team_id} not found in standings for season {season}")
 

@@ -50,7 +50,9 @@ def _parse_innings(ip_str: str | None) -> float:
     return outs / 3
 
 
-async def get_roster(season: int = config.SEASON, roster_type: str = "40Man") -> list[dict]:
+async def get_roster(
+    season: int = config.SEASON, roster_type: str = "40Man", team_id: int = config.TEAM_ID
+) -> list[dict]:
     # 40Man, not fullSeason — fullSeason includes anyone who passed through
     # the org this year (trades, DFAs, releases included), which surfaces
     # players no longer with the team. 40Man reflects who's actually still
@@ -60,7 +62,7 @@ async def get_roster(season: int = config.SEASON, roster_type: str = "40Man") ->
     # which is exactly wrong for a "recent form" report.
     params = {"rosterType": roster_type, "season": season}
     async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(f"{BASE_URL}/teams/{config.TEAM_ID}/roster", params=params)
+        resp = await client.get(f"{BASE_URL}/teams/{team_id}/roster", params=params)
         resp.raise_for_status()
         return resp.json().get("roster", [])
 
@@ -349,7 +351,7 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
     }
 
 
-async def get_full_roster_report() -> dict:
+async def get_full_roster_report(team_id: int = config.TEAM_ID) -> dict:
     """Every player on the 40-man roster with real season stats — a plain
     reference list, independent of recent form (unlike the Hot/Cold
     tracker, which deliberately only surfaces notable movers). Flags
@@ -358,8 +360,8 @@ async def get_full_roster_report() -> dict:
     else's season totals."""
     season = config.SEASON
     full_roster, active_roster = await asyncio.gather(
-        get_roster(roster_type="40Man"),
-        get_roster(roster_type="active"),
+        get_roster(roster_type="40Man", team_id=team_id),
+        get_roster(roster_type="active", team_id=team_id),
     )
     active_ids = {entry["person"]["id"] for entry in active_roster}
     position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in full_roster}

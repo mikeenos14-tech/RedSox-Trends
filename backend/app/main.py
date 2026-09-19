@@ -25,6 +25,7 @@ from . import (
     player_stats,
     significance,
     statcast,
+    team_profile,
     trends,
     win_probability,
 )
@@ -52,6 +53,10 @@ _statcast_notes_cache = {"date": None, "text": None}
 _statcast_notes_lock = asyncio.Lock()
 _on_this_day_cache = {"date": None, "data": None}
 _on_this_day_lock = asyncio.Lock()
+_all_team_stats_cache: dict = {"result": None, "fetched_at": 0.0}
+_all_team_stats_lock = asyncio.Lock()
+_team_profile_cache: dict[int, dict] = {}
+_team_profile_lock = asyncio.Lock()
 
 T = TypeVar("T")
 
@@ -147,6 +152,17 @@ async def _get_full_roster_cached() -> dict:
     )
 
 
+async def _get_all_team_stats_cached() -> dict:
+    # Shared across Boston's own "Where Boston Ranks" and every team-profile
+    # page — the underlying all-30-teams fetch is identical regardless of
+    # which team's rank_block gets computed from it, so clicking into a
+    # handful of different teams within the same cache window costs zero
+    # extra fetches, not one fetch per team.
+    return await _cached_for(
+        _all_team_stats_cache, _all_team_stats_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.fetch_all_team_stats
+    )
+
+
 async def _get_headlines_cached() -> list[dict]:
     # The headline list and its "Summarize Coverage" button both need the
     # same Google News RSS results; without this they'd hit it independently.
@@ -237,6 +253,44 @@ async def team_season_series():
 @app.get("/api/team/bullpen")
 async def team_bullpen():
     return {"pitchers": await bullpen.get_bullpen_report()}
+
+
+@app.get("/api/team/profile")
+async def team_profile_endpoint(id: int):
+    # Day-cached per team, same rationale as the player-profile cache — a
+    # team's record/rank/top-performers don't need recomputing on every
+    # single visit, only once the calendar day actually turns over.
+    today = player_highlight.eastern_today().isoformat()
+    async with _team_profile_lock:
+        cached = _team_profile_cache.get(id)
+        if cached and cached["date"] == today:
+            return cached["data"]
+
+        all_team_stats = await _get_all_team_stats_cached()
+        try:
+            profile = await team_profile.get_team_profile(id, all_team_stats)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+        season_games = await _get_season_games_cached()
+        series = mlb_client.build_season_series(season_games).get(id)
+        profile["season_series_vs_us"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
+
+        upcoming = await mlb_client.get_upcoming_games()
+        next_game = next((g for g in upcoming if g["opponent_id"] == id), None)
+        profile["next_matchup"] = (
+            {
+                "date": next_game["date"],
+                "home_or_away": next_game["home_or_away"],
+                "us_probable_pitcher": next_game["us_probable_pitcher"],
+                "us_probable_pitcher_id": next_game["us_probable_pitcher_id"],
+            }
+            if next_game
+            else None
+        )
+
+        _team_profile_cache[id] = {"date": today, "data": profile}
+        return profile
 
 
 @app.get("/api/team/win-probability")

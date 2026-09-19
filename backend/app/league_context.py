@@ -140,9 +140,21 @@ async def get_stat_benchmarks(season: int = config.SEASON) -> dict:
     }
 
 
-async def get_league_context(team_id: int = config.TEAM_ID) -> dict:
-    hitting_splits = await _fetch_league_team_stats("hitting")
-    pitching_splits = await _fetch_league_team_stats("pitching")
+async def fetch_all_team_stats(season: int = config.SEASON) -> dict:
+    """The expensive part of get_league_context (all 30 teams' hitting and
+    pitching splits) split out on its own so it can be fetched once and
+    reused to compute the rank block for whichever team is asked about —
+    a team-profile page for an opponent needs the exact same underlying
+    data as Boston's own "Where Boston Ranks," just re-centered on a
+    different team_id, and shouldn't cost a second fetch to get it."""
+    hitting_splits = await _fetch_league_team_stats("hitting", season)
+    pitching_splits = await _fetch_league_team_stats("pitching", season)
+    return {"hitting": hitting_splits, "pitching": pitching_splits}
+
+
+def compute_league_context(team_id: int, all_team_stats: dict) -> dict:
+    hitting_splits = all_team_stats["hitting"]
+    pitching_splits = all_team_stats["pitching"]
 
     runs_scored: dict[int, float] = {}
     runs_allowed: dict[int, float] = {}
@@ -222,3 +234,14 @@ async def get_league_context(team_id: int = config.TEAM_ID) -> dict:
         "team_k_bb_pct": rank_block(team_k_bb_pct, ascending_is_better=False),
         "run_diff_league_chart": run_diff_league,
     }
+
+
+async def get_league_context(team_id: int = config.TEAM_ID) -> dict:
+    """Back-compat one-shot version — fetches fresh and computes for a
+    single team. Existing Red Sox call sites use this unchanged; a caller
+    that needs more than one team's context (like the team-profile
+    endpoint, which computes Boston's own rank_block already via this same
+    path) should fetch once with fetch_all_team_stats() and call
+    compute_league_context() directly instead, to avoid a second fetch."""
+    all_team_stats = await fetch_all_team_stats()
+    return compute_league_context(team_id, all_team_stats)

@@ -29,6 +29,10 @@ function playerLink(id, name) {
   return id ? `<a href="/player.html?id=${id}" class="player-link">${name}</a>` : name;
 }
 
+function teamLink(id, name) {
+  return id ? `<a href="/team.html?id=${id}" class="player-link">${name}</a>` : name;
+}
+
 async function loadHeroHeadline() {
   const el = document.getElementById("hero-headline");
   if (!el) return;
@@ -60,7 +64,7 @@ async function loadDivisionStandings() {
       const streakCls = t.streak && t.streak.startsWith("W") ? "streak-w" : t.streak && t.streak.startsWith("L") ? "streak-l" : "";
       tr.innerHTML = `
         <td class="num">${t.division_rank}</td>
-        <td class="name">${teamLogo(t.id)}${t.name}</td>
+        <td class="name">${teamLogo(t.id)}${t.is_target ? t.name : teamLink(t.id, t.name)}</td>
         <td class="num">${t.wins}</td>
         <td class="num">${t.losses}</td>
         <td class="num">${t.pct}</td>
@@ -93,7 +97,7 @@ async function loadWildcardStandings() {
       const status = t.clinched ? '<span class="div-badge">CLINCH</span>' : "";
       tr.innerHTML = `
         <td class="num">${t.wildcard_rank}</td>
-        <td class="name">${teamLogo(t.id)}${t.name}${status}</td>
+        <td class="name">${teamLogo(t.id)}${t.is_target ? t.name : teamLink(t.id, t.name)}${status}</td>
         <td class="num">${t.wins}</td>
         <td class="num">${t.losses}</td>
         <td class="num">${t.pct}</td>
@@ -131,7 +135,7 @@ async function loadSeasonSeries() {
       const result = s.wins > s.losses ? "Winning" : s.wins < s.losses ? "Losing" : "Even";
       const resultCls = s.wins > s.losses ? "delta-up" : s.wins < s.losses ? "delta-down" : "";
       tr.innerHTML = `
-        <td class="name">${teamLogo(s.opponent_id)}${s.opponent}</td>
+        <td class="name">${teamLogo(s.opponent_id)}${teamLink(s.opponent_id, s.opponent)}</td>
         <td class="num">${s.wins}</td>
         <td class="num">${s.losses}</td>
         <td class="num ${resultCls}">${result}</td>
@@ -219,7 +223,7 @@ async function loadUpcomingSchedule() {
       const seriesStr = g.season_series ? `${g.season_series.wins}-${g.season_series.losses}` : "—";
       tr.innerHTML = `
         <td>${formatGameDate(g.date)}</td>
-        <td class="name">${teamLogo(g.opponent_id)}${g.opponent}${divBadge}</td>
+        <td class="name">${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}${divBadge}</td>
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td class="num">${recStr}</td>
         <td class="num">${seriesStr}</td>
@@ -418,7 +422,7 @@ function renderGameListDetail(games) {
       return `
         <tr class="${cls}">
           <td>${g.date}</td>
-          <td class="name">${teamLogo(g.opponent_id)}${g.opponent}</td>
+          <td class="name">${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
           <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
           <td class="num">${g.our_score}-${g.their_score}</td>
           <td class="result">${g.won ? "W" : "L"}</td>
@@ -482,7 +486,7 @@ function renderGamesTable(games) {
     const rec = g.record_after ? `${g.record_after.wins}-${g.record_after.losses}` : "-";
     tr.innerHTML = `
       <td>${g.date}</td>
-      <td>${teamLogo(g.opponent_id)}${g.opponent}</td>
+      <td>${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
       <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
       <td>${g.our_score}-${g.their_score}</td>
       <td class="result">${g.won ? "W" : "L"}</td>
@@ -865,7 +869,7 @@ async function loadPlayerHotCold() {
         ${deltaCell(p.form_delta_era, true, p.small_sample)}
         <td class="num adv-col">${r.era ?? "-"}</td>
         <td class="num adv-col ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
-        <td class="num adv-col ${kbbCls}">${s ? pctStr(s.k_bb_pct) : "-"}</td>
+        <td class="num adv-col ${kbbCls}">${s ? fmtPct1(s.k_bb_pct) : "-"}</td>
         <td class="num adv-col ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
         <td class="num adv-col ${lobCls}">${s ? pctStr(s.lob_pct) : "-"}</td>
       `;
@@ -1020,7 +1024,7 @@ async function loadFullRoster() {
         <td>${p.role}</td>
         <td class="num">${s.era ?? "-"}</td>
         <td class="num">${s.fip ?? "-"}</td>
-        <td class="num">${pctStr(s.k_bb_pct)}</td>
+        <td class="num">${fmtPct1(s.k_bb_pct)}</td>
         <td class="num">${s.ip_display ?? "-"}</td>
       `;
       pitchersBody.appendChild(tr);
