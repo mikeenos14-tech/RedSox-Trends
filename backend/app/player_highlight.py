@@ -144,6 +144,7 @@ KNOWN_NICKNAMES: dict[int, str] = {
     624133: "The Cooler",  # his agent Scott Boras's nickname for him, highlighting his composure and consistency on the mound
     643396: "Hawaiian Hustle",  # tied to his Honolulu, HI birthplace and his all-out style of play
     701350: "Roman Empire",  # obvious pun on his first name, used since his 2025 MLB debut
+    680776: "Captain Chaos",  # per teammate Will Middlebrooks, for the havoc Duran causes on the basepaths (NESN)
 }
 
 
