@@ -25,6 +25,18 @@ LEAGUE_AVG_BABIP = 0.300
 MIN_RECENT_PA = 20
 MIN_RECENT_IP = 5.0
 
+# A season-long baseline this small isn't a meaningful comparison point on
+# its own — for a bench player with, say, 20 games played all year, the
+# "last 15 games" window IS almost their entire season, so recent vs.
+# season is really just comparing an average to a number mostly made of
+# itself. Any random good or bad stretch within that short career-to-date
+# then reads as a big relative "hot" or "cold" delta even though it's not
+# actually a meaningful signal — this is what requiring MIN_RECENT_PA alone
+# missed. Requiring a real season track record too (not just a real recent
+# one) filters those cases out without touching the recent-window logic.
+MIN_SEASON_PA = 75
+MIN_SEASON_IP = 15.0
+
 # A player whose last qualifying game is older than this isn't "recently
 # hot or cold" in any meaningful sense, regardless of what their last 15
 # games (whenever they were) looked like.
@@ -290,7 +302,9 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
             season_hit = _first_split(person, "season", "hitting")
             recent_metrics = _hitting_metrics(_sum_hitting_games(recent_hit_games))
             season_metrics = _hitting_metrics(season_hit) if season_hit else None
-            enough_sample = (recent_metrics["pa"] or 0) >= MIN_RECENT_PA
+            enough_sample = (recent_metrics["pa"] or 0) >= MIN_RECENT_PA and (
+                season_metrics is not None and (season_metrics["pa"] or 0) >= MIN_SEASON_PA
+            )
             hitters.append(
                 {
                     "id": pid,
@@ -318,7 +332,9 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
             season_pitch = _first_split(person, "season", "pitching")
             recent_metrics = _pitching_metrics(_sum_pitching_games(recent_pitch_games))
             season_metrics = _pitching_metrics(season_pitch) if season_pitch else None
-            enough_sample = (recent_metrics["ip"] or 0) >= MIN_RECENT_IP
+            enough_sample = (recent_metrics["ip"] or 0) >= MIN_RECENT_IP and (
+                season_metrics is not None and (season_metrics["ip"] or 0) >= MIN_SEASON_IP
+            )
             games = (season_pitch or {}).get("gamesPitched") or len(recent_pitch_games)
             starts = (season_pitch or {}).get("gamesStarted") or 0
             pitchers.append(
