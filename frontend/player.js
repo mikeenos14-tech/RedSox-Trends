@@ -101,6 +101,25 @@ function renderStatcast(p) {
     .join("");
 }
 
+function renderStatcastExplorer(p) {
+  const explorer = document.getElementById("player-statcast-explorer");
+  const picker = document.getElementById("player-statcast-picker");
+  const result = document.getElementById("player-statcast-picked-result");
+  const extra = p.statcast_extra;
+  if (!extra || !Object.keys(extra).length) return;
+
+  explorer.hidden = false;
+  const labels = Object.keys(extra);
+  picker.innerHTML = labels.map((label) => `<option value="${label}">${label}</option>`).join("");
+
+  const renderPicked = (label) => {
+    result.innerHTML = statcastMetricRow(label, { percentile: extra[label], value: null });
+  };
+
+  picker.addEventListener("change", (e) => renderPicked(e.target.value));
+  renderPicked(labels[0]);
+}
+
 function renderSplits(p) {
   const yearEl = document.getElementById("player-splits-year");
   const head = document.getElementById("player-splits-head");
@@ -183,6 +202,7 @@ async function loadPlayerProfile() {
     renderSeasonStats(p);
     renderCareerStats(p);
     renderStatcast(p);
+    renderStatcastExplorer(p);
     renderSplits(p);
     renderGameLog(p);
   } catch (e) {
@@ -199,3 +219,4 @@ loadSummary()
 loadPlayerProfile();
 initSortableTable("player-splits-table");
 initSortableTable("player-gamelog-table");
+wireBackLink(".player-back-link");

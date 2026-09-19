@@ -80,6 +80,7 @@ async def get_player_profile(person_id: int) -> dict | None:
         game_log, splits, league_data = await asyncio.gather(game_log_task, splits_task, league_data_task)
 
     statcast_profile = statcast.get_player_comparison_data(person_id, player_type, league_data)
+    statcast_extra = statcast.get_player_extra_stats(person_id, player_type, league_data)
 
     bat_side = (bio.get("batSide") or {}).get("description")
     pitch_hand = (bio.get("pitchHand") or {}).get("description")
@@ -121,4 +122,5 @@ async def get_player_profile(person_id: int) -> dict | None:
         "game_log": game_log_display,
         "splits": splits,
         "statcast": statcast_profile,
+        "statcast_extra": statcast_extra,
     }

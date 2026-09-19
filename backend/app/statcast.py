@@ -64,6 +64,59 @@ PITCHER_LEADER_STATS = [
 FLAGSHIP_HITTER_LEADER_LABELS = ["xwOBA", "Barrel%"]
 FLAGSHIP_PITCHER_LEADER_LABELS = ["xERA", "Fastball Velo"]
 
+# Every metric on a player's page beyond the flagship few above, for the
+# "explore any Statcast metric" picker — no raw value/formatter needed since
+# these aren't fetched from the custom leaderboard (that's a separate,
+# unverified field-name mapping per stat, not worth fetching for a picker
+# that's mostly used a few times per visit); the percentile alone, which
+# comes free with the same percentile-rankings fetch every other Statcast
+# feature already uses, is what answers "how good is this, relatively."
+# Deliberately excludes bat-tracking (swing_speed, swing_length,
+# squared_up_swing, vertical_swing_path, attack_angle) and pitch-design
+# internals (cu_spin, fastball_spin, fastball_extension) — real Statcast
+# fields, but not something a casual dropdown label can explain on its own.
+HITTER_EXTRA_STATS = [
+    ("percent_rank_ba", "AVG"),
+    ("percent_rank_obp", "OBP"),
+    ("percent_rank_slg", "SLG"),
+    ("percent_rank_woba", "wOBA"),
+    ("percent_rank_iso", "ISO"),
+    ("percent_rank_babip", "BABIP"),
+    ("percent_rank_bb_percent", "Walk%"),
+    ("percent_rank_k_percent", "Strikeout%"),
+    ("percent_rank_chase_percent", "Chase%"),
+    ("percent_rank_xba", "xBA"),
+    ("percent_rank_xslg", "xSLG"),
+    ("percent_rank_xobp", "xOBP"),
+    ("percent_rank_xiso", "xISO"),
+    ("percent_rank_exit_velocity_max", "Max Exit Velo"),
+    ("percent_rank_launch_angle_avg", "Avg Launch Angle"),
+    ("percent_rank_oaa", "Outs Above Average"),
+    ("percent_rank_jump", "First-Step Jump"),
+    ("percent_rank_arm_overall", "Arm Strength"),
+    ("percent_rank_arm_max", "Max Arm Strength"),
+    ("percent_rank_pop_2b", "Pop Time to 2B"),
+    ("percent_rank_framing", "Framing"),
+]
+
+PITCHER_EXTRA_STATS = [
+    ("percent_rank_ba", "AVG Against"),
+    ("percent_rank_obp", "OBP Against"),
+    ("percent_rank_slg", "SLG Against"),
+    ("percent_rank_woba", "wOBA Against"),
+    ("percent_rank_iso", "ISO Against"),
+    ("percent_rank_babip", "BABIP Against"),
+    ("percent_rank_bb_percent", "Walk%"),
+    ("percent_rank_chase_percent", "Chase%"),
+    ("percent_rank_xba", "xBA Against"),
+    ("percent_rank_xslg", "xSLG Against"),
+    ("percent_rank_xobp", "xOBP Against"),
+    ("percent_rank_xiso", "xISO Against"),
+    ("percent_rank_exit_velocity_max", "Max Exit Velo Allowed"),
+    ("percent_rank_barrel_batted_rate", "Barrel% Allowed"),
+    ("percent_rank_oaa", "Outs Above Average"),
+]
+
 
 async def fetch_percentile_rankings(player_type: str) -> list[dict]:
     async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
@@ -323,3 +376,21 @@ def get_player_comparison_data(player_id: int, player_type: str, league_data: di
         "type": player_type,
         "stats": stats,
     }
+
+
+def get_player_extra_stats(player_id: int, player_type: str, league_data: dict) -> dict:
+    """Every Statcast metric beyond the flagship few, for a player's 'explore
+    another metric' picker — percentile only (see HITTER_EXTRA_STATS), and
+    only the ones actually populated for this specific player (a corner
+    outfielder simply won't have Pop Time to 2B, a pitcher won't have most
+    hitting metrics — this filters naturally rather than needing to know
+    each metric's real-world applicability in advance)."""
+    extra_defs = HITTER_EXTRA_STATS if player_type == "hitter" else PITCHER_EXTRA_STATS
+    percentile_rows = league_data["percentile_batters"] if player_type == "hitter" else league_data["percentile_pitchers"]
+
+    pid = str(player_id)
+    row = next((r for r in percentile_rows if r.get("player_id") == pid), None)
+    if row is None:
+        return {}
+
+    return {label: int(row[field]) for field, label in extra_defs if row.get(field) is not None}
