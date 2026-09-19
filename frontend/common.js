@@ -909,6 +909,24 @@ function sortTableByColumn(table, colIndex, th) {
   rows.forEach((r) => tbody.appendChild(r));
 }
 
+// A drill-down page's "back" link is a fixed href by default (e.g. always
+// "/players.html"), which loses the actual tab someone drilled in from —
+// clicking a team from Games should return to Games, not always jump to
+// League. When the visit genuinely came from elsewhere on this same site,
+// history.back() returns to that exact page/scroll position; the href
+// itself stays as a sane fallback for a direct link, bookmark, or new tab
+// where there's no real "back" to go to.
+function wireBackLink(selector) {
+  const link = document.querySelector(selector);
+  if (!link) return;
+  const cameFromThisSite = document.referrer && new URL(document.referrer).origin === location.origin;
+  if (!cameFromThisSite) return;
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    history.back();
+  });
+}
+
 function initSortableTable(tableId) {
   const table = document.getElementById(tableId);
   if (!table || table.dataset.sortableInit) return;
@@ -1266,14 +1284,14 @@ function statcastCard(player) {
 }
 
 function statcastSnapshotCards(snapshot) {
-  const cards = [];
+  const rows = [];
   Object.entries(snapshot.hitters || {}).forEach(([label, pct]) => {
-    cards.push(card(`${label} (Hitters)`, `${ordinal(pct)} pctl`));
+    rows.push(statcastMetricRow(`${label} (Hitters)`, { percentile: pct, value: null }));
   });
   Object.entries(snapshot.pitchers || {}).forEach(([label, pct]) => {
-    cards.push(card(`${label} (Pitchers)`, `${ordinal(pct)} pctl`));
+    rows.push(statcastMetricRow(`${label} (Pitchers)`, { percentile: pct, value: null }));
   });
-  return cards;
+  return rows.map((row) => `<div class="card statcast-snapshot-card">${row}</div>`);
 }
 
 function leaderboardBlock(label, entries) {
@@ -1348,8 +1366,7 @@ async function loadStatcast() {
     if (!res.ok) throw new Error("Failed to load Statcast data");
     const data = await res.json();
 
-    snapshotEl.innerHTML = "";
-    snapshotEl.append(...statcastSnapshotCards(data.team_snapshot || {}));
+    snapshotEl.innerHTML = statcastSnapshotCards(data.team_snapshot || {}).join("");
 
     hittersEl.innerHTML = data.hitters.length
       ? data.hitters.map(statcastCard).join("")

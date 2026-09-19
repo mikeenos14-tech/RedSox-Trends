@@ -937,6 +937,8 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
 .statcast-metric { margin-bottom: 0.7rem; }
 .statcast-metric:last-child { margin-bottom: 0; }
 
+.statcast-snapshot-card .statcast-metric { margin-bottom: 0; }
+
 .statcast-metric-label {
   display: flex;
   justify-content: space-between;

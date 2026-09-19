@@ -142,3 +142,4 @@ loadSummary()
 loadTeamProfile();
 initSortableTable("team-hitters-table");
 initSortableTable("team-pitchers-table");
+wireBackLink(".player-back-link");
