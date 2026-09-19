@@ -14,5 +14,4 @@ loadLastGameRecap();
 loadGameSignificance();
 loadUpcomingSchedule();
 loadSeasonSeries();
-loadBullpen();
 loadLiveGame();

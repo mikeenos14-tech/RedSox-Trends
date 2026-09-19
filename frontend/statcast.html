@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Fenway Almanac — Statcast</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://midfield.mlbstatic.com/v1/team/111/spots/180" />
+  <meta name="apple-mobile-web-app-title" content="Fenway Almanac" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d2b56" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="page-statcast">
+  <div class="top-bunting"></div>
+  <div class="wall-edge left"></div>
+  <div class="wall-edge right"></div>
+  <header>
+    <div class="header-brand">
+      <img src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo" class="team-logo" />
+      <div>
+        <h1>The <span class="accent-green">Fenway</span> <span class="accent">Almanac</span></h1>
+        <p class="header-tagline">Boston Red Sox Season Trends &amp; Analytics</p>
+      </div>
+    </div>
+    <p id="record-line" class="subtitle">Loading…</p>
+  </header>
+
+  <nav class="site-nav">
+    <a href="/">Home<span class="nav-live-dot" hidden></span></a>
+    <a href="/league.html">League</a>
+    <a href="/players.html">Players</a>
+    <a href="/statcast.html" class="active">Statcast</a>
+    <a href="/games.html">Games</a>
+  </nav>
+
+  <main>
+    <section class="statcast-section" id="statcast">
+      <h2>Statcast Deep Dive <span class="section-sub">Red Sox vs. the league</span></h2>
+      <div id="statcast-notes-text" class="recap-text muted">
+        <div class="skeleton skeleton-line long"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
+
+      <div class="cards" id="statcast-snapshot">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
+
+      <details class="expand-section" id="statcast-full-report">
+        <summary>Show full scouting report</summary>
+
+        <div class="tab-group" id="statcast-tabs">
+          <div class="tab-switcher">
+            <button class="tab-btn active" data-tab="hitters">Hitters</button>
+            <button class="tab-btn" data-tab="pitchers">Pitchers</button>
+          </div>
+
+          <div data-tab-panel="hitters">
+            <div class="statcast-grid" id="statcast-hitters-grid">
+              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+            </div>
+          </div>
+          <div data-tab-panel="pitchers" hidden>
+            <div class="statcast-grid" id="statcast-pitchers-grid"></div>
+          </div>
+        </div>
+
+        <h3>League Leaders</h3>
+        <div class="leaderboard-grid" id="statcast-leaders"></div>
+
+        <div class="leaderboard-explorer">
+          <label for="leaderboard-picker">Explore another leaderboard</label>
+          <select id="leaderboard-picker"></select>
+          <div class="leaderboard-grid" id="leaderboard-explorer-result"></div>
+        </div>
+
+        <p class="muted small-note">
+          Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
+        </p>
+      </details>
+    </section>
+
+    <section class="compare-section" id="compare">
+      <h2>Player Comparison Tool <span class="section-sub">Statcast tale of the tape</span></h2>
+      <p class="muted small-note">Search any 2026 qualified hitter or pitcher — not just Red Sox — and compare their Statcast profiles side by side. Works best comparing two hitters or two pitchers, since that's where the same metrics apply to both.</p>
+
+      <div class="compare-pickers">
+        <div class="compare-picker">
+          <input type="text" id="compare-search-a" placeholder="Search a player…" autocomplete="off" />
+          <div class="compare-results" id="compare-results-a" hidden></div>
+          <div class="compare-selected" id="compare-selected-a"></div>
+        </div>
+        <div class="compare-vs">VS</div>
+        <div class="compare-picker">
+          <input type="text" id="compare-search-b" placeholder="Search a player…" autocomplete="off" />
+          <div class="compare-results" id="compare-results-b" hidden></div>
+          <div class="compare-selected" id="compare-selected-b"></div>
+        </div>
+      </div>
+
+      <div id="compare-tape"></div>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="statcast.js"></script>
+</body>
+</html>

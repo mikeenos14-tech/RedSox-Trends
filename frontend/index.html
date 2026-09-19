@@ -37,6 +37,7 @@
     <a href="/" class="active">Home<span class="nav-live-dot" hidden></span></a>
     <a href="/league.html">League</a>
     <a href="/players.html">Players</a>
+    <a href="/statcast.html">Statcast</a>
     <a href="/games.html">Games</a>
   </nav>
 
@@ -181,40 +182,21 @@
       <p class="muted small-note">Division games (vs. Yankees, Rays, Blue Jays, Orioles) are highlighted — they swing the standings twice as hard, since a win both helps Boston and costs a direct competitor. Probable pitchers are usually only announced a few days out.</p>
     </section>
 
-    <div class="two-col-row">
-      <section class="series-section">
-        <h2>Season Series Tracker <span class="section-sub">every opponent faced this year</span></h2>
-        <div class="table-scroll">
-          <table id="series-table" class="stat-table">
-            <thead>
-              <tr><th>Opponent</th><th>W</th><th>L</th><th>Result</th></tr>
-            </thead>
-            <tbody>
-              <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
-              <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
-              <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="bullpen-section">
-        <h2>Bullpen Availability <span class="section-sub">last 5 days</span></h2>
-        <div class="table-scroll">
-          <table id="bullpen-table" class="stat-table">
-            <thead>
-              <tr><th>Pitcher</th><th>Last Pitched</th><th>Rest</th><th>Last Outing</th><th>L3D</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
-              <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
-              <tr class="skeleton-row"><td colspan="6"><span class="skeleton"></span></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="muted small-note">A simple heuristic, not official — MLB doesn't publish this. Flags anyone who pitched today/yesterday or 3x in 3 days as unlikely available.</p>
-      </section>
-    </div>
+    <section class="series-section">
+      <h2>Season Series Tracker <span class="section-sub">every opponent faced this year</span></h2>
+      <div class="table-scroll">
+        <table id="series-table" class="stat-table">
+          <thead>
+            <tr><th>Opponent</th><th>W</th><th>L</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+            <tr class="skeleton-row"><td colspan="4"><span class="skeleton"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <script src="common.js"></script>

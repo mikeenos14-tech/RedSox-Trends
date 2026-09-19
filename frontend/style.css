@@ -199,12 +199,13 @@ header h1 {
 .page-league .site-nav a.active:hover { background: var(--navy); }
 .page-players .site-nav a.active,
 .page-players .site-nav a.active:hover { background: var(--monster-green); }
+.page-statcast .site-nav a.active,
+.page-statcast .site-nav a.active:hover { background: var(--statcast-cold); }
 .page-games .site-nav a.active,
 .page-games .site-nav a.active:hover { background: var(--warn); }
 
 .page-home .standings-section,
 .page-home .series-section,
-.page-home .bullpen-section,
 .page-home .upcoming-section {
   border-top: 4px solid var(--red);
 }
@@ -219,10 +220,21 @@ header h1 {
   border-top: 4px solid var(--monster-green);
 }
 .page-players .statcast-section {
+  /* player.html's own embedded "Statcast Profile" widget shares this
+     class with the Statcast page's section — it stays green here since
+     that page is still themed as part of Players, not the Statcast tab. */
   border-top-color: var(--monster-green);
 }
 
-.page-games .games-section {
+.page-statcast .statcast-section {
+  border-top: 4px solid var(--statcast-cold);
+}
+.page-statcast .compare-section {
+  border-top-color: var(--statcast-cold);
+}
+
+.page-games .games-section,
+.page-games .bullpen-section {
   border-top: 4px solid var(--warn);
 }
 .page-games .highlight-section {

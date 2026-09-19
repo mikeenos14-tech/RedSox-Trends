@@ -8,3 +8,4 @@ loadSummary()
   });
 
 loadOnThisDay();
+loadBullpen();
