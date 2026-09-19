@@ -280,7 +280,7 @@ async def team_last_game_significance():
         narration = None
         if report["findings"]:
             try:
-                narration = ai_recap.generate_significance_narration(report["findings"])
+                narration = await ai_recap.generate_significance_narration(report["findings"])
             except RuntimeError as exc:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -314,7 +314,7 @@ async def team_hero_headline():
 
         summary = await _build_summary()
         try:
-            headline = ai_recap.generate_headline(summary)
+            headline = await ai_recap.generate_headline(summary)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -337,7 +337,7 @@ async def team_analysis():
 
     async def compute():
         try:
-            return ai_recap.generate_team_analysis(summary)
+            return await ai_recap.generate_team_analysis(summary)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -362,7 +362,7 @@ async def team_headlines_summary():
 
     async def compute():
         try:
-            return ai_recap.generate_headlines_summary(headlines)
+            return await ai_recap.generate_headlines_summary(headlines)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -387,7 +387,7 @@ async def players_notes():
 
     async def compute():
         try:
-            return ai_recap.generate_player_notes(slim_report)
+            return await ai_recap.generate_player_notes(slim_report)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -408,7 +408,7 @@ async def players_highlight():
 
         bio = await player_highlight.get_daily_highlight()
         try:
-            narrative = ai_recap.generate_player_highlight(bio)
+            narrative = await ai_recap.generate_player_highlight(bio)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -498,7 +498,7 @@ async def players_statcast_notes():
 
         report = await _get_statcast_report_cached()
         try:
-            notes = ai_recap.generate_statcast_notes(report)
+            notes = await ai_recap.generate_statcast_notes(report)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -522,7 +522,7 @@ async def team_on_this_day():
             result = {"game": None}
         else:
             try:
-                blurb = ai_recap.generate_on_this_day_blurb(game)
+                blurb = await ai_recap.generate_on_this_day_blurb(game)
             except RuntimeError as exc:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
             result = {"game": {**game, "blurb": blurb}}
@@ -549,7 +549,7 @@ async def team_last_game_recap():
             return cached
 
         try:
-            narrative = ai_recap.generate_game_recap(data)
+            narrative = await ai_recap.generate_game_recap(data)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
