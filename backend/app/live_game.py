@@ -60,6 +60,19 @@ async def get_live_game(team_id: int = config.TEAM_ID) -> dict | None:
     # itself — linescore.offense only has the batter/on-deck/in-hole/pitcher.
     current_matchup = feed["liveData"]["plays"].get("currentPlay", {}).get("matchup", {})
 
+    all_plays = feed["liveData"]["plays"].get("allPlays", [])
+    scoring_plays = [
+        {
+            "inning": p["about"]["inning"],
+            "half": p["about"]["halfInning"],
+            "description": p["result"]["description"],
+            "us_score": p["result"]["homeScore"] if is_home else p["result"]["awayScore"],
+            "them_score": p["result"]["awayScore"] if is_home else p["result"]["homeScore"],
+        }
+        for p in all_plays
+        if p.get("about", {}).get("isScoringPlay")
+    ]
+
     return {
         "game_pk": game_pk,
         "opponent": them_team["name"],
@@ -83,4 +96,5 @@ async def get_live_game(team_id: int = config.TEAM_ID) -> dict | None:
         "last_play": (
             feed["liveData"]["plays"].get("currentPlay", {}).get("result", {}).get("description")
         ),
+        "scoring_plays": scoring_plays,
     }

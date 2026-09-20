@@ -1436,6 +1436,25 @@ async function loadLiveGame() {
     document.getElementById("live-batter").textContent = g.batter || "";
     document.getElementById("live-last-play").textContent = g.last_play || "";
 
+    const scoringSection = document.getElementById("live-scoring-plays");
+    const scoringList = document.getElementById("live-scoring-plays-list");
+    if (g.scoring_plays && g.scoring_plays.length) {
+      scoringSection.hidden = false;
+      scoringList.innerHTML = g.scoring_plays
+        .map(
+          (p) => `
+          <li>
+            <span class="live-scoring-play-inning">${p.half === "top" ? "Top" : "Bot"} ${ordinal(p.inning)}</span>
+            <span class="live-scoring-play-desc">${p.description}</span>
+            <span class="live-scoring-play-score">${p.us_score}-${p.them_score}</span>
+          </li>
+        `
+        )
+        .join("");
+    } else {
+      scoringSection.hidden = true;
+    }
+
     // The pitcher is always on defense and the batter always on offense, so
     // whichever side is "us" flips every half-inning — label each side by
     // team so it's clear who's who, not just what role they're playing.

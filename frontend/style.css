@@ -1505,6 +1505,43 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
   font-style: italic;
 }
 
+.live-scoring-plays {
+  margin-top: 1rem;
+}
+.live-scoring-plays > summary {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: white;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+#live-scoring-plays-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#live-scoring-plays-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.82rem;
+}
+#live-scoring-plays-list li:first-child { border-top: none; }
+.live-scoring-play-inning {
+  color: #c9d4e6;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 3.5rem;
+}
+.live-scoring-play-desc { flex: 1; color: white; }
+.live-scoring-play-score {
+  color: white;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
 /* On a real desktop-width screen, stacking score / situation / matchup
    vertically leaves the wide card mostly empty — a broadcast score bug is
    a horizontal strip, so lay the three blocks out side by side once
