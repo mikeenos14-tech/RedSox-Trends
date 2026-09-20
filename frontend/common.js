@@ -1109,6 +1109,26 @@ function buildPerformerList(title, performers, isUs = false) {
   return `<div class="performer-block"><h4>${title}</h4><ul class="performer-list">${items}</ul></div>`;
 }
 
+// Plain templated text from the same deterministic box-score facts as the
+// recap below it — no AI call, so it costs nothing and can never drift from
+// the actual score. Stays exactly the same until the next game finishes,
+// since it's driven by the same game_pk-cached data the recap itself uses.
+function renderResultBanner(g) {
+  const banner = document.getElementById("result-banner");
+  if (!banner || !g) return;
+
+  const oppShort = g.opponent.split(" ").pop();
+  const winScore = Math.max(g.our_score, g.their_score);
+  const loseScore = Math.min(g.our_score, g.their_score);
+
+  banner.hidden = false;
+  banner.className = `result-banner ${g.won ? "result-win" : "result-loss"}`;
+  document.getElementById("result-banner-badge").textContent = g.won ? "W" : "L";
+  document.getElementById("result-banner-text").textContent = g.won
+    ? `Red Sox top the ${oppShort}, ${winScore}-${loseScore}`
+    : `Red Sox fall to the ${oppShort}, ${winScore}-${loseScore}`;
+}
+
 async function loadLastGameRecap() {
   const container = document.getElementById("last-game-body");
   try {
@@ -1119,6 +1139,8 @@ async function loadLastGameRecap() {
     }
     const data = await res.json();
     const g = data.game;
+
+    renderResultBanner(g);
 
     if (!g) {
       container.innerHTML = `<p class="muted">No completed game found yet this season.</p>`;
