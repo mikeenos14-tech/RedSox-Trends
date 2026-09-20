@@ -87,7 +87,12 @@ ANALYSIS_SYSTEM_PROMPT = (
 async def generate_team_analysis(trends_summary: dict) -> str:
     message = await _create_message(
         model=MODEL,
-        max_tokens=1500,
+        # Seen this hit the ceiling in production once (966 chars of visible
+        # text but stop_reason=max_tokens — token budget burned on something
+        # other than the 4 bullets themselves, not just a longer-than-usual
+        # answer). Raising the cap costs nothing since billing is by tokens
+        # actually generated, not the ceiling.
+        max_tokens=2500,
         system=ANALYSIS_SYSTEM_PROMPT,
         messages=[
             {
@@ -239,7 +244,10 @@ PLAYER_HIGHLIGHT_SYSTEM_PROMPT = (
 async def generate_player_highlight(bio: dict) -> str:
     message = await _create_message(
         model=MODEL,
-        max_tokens=1500,
+        # Same headroom bump as generate_team_analysis, for the same reason —
+        # comparable output length (three paragraphs vs. four bullets) on the
+        # same 1500 ceiling that's already been seen to run out once.
+        max_tokens=2500,
         system=PLAYER_HIGHLIGHT_SYSTEM_PROMPT,
         messages=[
             {
