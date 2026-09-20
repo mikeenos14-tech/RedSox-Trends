@@ -1,5 +1,4 @@
 import json
-import re
 
 import anthropic
 from anthropic import AsyncAnthropic
@@ -7,20 +6,6 @@ from anthropic import AsyncAnthropic
 from . import config
 
 MODEL = "claude-sonnet-5"
-
-_LEADING_NON_WORD_RE = re.compile(r"^[^\w]+", re.UNICODE)
-
-
-def _ensure_baseball_emoji(text: str) -> str:
-    """Belt-and-suspenders on top of the prompt instruction: guarantee the
-    headline always leads with the baseball emoji, regardless of whether
-    the model actually followed instructions this time."""
-    text = text.strip()
-    if text.startswith("⚾"):
-        return text
-    stripped = _LEADING_NON_WORD_RE.sub("", text).lstrip()
-    return f"⚾ {stripped}"
-
 
 def _client() -> AsyncAnthropic:
     if not config.ANTHROPIC_API_KEY:
@@ -57,49 +42,6 @@ def _extract_text(message) -> str:
             "a larger max_tokens budget."
         )
     return text
-
-
-HEADLINE_SYSTEM_PROMPT = (
-    "You are a die-hard, lifelong Boston Red Sox fan with a sharp sense of humor, "
-    "writing a single punchy headline for the top of a Red Sox analytics dashboard "
-    "— think a smart, funny tweet from a fan who lives and dies with this team, "
-    "not a dry newspaper headline. Given structured team trend data as JSON, "
-    "distill the single most interesting or surprising storyline right now — a hot "
-    "streak, a stat that contradicts the record, an elite/weak ranking, a luck "
-    "indicator — into ONE sentence, under 22 words. Wit is welcome when it fits "
-    "naturally, but never at the cost of the actual number or fact — a flat, "
-    "accurate sentence always beats a funny, fuzzy one. ALWAYS lead with exactly "
-    "one baseball emoji (⚾) — never substitute a different emoji, no matter "
-    "how fitting it seems. Be specific and cite a number. No hashtags, no "
-    "quotation marks, plain text only. Return only the sentence, nothing else.\n\n"
-    "PLAYOFF STAKES — get this right, it's the easiest thing to get wrong: "
-    "the `playoff_context` field is the ONLY authoritative source for whether "
-    "this team has something to play for. `games_back` is division standing "
-    "only — a team can be far back in its division while comfortably holding "
-    "a Wild Card spot, which is a completely different story. Never say "
-    "'nothing to play for', 'eliminated', 'spoiler mode', 'out of it', or "
-    "similar UNLESS `playoff_context.summary` explicitly says so (elimination "
-    "or a large negative wildcard deficit). If `currently_holds_wildcard_spot` "
-    "is true, that team is actively fighting to STAY IN a playoff spot — frame "
-    "it that way, not as also-rans. Write in natural prose — never name a JSON "
-    "field or key (e.g. don't write 'the playoff_context shows'), just state "
-    "the fact."
-)
-
-
-async def generate_headline(trends_summary: dict) -> str:
-    message = await _create_message(
-        model=MODEL,
-        max_tokens=600,
-        system=HEADLINE_SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Trend data:\n{json.dumps(trends_summary, indent=2)}",
-            }
-        ],
-    )
-    return _ensure_baseball_emoji(_extract_text(message))
 
 
 ANALYSIS_SYSTEM_PROMPT = (
@@ -193,38 +135,6 @@ async def generate_player_notes(player_report: dict) -> str:
     )
     return _extract_text(message)
 
-
-HEADLINES_SYSTEM_PROMPT = (
-    "You are a die-hard, lifelong Boston Red Sox fan catching another fan up on "
-    "recent sports-media coverage of the team, since they don't have time to read "
-    "every article themselves. Given a JSON list of recent headlines (title, "
-    "source, date), write 3-5 bullet points capturing the main storylines and "
-    "what commentators/analysts seem to be saying or debating right now — in a "
-    "genuine fan's voice, with a little personality, not a wire-service recap. "
-    "Infer themes from the headlines themselves — don't invent specifics that "
-    "aren't implied by the titles. Each bullet should start with '- '. No intro "
-    "or outro text, just the bullets."
-)
-
-
-async def generate_headlines_summary(headlines: list[dict]) -> str:
-    if not headlines:
-        return "- No recent headlines found in the last few days."
-
-    slim = [{"title": h["title"], "source": h["source"]} for h in headlines]
-
-    message = await _create_message(
-        model=MODEL,
-        max_tokens=600,
-        system=HEADLINES_SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Recent headlines:\n{json.dumps(slim, indent=2)}",
-            }
-        ],
-    )
-    return _extract_text(message)
 
 
 SIGNIFICANCE_SYSTEM_PROMPT = (
@@ -400,37 +310,6 @@ async def generate_statcast_notes(report: dict) -> str:
     )
     return _extract_text(message)
 
-
-ON_THIS_DAY_SYSTEM_PROMPT = (
-    "You are a die-hard, lifelong Boston Red Sox fan writing a short 'On This "
-    "Day in Red Sox History' flashback blurb for a fan website. Given verified "
-    "box score data as JSON for a specific real Red Sox game (year, opponent, "
-    "final score, decisions, top batting performances on both sides), write "
-    "2-3 sentences in a warm, nostalgic, genuinely fan-voiced tone that brings "
-    "the game to life using ONLY the facts given — final score, standout "
-    "performances, who pitched. A touch of humor is fine if it fits naturally. "
-    "You do not have any information beyond what's in the JSON: never invent "
-    "broader context like why the game mattered, a pennant race, a player's "
-    "later career, or any detail not present in the data. If you don't have "
-    "enough to say something specific and true, keep it simple and let the "
-    "real box score numbers carry the sentence rather than adding unsupported "
-    "color. No headers, no bullet points, just the blurb itself."
-)
-
-
-async def generate_on_this_day_blurb(game_data: dict) -> str:
-    message = await _create_message(
-        model=MODEL,
-        max_tokens=500,
-        system=ON_THIS_DAY_SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Historical game data:\n{json.dumps(game_data, indent=2)}",
-            }
-        ],
-    )
-    return _extract_text(message)
 
 
 async def generate_game_recap(game_data: dict) -> str:

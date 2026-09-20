@@ -33,23 +33,6 @@ function teamLink(id, name) {
   return id ? `<a href="/team.html?id=${id}" class="player-link">${name}</a>` : name;
 }
 
-async function loadHeroHeadline() {
-  const el = document.getElementById("hero-headline");
-  if (!el) return;
-  try {
-    const res = await fetch("/api/team/hero-headline");
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Failed to load headline");
-    }
-    const data = await res.json();
-    el.textContent = data.headline;
-  } catch (e) {
-    el.textContent = "";
-    el.style.display = "none";
-  }
-}
-
 async function loadDivisionStandings() {
   const tbody = document.querySelector("#standings-table tbody");
   try {
@@ -284,7 +267,6 @@ async function loadOnThisDay() {
         ${buildPerformerList("Red Sox", g.top_performers.us)}
         ${buildPerformerList(oppShort, g.top_performers.them)}
       </div>
-      <div class="game-recap-narrative"><div class="ai-badge">✨ AI-written</div><p>${g.blurb}</p></div>
     `;
   } catch (e) {
     container.innerHTML = `<p class="muted">Couldn't load On This Day: ${e.message}</p>`;
@@ -703,22 +685,6 @@ async function loadHeadlines() {
     );
   } catch (e) {
     list.innerHTML = `<li class="muted">Couldn't load headlines: ${e.message}</li>`;
-  }
-}
-
-async function loadHeadlinesSummary() {
-  const textEl = document.getElementById("headlines-summary-text");
-  try {
-    const res = await fetch("/api/team/headlines/summary");
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Failed to summarize coverage");
-    }
-    const data = await res.json();
-    renderBulletText(textEl, data.summary);
-    addAiBadge(textEl);
-  } catch (e) {
-    textEl.textContent = `Couldn't summarize coverage: ${e.message}`;
   }
 }
 

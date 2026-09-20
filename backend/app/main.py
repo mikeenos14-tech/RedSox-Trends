@@ -36,13 +36,10 @@ app = FastAPI(title="The Fenway Almanac")
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
-HEADLINE_CACHE_SECONDS = 3600
-_headline_cache = {"text": None, "generated_at": 0.0}
 _highlight_cache = {"date": None, "data": None}
 _highlight_lock = asyncio.Lock()
 _player_profile_cache: dict[int, dict] = {}
 _player_profile_lock = asyncio.Lock()
-_headline_lock = asyncio.Lock()
 _game_recap_cache = {"game_pk": None, "data": None}
 _game_recap_lock = asyncio.Lock()
 _statcast_cache = {"date": None, "data": None}
@@ -105,8 +102,6 @@ HEAVY_FETCH_CACHE_SECONDS = 1800  # 30 min — see _cached_for
 
 _analysis_cache: dict = {"hash": None, "result": None}
 _analysis_lock = asyncio.Lock()
-_headlines_summary_cache: dict = {"hash": None, "result": None}
-_headlines_summary_lock = asyncio.Lock()
 _player_notes_cache: dict = {"hash": None, "result": None}
 _player_notes_lock = asyncio.Lock()
 _win_prob_cache = {"game_pk": None, "data": None}
@@ -353,30 +348,6 @@ async def team_live_game():
     return {"game": await live_game.get_live_game()}
 
 
-@app.get("/api/team/hero-headline")
-async def team_hero_headline():
-    # Cached for an hour: this is the one AI call that fires automatically
-    # on every page view rather than behind a button, so an uncached version
-    # would mean one paid API call per visit/refresh regardless of whether
-    # the visitor does anything else. The lock prevents a burst of
-    # simultaneous requests right as the cache goes stale from each kicking
-    # off their own redundant (and billed) regeneration.
-    now = time.monotonic()
-    async with _headline_lock:
-        if _headline_cache["text"] is not None and (now - _headline_cache["generated_at"]) < HEADLINE_CACHE_SECONDS:
-            return {"headline": _headline_cache["text"]}
-
-        summary = await _build_summary()
-        try:
-            headline = await ai_recap.generate_headline(summary)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-        _headline_cache["text"] = headline
-        _headline_cache["generated_at"] = now
-        return {"headline": headline}
-
-
 @app.get("/api/team/analysis")
 async def team_analysis():
     # Merged with what used to be the separate "AI Trend Recap" — both took
@@ -405,23 +376,6 @@ async def team_headlines():
     return {"headlines": headlines}
 
 
-@app.get("/api/team/headlines/summary")
-async def team_headlines_summary():
-    headlines = await _get_headlines_cached()
-    # Only the link+title actually determine what the summary should say —
-    # hash those rather than the full list (which also carries publish
-    # timestamps that tick over between requests without the story lineup
-    # itself having changed).
-    fingerprint = [{"title": h["title"], "source": h["source"]} for h in headlines]
-
-    async def compute():
-        try:
-            return await ai_recap.generate_headlines_summary(headlines)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    summary = await _cached_by_hash(_headlines_summary_cache, _headlines_summary_lock, fingerprint, compute)
-    return {"summary": summary}
 
 
 @app.get("/api/players/hot-cold")
@@ -564,22 +518,16 @@ async def players_statcast_notes():
 @app.get("/api/team/on-this-day")
 async def team_on_this_day():
     # Cached daily: finding a candidate game means checking every year of
-    # franchise history for today's month/day (~125 small requests), and
-    # the blurb itself is a paid AI call — neither should re-run per visit.
+    # franchise history for today's month/day (~125 small requests) — no
+    # AI cost here, this is a plain box-score lookup, but the search itself
+    # still shouldn't re-run per visit.
     today = player_highlight.eastern_today()
     async with _on_this_day_lock:
         if _on_this_day_cache["date"] == today.isoformat() and _on_this_day_cache["data"] is not None:
             return _on_this_day_cache["data"]
 
         game = await on_this_day.get_on_this_day(today=today)
-        if game is None:
-            result = {"game": None}
-        else:
-            try:
-                blurb = await ai_recap.generate_on_this_day_blurb(game)
-            except RuntimeError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-            result = {"game": {**game, "blurb": blurb}}
+        result = {"game": game}
 
         _on_this_day_cache["date"] = today.isoformat()
         _on_this_day_cache["data"] = result
