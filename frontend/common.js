@@ -367,6 +367,62 @@ function renderNextGame(data) {
   section.hidden = false;
 }
 
+// Offseason Home: once the season is over, a season-in-review card takes
+// the next-game card's place (and the last-game banner steps aside — the
+// review says how the season ended). Hidden the rest of the year.
+async function loadSeasonReview() {
+  const section = document.getElementById("season-review");
+  if (!section) return;
+  try {
+    const res = await fetch("/api/team/season-review");
+    if (!res.ok) return;
+    const r = await res.json();
+    if (!r.season_over) return;
+
+    const rank = (b) => (b ? `${fmtInt(b.value)} <span class="season-review-rank">${ordinal(b.rank)} of ${b.of}</span>` : "-");
+    const rd = r.run_differential > 0 ? `+${r.run_differential}` : r.run_differential;
+    const path = (r.postseason_path || [])
+      .map((s) => `<span class="season-review-chip ${s.won ? "won" : s.won === false ? "lost" : ""}">${esc(s.abbreviation)}: ${s.won ? "W" : "L"} ${s.wins}-${s.losses} vs. ${esc(shortTeamName(s.opponent))}</span>`)
+      .join("");
+    const hitters = r.best_seasons.hitters
+      .map((h) => `<li>${playerLink(h.id, esc(h.name))} <span>${h.ops_plus} OPS+ · ${pctStr(h.ops)} OPS · ${h.hr} HR · ${h.pa} PA</span></li>`)
+      .join("");
+    const pitchers = r.best_seasons.pitchers
+      .map((p) => `<li>${playerLink(p.id, esc(p.name))} <span>${p.role} · ${p.era_minus} ERA- · ${fmtEra(p.era)} ERA · ${p.ip} IP</span></li>`)
+      .join("");
+    const ns = r.next_season;
+    const opener = (g) => `${formatGameDate(g.date)} ${g.home_or_away === "home" ? "vs." : "at"} ${esc(shortTeamName(g.opponent, g.opponent_id))}`;
+    const countdown = ns
+      ? `<div class="season-review-countdown">
+           <span class="season-review-days">${ns.days_until_opening_day > 0 ? `${ns.days_until_opening_day} days` : "Today"}</span>
+           <span>until Opening Day ${ns.season}: ${opener(ns.opening_day)}${ns.home_opener && ns.home_opener.date !== ns.opening_day.date ? ` · Fenway opener ${opener(ns.home_opener)}` : ""}</span>
+         </div>`
+      : "";
+
+    section.innerHTML = `
+      <div class="season-review-eyebrow">${r.season} season in review</div>
+      <div class="season-review-headline">${r.record.wins}-${r.record.losses} · ${ordinal(Number(r.division_rank))} in the AL East</div>
+      <p class="season-review-outcome">${esc(r.outcome)}</p>
+      ${path ? `<div class="season-review-path">${path}</div>` : ""}
+      <div class="season-review-stats">
+        <div><span class="label">Run differential</span><span class="value">${rd}</span></div>
+        <div><span class="label">Team OPS+</span><span class="value">${rank(r.team_ops_plus)}</span></div>
+        <div><span class="label">Team ERA-</span><span class="value">${rank(r.team_era_minus)}</span></div>
+      </div>
+      <div class="season-review-best">
+        <div><h3>Best seasons at the plate</h3><ol>${hitters || "<li>—</li>"}</ol></div>
+        <div><h3>Best seasons on the mound</h3><ol>${pitchers || "<li>—</li>"}</ol></div>
+      </div>
+      ${countdown}
+    `;
+    section.hidden = false;
+    document.getElementById("next-game")?.setAttribute("hidden", "");
+    document.getElementById("result-banner")?.classList.add("is-offseason");
+  } catch (e) {
+    // The review is additive; Home works without it.
+  }
+}
+
 async function loadUpcomingSchedule() {
   const cards = document.getElementById("upcoming-cards");
   const tbody = document.querySelector("#upcoming-table tbody");

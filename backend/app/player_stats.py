@@ -173,6 +173,21 @@ def _sum_pitching_games(games: list[dict]) -> dict:
     return totals
 
 
+def _team_split(person: dict, stat_type: str, group: str, team_id: int) -> dict | None:
+    """This player's line *for team_id*. For anyone who changed teams, MLB's
+    first split is the combined multi-team total (team: none, numTeams: 2+),
+    followed by one split per team — taking the first split credited a
+    team with stats compiled elsewhere (e.g. Devers' 2025: 729 PA combined,
+    334 with Boston). None if he hasn't played for this team this season."""
+    for stat_block in person.get("stats", []):
+        if stat_block["type"]["displayName"] == stat_type and stat_block["group"]["displayName"] == group:
+            for split in stat_block.get("splits", []):
+                if (split.get("team") or {}).get("id") == team_id:
+                    return split["stat"]
+            return None
+    return None
+
+
 def _first_split(person: dict, stat_type: str, group: str) -> dict | None:
     for stat_block in person.get("stats", []):
         if stat_block["type"]["displayName"] == stat_type and stat_block["group"]["displayName"] == group:
@@ -434,7 +449,9 @@ async def get_full_roster_report(team_id: int = config.TEAM_ID) -> dict:
         name = person["fullName"]
         is_active = pid in active_ids
 
-        season_hit = _first_split(person, "season", "hitting")
+        # Stats *with this team* — the team-page convention (a deadline
+        # pickup shows what he did here, not his season total elsewhere).
+        season_hit = _team_split(person, "season", "hitting", team_id)
         if season_hit and (season_hit.get("plateAppearances") or 0) > 0:
             hitters.append(
                 {
@@ -447,7 +464,7 @@ async def get_full_roster_report(team_id: int = config.TEAM_ID) -> dict:
                 }
             )
 
-        season_pitch = _first_split(person, "season", "pitching")
+        season_pitch = _team_split(person, "season", "pitching", team_id)
         if season_pitch and _parse_innings(season_pitch.get("inningsPitched")) > 0:
             games = season_pitch.get("gamesPitched") or 1
             starts = season_pitch.get("gamesStarted") or 0

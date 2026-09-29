@@ -30,6 +30,7 @@ from . import (
     player_profile,
     player_stats,
     season,
+    season_review,
     significance,
     statcast,
     team_profile,
@@ -90,6 +91,7 @@ _win_prob = cache.Memo()  # keyed by gamePk
 _significance = cache.Memo()  # keyed by gamePk; partial results not stored
 _analysis = cache.Memo()  # keyed by input hash: Claude only when inputs change
 _player_notes = cache.Memo()  # keyed by input hash
+_season_review = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)  # keyed by day
 _team_profiles = cache.Memo(max_keys=64)  # keyed by (team id, day)
 _player_profiles = cache.Memo(max_keys=128)  # keyed by (player id, day)
 
@@ -457,6 +459,23 @@ async def team_analysis():
     # Keyed by the inputs' hash: Claude runs only when something changed.
     analysis = await _analysis.get(cache.stable_hash(summary), _as_503(lambda: ai_recap.generate_team_analysis(summary)))
     return {"analysis": analysis}
+
+
+@app.get("/api/team/season-review")
+async def team_season_review():
+    # The offseason Home card. The cheap season-over check runs first; the
+    # heavier inputs (league ranks, park-adjusted roster) only when it's
+    # actually shown.
+    async def compute():
+        over, standings, postseason_games = await season_review.check()
+        if not over:
+            return {"season_over": False}
+        ctx, roster, (baselines, pf) = await asyncio.gather(
+            _league_context.get(None, _boston_league_context), _get_full_roster_cached(), _adjustment_inputs()
+        )
+        return await season_review.build(standings, postseason_games, ctx, _add_adjusted(roster, baselines, pf))
+
+    return await _season_review.get(_today(), compute)
 
 
 @app.get("/api/team/headlines")

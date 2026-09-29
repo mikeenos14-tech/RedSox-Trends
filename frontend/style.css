@@ -1438,6 +1438,96 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
   .tape-val { width: 4.5rem; font-size: 0.78rem; }
 }
 
+/* Offseason Home: season in review (same broadcast card as next-game). */
+.season-review {
+  background: linear-gradient(135deg, var(--navy), #071b3d);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 4px solid var(--red);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin: 0 auto 2rem;
+  max-width: 900px;
+  color: white;
+}
+.result-banner.is-offseason { display: none; }
+.season-review-eyebrow {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.season-review-headline {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.1;
+  margin-top: 0.35rem;
+}
+.season-review-outcome { margin: 0.35rem 0 0.75rem; opacity: 0.9; }
+.season-review-path { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.9rem; }
+.season-review-chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.season-review-chip.won { background: rgba(74, 222, 128, 0.2); }
+.season-review-chip.lost { background: rgba(255, 99, 99, 0.2); }
+.season-review-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.8rem 0;
+}
+.season-review-stats .label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+.season-review-stats .value {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+.season-review-rank { font-family: Inter, sans-serif; font-size: 0.75rem; font-weight: 500; opacity: 0.7; }
+.season-review-best { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.9rem; }
+.season-review-best h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+.season-review-best ol { margin: 0; padding-left: 1.1rem; }
+.season-review-best li { margin-bottom: 0.35rem; font-weight: 700; }
+.season-review-best li a { color: white; }
+.season-review-best li span { display: block; font-weight: 400; font-size: 0.8rem; opacity: 0.8; }
+.season-review-countdown {
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.season-review-days { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 1.4rem; color: #9fd8b8; }
+
+@media (max-width: 600px) {
+  .season-review { margin: 0 0.6rem 1.25rem; padding: 1rem; }
+  .season-review-headline { font-size: 1.6rem; }
+  .season-review-best { grid-template-columns: 1fr; }
+  .season-review-stats .value { font-size: 1.25rem; }
+}
+
 /* Next game — the pre-game counterpart of the live ticker (same navy
    broadcast card, no glow), shown until first pitch. */
 .next-game {

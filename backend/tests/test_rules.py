@@ -169,3 +169,16 @@ def test_ai_player_notes_get_percentages_not_fractions():
     assert slim["pitchers"][0]["recent"]["k_bb_pct"] == 30.2
     assert slim["pitchers"][0]["recent"]["lob_pct"] == 96.8
     assert slim["hitters"][0]["recent"]["pa"] == 60
+
+
+def test_traded_player_gets_only_this_teams_line():
+    # Real shape for Devers' 2025: combined total first, then one split per team.
+    person = {"stats": [{"type": {"displayName": "season"}, "group": {"displayName": "hitting"}, "splits": [
+        {"numTeams": 2, "stat": {"plateAppearances": 729}},
+        {"team": {"id": 111}, "stat": {"plateAppearances": 334}},
+        {"team": {"id": 137}, "stat": {"plateAppearances": 395}},
+    ]}]}
+    assert player_stats._team_split(person, "season", "hitting", 111)["plateAppearances"] == 334
+    assert player_stats._team_split(person, "season", "hitting", 137)["plateAppearances"] == 395
+    assert player_stats._team_split(person, "season", "hitting", 147) is None
+    assert player_stats._first_split(person, "season", "hitting")["plateAppearances"] == 729  # the old, wrong input

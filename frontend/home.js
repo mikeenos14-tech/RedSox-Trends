@@ -13,6 +13,7 @@ loadLastGameRecap();
 loadGameSignificance();
 loadUpcomingSchedule();
 loadHeadlines();
+loadSeasonReview();
 loadSeasonSeries();
 loadLiveGame();
 initExpandSection("live-scoring-plays", "Show scoring plays", "Hide scoring plays");
