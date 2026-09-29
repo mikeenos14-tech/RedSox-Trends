@@ -43,6 +43,18 @@ production AI features (data pipeline → grounded prompt → generated summary)
 
 4. Open http://localhost:8000 in your browser.
 
+## Running the tests
+
+```bash
+cd backend && venv/bin/pip install -r requirements-dev.txt && venv/bin/python -m pytest -q
+node --test frontend/tests/*.test.mjs
+```
+
+Both suites run offline and cost nothing: MLB API responses are replayed from
+real captured data in `backend/tests/fixtures/` (refresh with
+`venv/bin/python -m tests.capture_fixtures`), and Claude is stubbed. GitHub
+Actions runs both on every push (`.github/workflows/tests.yml`).
+
 ## Project structure
 
 ```

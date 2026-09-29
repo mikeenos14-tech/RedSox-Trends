@@ -1,0 +1,330 @@
+{
+ "copyright": "Copyright 2026 MLB Advanced Media, L.P.  Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt",
+ "totalItems": 3,
+ "totalEvents": 0,
+ "totalGames": 3,
+ "totalGamesInProgress": 0,
+ "dates": [
+  {
+   "date": "2026-09-29",
+   "totalItems": 1,
+   "totalEvents": 0,
+   "totalGames": 1,
+   "totalGamesInProgress": 0,
+   "games": [
+    {
+     "gamePk": 849851,
+     "gameGuid": "b0b65ee7-3843-498e-8d4a-d3b8b5be4166",
+     "link": "/api/v1.1/game/849851/feed/live",
+     "gameType": "F",
+     "season": "2026",
+     "gameDate": "2026-09-30T00:00:00Z",
+     "officialDate": "2026-09-29",
+     "status": {
+      "abstractGameState": "Preview",
+      "codedGameState": "S",
+      "detailedState": "Scheduled",
+      "statusCode": "S",
+      "startTimeTBD": false,
+      "abstractGameCode": "P"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "probablePitcher": {
+        "id": 801139,
+        "fullName": "Payton Tolle",
+        "link": "/api/v1/people/801139"
+       },
+       "splitSquad": false,
+       "seriesNumber": 2
+      },
+      "home": {
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "probablePitcher": {
+        "id": 693645,
+        "fullName": "Cam Schlittler",
+        "link": "/api/v1/people/693645"
+       },
+       "splitSquad": false,
+       "seriesNumber": 2
+      }
+     },
+     "venue": {
+      "id": 3313,
+      "name": "Yankee Stadium",
+      "link": "/api/v1/venues/3313"
+     },
+     "content": {
+      "link": "/api/v1/game/849851/content"
+     },
+     "seriesStatus": {
+      "gameNumber": 1,
+      "totalGames": 3,
+      "isTied": true,
+      "isOver": false,
+      "wins": 0,
+      "losses": 0,
+      "description": "AL Wild Card Series",
+      "shortDescription": "AL Wild Card Series Game 1",
+      "shortName": "AL Wild Card Series",
+      "abbreviation": "ALWC"
+     },
+     "gameNumber": 1,
+     "publicFacing": true,
+     "doubleHeader": "N",
+     "gamedayType": "P",
+     "tiebreaker": "N",
+     "calendarEventID": "14-849851-2026-09-29",
+     "seasonDisplay": "2026",
+     "dayNight": "night",
+     "description": "AL Wild Card 'B' Game 1",
+     "scheduledInnings": 9,
+     "reverseHomeAwayStatus": false,
+     "inningBreakLength": 145,
+     "gamesInSeries": 3,
+     "seriesGameNumber": 1,
+     "seriesDescription": "AL Wild Card Series",
+     "recordSource": "S",
+     "ifNecessary": "N",
+     "ifNecessaryDescription": "Normal Game"
+    }
+   ],
+   "events": []
+  },
+  {
+   "date": "2026-09-30",
+   "totalItems": 1,
+   "totalEvents": 0,
+   "totalGames": 1,
+   "totalGamesInProgress": 0,
+   "games": [
+    {
+     "gamePk": 849848,
+     "gameGuid": "bfa14416-b6c7-466c-a010-befdb5d8096b",
+     "link": "/api/v1.1/game/849848/feed/live",
+     "gameType": "F",
+     "season": "2026",
+     "gameDate": "2026-10-01T00:00:00Z",
+     "officialDate": "2026-09-30",
+     "status": {
+      "abstractGameState": "Preview",
+      "codedGameState": "S",
+      "detailedState": "Scheduled",
+      "statusCode": "S",
+      "startTimeTBD": false,
+      "abstractGameCode": "P"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "probablePitcher": {
+        "id": 543243,
+        "fullName": "Sonny Gray",
+        "link": "/api/v1/people/543243"
+       },
+       "splitSquad": false,
+       "seriesNumber": 2
+      },
+      "home": {
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "probablePitcher": {
+        "id": 608331,
+        "fullName": "Max Fried",
+        "link": "/api/v1/people/608331"
+       },
+       "splitSquad": false,
+       "seriesNumber": 2
+      }
+     },
+     "venue": {
+      "id": 3313,
+      "name": "Yankee Stadium",
+      "link": "/api/v1/venues/3313"
+     },
+     "content": {
+      "link": "/api/v1/game/849848/content"
+     },
+     "seriesStatus": {
+      "gameNumber": 2,
+      "totalGames": 3,
+      "isTied": true,
+      "isOver": false,
+      "wins": 0,
+      "losses": 0,
+      "description": "AL Wild Card Series",
+      "shortDescription": "AL Wild Card Series Game 2",
+      "shortName": "AL Wild Card Series",
+      "abbreviation": "ALWC"
+     },
+     "gameNumber": 1,
+     "publicFacing": true,
+     "doubleHeader": "N",
+     "gamedayType": "P",
+     "tiebreaker": "N",
+     "calendarEventID": "14-849848-2026-09-30",
+     "seasonDisplay": "2026",
+     "dayNight": "night",
+     "description": "AL Wild Card 'B' Game 2",
+     "scheduledInnings": 9,
+     "reverseHomeAwayStatus": false,
+     "inningBreakLength": 145,
+     "gamesInSeries": 3,
+     "seriesGameNumber": 2,
+     "seriesDescription": "AL Wild Card Series",
+     "recordSource": "S",
+     "ifNecessary": "N",
+     "ifNecessaryDescription": "Normal Game"
+    }
+   ],
+   "events": []
+  },
+  {
+   "date": "2026-10-01",
+   "totalItems": 1,
+   "totalEvents": 0,
+   "totalGames": 1,
+   "totalGamesInProgress": 0,
+   "games": [
+    {
+     "gamePk": 849847,
+     "gameGuid": "c93d0a99-8392-4611-848f-fda4023373d8",
+     "link": "/api/v1.1/game/849847/feed/live",
+     "gameType": "F",
+     "season": "2026",
+     "gameDate": "2026-10-02T00:00:00Z",
+     "officialDate": "2026-10-01",
+     "status": {
+      "abstractGameState": "Preview",
+      "codedGameState": "S",
+      "detailedState": "Scheduled",
+      "statusCode": "S",
+      "startTimeTBD": false,
+      "abstractGameCode": "P"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "probablePitcher": {
+        "id": 624133,
+        "fullName": "Ranger Suarez",
+        "link": "/api/v1/people/624133"
+       },
+       "splitSquad": false,
+       "seriesNumber": 2
+      },
+      "home": {
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "probablePitcher": {
+        "id": 543037,
+        "fullName": "Gerrit Cole",
+        "link": "/api/v1/people/543037"
+       },
+       "splitSquad": false,
+       "seriesNumber": 2
+      }
+     },
+     "venue": {
+      "id": 3313,
+      "name": "Yankee Stadium",
+      "link": "/api/v1/venues/3313"
+     },
+     "content": {
+      "link": "/api/v1/game/849847/content"
+     },
+     "seriesStatus": {
+      "gameNumber": 3,
+      "totalGames": 3,
+      "isTied": true,
+      "isOver": false,
+      "wins": 0,
+      "losses": 0,
+      "description": "AL Wild Card Series",
+      "shortDescription": "AL Wild Card Series Game 3",
+      "shortName": "AL Wild Card Series",
+      "abbreviation": "ALWC"
+     },
+     "gameNumber": 1,
+     "publicFacing": true,
+     "doubleHeader": "N",
+     "gamedayType": "P",
+     "tiebreaker": "N",
+     "calendarEventID": "14-849847-2026-10-01",
+     "seasonDisplay": "2026",
+     "dayNight": "night",
+     "description": "AL Wild Card 'B' Game 3",
+     "scheduledInnings": 9,
+     "reverseHomeAwayStatus": false,
+     "inningBreakLength": 145,
+     "gamesInSeries": 3,
+     "seriesGameNumber": 3,
+     "seriesDescription": "AL Wild Card Series",
+     "recordSource": "S",
+     "ifNecessary": "Y",
+     "ifNecessaryDescription": "If Necessary Game"
+    }
+   ],
+   "events": []
+  }
+ ]
+}

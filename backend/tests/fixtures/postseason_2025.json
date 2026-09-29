@@ -1,0 +1,1191 @@
+{
+ "copyright": "Copyright 2026 MLB Advanced Media, L.P.  Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt",
+ "totalItems": 3,
+ "totalEvents": 0,
+ "totalGames": 3,
+ "totalGamesInProgress": 0,
+ "dates": [
+  {
+   "date": "2025-09-30",
+   "totalItems": 1,
+   "totalEvents": 0,
+   "totalGames": 1,
+   "totalGamesInProgress": 0,
+   "games": [
+    {
+     "gamePk": 813074,
+     "gameGuid": "3059bfc7-a4ee-4c0c-b304-286f8da36558",
+     "link": "/api/v1.1/game/813074/feed/live",
+     "gameType": "F",
+     "season": "2025",
+     "gameDate": "2025-09-30T22:08:00Z",
+     "officialDate": "2025-09-30",
+     "status": {
+      "abstractGameState": "Final",
+      "codedGameState": "F",
+      "detailedState": "Final",
+      "statusCode": "F",
+      "startTimeTBD": false,
+      "abstractGameCode": "F"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       },
+       "leagueRecord": {
+        "wins": 1,
+        "losses": 0,
+        "ties": 0,
+        "pct": "1.000"
+       },
+       "score": 3,
+       "isWinner": true,
+       "splitSquad": false,
+       "seriesNumber": 2
+      },
+      "home": {
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       },
+       "leagueRecord": {
+        "wins": 0,
+        "losses": 1,
+        "ties": 0,
+        "pct": ".000"
+       },
+       "score": 1,
+       "isWinner": false,
+       "splitSquad": false,
+       "seriesNumber": 2
+      }
+     },
+     "linescore": {
+      "currentInning": 9,
+      "currentInningOrdinal": "9th",
+      "inningState": "Bottom",
+      "inningHalf": "Bottom",
+      "isTopInning": false,
+      "scheduledInnings": 9,
+      "innings": [
+       {
+        "num": 1,
+        "ordinalNum": "1st",
+        "home": {
+         "runs": 0,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 2,
+        "ordinalNum": "2nd",
+        "home": {
+         "runs": 1,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 3,
+        "ordinalNum": "3rd",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 4,
+        "ordinalNum": "4th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 2
+        }
+       },
+       {
+        "num": 5,
+        "ordinalNum": "5th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 2
+        }
+       },
+       {
+        "num": 6,
+        "ordinalNum": "6th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 7,
+        "ordinalNum": "7th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 2,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 2
+        }
+       },
+       {
+        "num": 8,
+        "ordinalNum": "8th",
+        "home": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 9,
+        "ordinalNum": "9th",
+        "home": {
+         "runs": 0,
+         "hits": 3,
+         "errors": 0,
+         "leftOnBase": 3
+        },
+        "away": {
+         "runs": 1,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       }
+      ],
+      "teams": {
+       "home": {
+        "runs": 1,
+        "hits": 7,
+        "errors": 0,
+        "leftOnBase": 5,
+        "isWinner": false
+       },
+       "away": {
+        "runs": 3,
+        "hits": 8,
+        "errors": 0,
+        "leftOnBase": 10,
+        "isWinner": true
+       }
+      },
+      "defense": {
+       "pitcher": {
+        "id": 547973,
+        "fullName": "Aroldis Chapman",
+        "link": "/api/v1/people/547973"
+       },
+       "catcher": {
+        "id": 665966,
+        "fullName": "Carlos Narv\u00e1ez",
+        "link": "/api/v1/people/665966"
+       },
+       "first": {
+        "id": 663993,
+        "fullName": "Nathaniel Lowe",
+        "link": "/api/v1/people/663993"
+       },
+       "second": {
+        "id": 686765,
+        "fullName": "Nick Sogard",
+        "link": "/api/v1/people/686765"
+       },
+       "third": {
+        "id": 608324,
+        "fullName": "Alex Bregman",
+        "link": "/api/v1/people/608324"
+       },
+       "shortstop": {
+        "id": 596115,
+        "fullName": "Trevor Story",
+        "link": "/api/v1/people/596115"
+       },
+       "left": {
+        "id": 680776,
+        "fullName": "Jarren Duran",
+        "link": "/api/v1/people/680776"
+       },
+       "center": {
+        "id": 678882,
+        "fullName": "Ceddanne Rafaela",
+        "link": "/api/v1/people/678882"
+       },
+       "right": {
+        "id": 677800,
+        "fullName": "Wilyer Abreu",
+        "link": "/api/v1/people/677800"
+       },
+       "batter": {
+        "id": 665966,
+        "fullName": "Carlos Narv\u00e1ez",
+        "link": "/api/v1/people/665966"
+       },
+       "onDeck": {
+        "id": 677800,
+        "fullName": "Wilyer Abreu",
+        "link": "/api/v1/people/677800"
+       },
+       "inHole": {
+        "id": 680776,
+        "fullName": "Jarren Duran",
+        "link": "/api/v1/people/680776"
+       },
+       "battingOrder": 5,
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       }
+      },
+      "offense": {
+       "batter": {
+        "id": 663757,
+        "fullName": "Trent Grisham",
+        "link": "/api/v1/people/663757"
+       },
+       "onDeck": {
+        "id": 683011,
+        "fullName": "Anthony Volpe",
+        "link": "/api/v1/people/683011"
+       },
+       "inHole": {
+        "id": 669224,
+        "fullName": "Austin Wells",
+        "link": "/api/v1/people/669224"
+       },
+       "first": {
+        "id": 641355,
+        "fullName": "Cody Bellinger",
+        "link": "/api/v1/people/641355"
+       },
+       "second": {
+        "id": 592450,
+        "fullName": "Aaron Judge",
+        "link": "/api/v1/people/592450"
+       },
+       "third": {
+        "id": 502671,
+        "fullName": "Paul Goldschmidt",
+        "link": "/api/v1/people/502671"
+       },
+       "pitcher": {
+        "id": 657612,
+        "fullName": "Tim Hill",
+        "link": "/api/v1/people/657612"
+       },
+       "battingOrder": 6,
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       }
+      },
+      "balls": 2,
+      "strikes": 3,
+      "outs": 3
+     },
+     "venue": {
+      "id": 3313,
+      "name": "Yankee Stadium",
+      "link": "/api/v1/venues/3313"
+     },
+     "content": {
+      "link": "/api/v1/game/813074/content"
+     },
+     "seriesStatus": {
+      "gameNumber": 1,
+      "totalGames": 3,
+      "isTied": false,
+      "isOver": false,
+      "wins": 1,
+      "losses": 0,
+      "winningTeam": {
+       "springLeague": {
+        "id": 115,
+        "name": "Grapefruit League",
+        "link": "/api/v1/league/115",
+        "abbreviation": "GL"
+       },
+       "allStarStatus": "N",
+       "id": 111,
+       "name": "Boston Red Sox",
+       "link": "/api/v1/teams/111"
+      },
+      "losingTeam": {
+       "springLeague": {
+        "id": 115,
+        "name": "Grapefruit League",
+        "link": "/api/v1/league/115",
+        "abbreviation": "GL"
+       },
+       "allStarStatus": "N",
+       "id": 147,
+       "name": "New York Yankees",
+       "link": "/api/v1/teams/147"
+      },
+      "description": "AL Wild Card Series",
+      "shortDescription": "AL Wild Card Series Game 1",
+      "result": "BOS leads 1-0",
+      "shortName": "AL Wild Card Series",
+      "abbreviation": "ALWC"
+     },
+     "isTie": false,
+     "gameNumber": 1,
+     "publicFacing": true,
+     "doubleHeader": "N",
+     "gamedayType": "P",
+     "tiebreaker": "N",
+     "calendarEventID": "14-813074-2025-09-30",
+     "seasonDisplay": "2025",
+     "dayNight": "night",
+     "description": "AL Wild Card 'B' Game 1",
+     "scheduledInnings": 9,
+     "reverseHomeAwayStatus": false,
+     "inningBreakLength": 145,
+     "gamesInSeries": 3,
+     "seriesGameNumber": 1,
+     "seriesDescription": "AL Wild Card Series",
+     "recordSource": "S",
+     "ifNecessary": "N",
+     "ifNecessaryDescription": "Normal Game"
+    }
+   ],
+   "events": []
+  },
+  {
+   "date": "2025-10-01",
+   "totalItems": 1,
+   "totalEvents": 0,
+   "totalGames": 1,
+   "totalGamesInProgress": 0,
+   "games": [
+    {
+     "gamePk": 813070,
+     "gameGuid": "a926a76e-3277-4947-9095-bfa279baacc6",
+     "link": "/api/v1.1/game/813070/feed/live",
+     "gameType": "F",
+     "season": "2025",
+     "gameDate": "2025-10-01T22:08:00Z",
+     "officialDate": "2025-10-01",
+     "status": {
+      "abstractGameState": "Final",
+      "codedGameState": "F",
+      "detailedState": "Final",
+      "statusCode": "F",
+      "startTimeTBD": false,
+      "abstractGameCode": "F"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       },
+       "leagueRecord": {
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "pct": ".500"
+       },
+       "score": 3,
+       "isWinner": false,
+       "splitSquad": false,
+       "seriesNumber": 2
+      },
+      "home": {
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       },
+       "leagueRecord": {
+        "wins": 1,
+        "losses": 1,
+        "ties": 0,
+        "pct": ".500"
+       },
+       "score": 4,
+       "isWinner": true,
+       "splitSquad": false,
+       "seriesNumber": 2
+      }
+     },
+     "linescore": {
+      "currentInning": 9,
+      "currentInningOrdinal": "9th",
+      "inningState": "Top",
+      "inningHalf": "Top",
+      "isTopInning": true,
+      "scheduledInnings": 9,
+      "innings": [
+       {
+        "num": 1,
+        "ordinalNum": "1st",
+        "home": {
+         "runs": 2,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 2,
+        "ordinalNum": "2nd",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 3,
+        "ordinalNum": "3rd",
+        "home": {
+         "runs": 0,
+         "hits": 2,
+         "errors": 1,
+         "leftOnBase": 2
+        },
+        "away": {
+         "runs": 2,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 4,
+        "ordinalNum": "4th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 5,
+        "ordinalNum": "5th",
+        "home": {
+         "runs": 1,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 6,
+        "ordinalNum": "6th",
+        "home": {
+         "runs": 0,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 2
+        },
+        "away": {
+         "runs": 1,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 7,
+        "ordinalNum": "7th",
+        "home": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 3
+        }
+       },
+       {
+        "num": 8,
+        "ordinalNum": "8th",
+        "home": {
+         "runs": 1,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 3
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 9,
+        "ordinalNum": "9th",
+        "home": {
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       }
+      ],
+      "teams": {
+       "home": {
+        "runs": 4,
+        "hits": 10,
+        "errors": 1,
+        "leftOnBase": 9,
+        "isWinner": true
+       },
+       "away": {
+        "runs": 3,
+        "hits": 6,
+        "errors": 0,
+        "leftOnBase": 5,
+        "isWinner": false
+       }
+      },
+      "defense": {
+       "pitcher": {
+        "id": 670280,
+        "fullName": "David Bednar",
+        "link": "/api/v1/people/670280"
+       },
+       "catcher": {
+        "id": 669224,
+        "fullName": "Austin Wells",
+        "link": "/api/v1/people/669224"
+       },
+       "first": {
+        "id": 502671,
+        "fullName": "Paul Goldschmidt",
+        "link": "/api/v1/people/502671"
+       },
+       "second": {
+        "id": 665862,
+        "fullName": "Jazz Chisholm Jr.",
+        "link": "/api/v1/people/665862"
+       },
+       "third": {
+        "id": 641857,
+        "fullName": "Ryan McMahon",
+        "link": "/api/v1/people/641857"
+       },
+       "shortstop": {
+        "id": 683011,
+        "fullName": "Anthony Volpe",
+        "link": "/api/v1/people/683011"
+       },
+       "left": {
+        "id": 641355,
+        "fullName": "Cody Bellinger",
+        "link": "/api/v1/people/641355"
+       },
+       "center": {
+        "id": 663757,
+        "fullName": "Trent Grisham",
+        "link": "/api/v1/people/663757"
+       },
+       "right": {
+        "id": 592450,
+        "fullName": "Aaron Judge",
+        "link": "/api/v1/people/592450"
+       },
+       "batter": {
+        "id": 592450,
+        "fullName": "Aaron Judge",
+        "link": "/api/v1/people/592450"
+       },
+       "onDeck": {
+        "id": 641355,
+        "fullName": "Cody Bellinger",
+        "link": "/api/v1/people/641355"
+       },
+       "inHole": {
+        "id": 502671,
+        "fullName": "Paul Goldschmidt",
+        "link": "/api/v1/people/502671"
+       },
+       "battingOrder": 2,
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       }
+      },
+      "offense": {
+       "batter": {
+        "id": 678882,
+        "fullName": "Ceddanne Rafaela",
+        "link": "/api/v1/people/678882"
+       },
+       "onDeck": {
+        "id": 686765,
+        "fullName": "Nick Sogard",
+        "link": "/api/v1/people/686765"
+       },
+       "inHole": {
+        "id": 807799,
+        "fullName": "Masataka Yoshida",
+        "link": "/api/v1/people/807799"
+       },
+       "pitcher": {
+        "id": 801139,
+        "fullName": "Payton Tolle",
+        "link": "/api/v1/people/801139"
+       },
+       "battingOrder": 8,
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       }
+      },
+      "balls": 0,
+      "strikes": 2,
+      "outs": 3
+     },
+     "venue": {
+      "id": 3313,
+      "name": "Yankee Stadium",
+      "link": "/api/v1/venues/3313"
+     },
+     "content": {
+      "link": "/api/v1/game/813070/content"
+     },
+     "seriesStatus": {
+      "gameNumber": 2,
+      "totalGames": 3,
+      "isTied": true,
+      "isOver": false,
+      "wins": 1,
+      "losses": 1,
+      "description": "AL Wild Card Series",
+      "shortDescription": "AL Wild Card Series Game 2",
+      "result": "Series tied 1-1",
+      "shortName": "AL Wild Card Series",
+      "abbreviation": "ALWC"
+     },
+     "isTie": false,
+     "gameNumber": 1,
+     "publicFacing": true,
+     "doubleHeader": "N",
+     "gamedayType": "P",
+     "tiebreaker": "N",
+     "calendarEventID": "14-813070-2025-10-01",
+     "seasonDisplay": "2025",
+     "dayNight": "night",
+     "description": "AL Wild Card 'B' Game 2",
+     "scheduledInnings": 9,
+     "reverseHomeAwayStatus": false,
+     "inningBreakLength": 145,
+     "gamesInSeries": 3,
+     "seriesGameNumber": 2,
+     "seriesDescription": "AL Wild Card Series",
+     "recordSource": "S",
+     "ifNecessary": "N",
+     "ifNecessaryDescription": "Normal Game"
+    }
+   ],
+   "events": []
+  },
+  {
+   "date": "2025-10-02",
+   "totalItems": 1,
+   "totalEvents": 0,
+   "totalGames": 1,
+   "totalGamesInProgress": 0,
+   "games": [
+    {
+     "gamePk": 813065,
+     "gameGuid": "dcc76f5c-baf9-4c77-a7d6-f60b63a8f7bc",
+     "link": "/api/v1.1/game/813065/feed/live",
+     "gameType": "F",
+     "season": "2025",
+     "gameDate": "2025-10-03T00:08:00Z",
+     "officialDate": "2025-10-02",
+     "status": {
+      "abstractGameState": "Final",
+      "codedGameState": "F",
+      "detailedState": "Final",
+      "statusCode": "F",
+      "startTimeTBD": false,
+      "abstractGameCode": "F"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       },
+       "leagueRecord": {
+        "wins": 1,
+        "losses": 2,
+        "ties": 0,
+        "pct": ".333"
+       },
+       "score": 0,
+       "isWinner": false,
+       "splitSquad": false,
+       "seriesNumber": 2
+      },
+      "home": {
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       },
+       "leagueRecord": {
+        "wins": 2,
+        "losses": 1,
+        "ties": 0,
+        "pct": ".667"
+       },
+       "score": 4,
+       "isWinner": true,
+       "splitSquad": false,
+       "seriesNumber": 2
+      }
+     },
+     "linescore": {
+      "currentInning": 9,
+      "currentInningOrdinal": "9th",
+      "inningState": "Top",
+      "inningHalf": "Top",
+      "isTopInning": true,
+      "scheduledInnings": 9,
+      "innings": [
+       {
+        "num": 1,
+        "ordinalNum": "1st",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 1,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 2,
+        "ordinalNum": "2nd",
+        "home": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 3,
+        "ordinalNum": "3rd",
+        "home": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 4,
+        "ordinalNum": "4th",
+        "home": {
+         "runs": 4,
+         "hits": 4,
+         "errors": 0,
+         "leftOnBase": 3
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 1,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 5,
+        "ordinalNum": "5th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 2,
+         "errors": 0,
+         "leftOnBase": 2
+        }
+       },
+       {
+        "num": 6,
+        "ordinalNum": "6th",
+        "home": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 1,
+         "leftOnBase": 1
+        }
+       },
+       {
+        "num": 7,
+        "ordinalNum": "7th",
+        "home": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 8,
+        "ordinalNum": "8th",
+        "home": {
+         "runs": 0,
+         "hits": 1,
+         "errors": 0,
+         "leftOnBase": 1
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        }
+       },
+       {
+        "num": 9,
+        "ordinalNum": "9th",
+        "home": {
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 0
+        },
+        "away": {
+         "runs": 0,
+         "hits": 0,
+         "errors": 0,
+         "leftOnBase": 1
+        }
+       }
+      ],
+      "teams": {
+       "home": {
+        "runs": 4,
+        "hits": 8,
+        "errors": 1,
+        "leftOnBase": 7,
+        "isWinner": true
+       },
+       "away": {
+        "runs": 0,
+        "hits": 5,
+        "errors": 2,
+        "leftOnBase": 6,
+        "isWinner": false
+       }
+      },
+      "defense": {
+       "pitcher": {
+        "id": 670280,
+        "fullName": "David Bednar",
+        "link": "/api/v1/people/670280"
+       },
+       "catcher": {
+        "id": 669224,
+        "fullName": "Austin Wells",
+        "link": "/api/v1/people/669224"
+       },
+       "first": {
+        "id": 502671,
+        "fullName": "Paul Goldschmidt",
+        "link": "/api/v1/people/502671"
+       },
+       "second": {
+        "id": 665862,
+        "fullName": "Jazz Chisholm Jr.",
+        "link": "/api/v1/people/665862"
+       },
+       "third": {
+        "id": 641857,
+        "fullName": "Ryan McMahon",
+        "link": "/api/v1/people/641857"
+       },
+       "shortstop": {
+        "id": 683011,
+        "fullName": "Anthony Volpe",
+        "link": "/api/v1/people/683011"
+       },
+       "left": {
+        "id": 641355,
+        "fullName": "Cody Bellinger",
+        "link": "/api/v1/people/641355"
+       },
+       "center": {
+        "id": 663757,
+        "fullName": "Trent Grisham",
+        "link": "/api/v1/people/663757"
+       },
+       "right": {
+        "id": 592450,
+        "fullName": "Aaron Judge",
+        "link": "/api/v1/people/592450"
+       },
+       "batter": {
+        "id": 669224,
+        "fullName": "Austin Wells",
+        "link": "/api/v1/people/669224"
+       },
+       "onDeck": {
+        "id": 663757,
+        "fullName": "Trent Grisham",
+        "link": "/api/v1/people/663757"
+       },
+       "inHole": {
+        "id": 592450,
+        "fullName": "Aaron Judge",
+        "link": "/api/v1/people/592450"
+       },
+       "battingOrder": 9,
+       "team": {
+        "id": 147,
+        "name": "New York Yankees",
+        "link": "/api/v1/teams/147"
+       }
+      },
+      "offense": {
+       "batter": {
+        "id": 663993,
+        "fullName": "Nathaniel Lowe",
+        "link": "/api/v1/people/663993"
+       },
+       "onDeck": {
+        "id": 665966,
+        "fullName": "Carlos Narv\u00e1ez",
+        "link": "/api/v1/people/665966"
+       },
+       "inHole": {
+        "id": 677800,
+        "fullName": "Wilyer Abreu",
+        "link": "/api/v1/people/677800"
+       },
+       "first": {
+        "id": 807799,
+        "fullName": "Masataka Yoshida",
+        "link": "/api/v1/people/807799"
+       },
+       "pitcher": {
+        "id": 547973,
+        "fullName": "Aroldis Chapman",
+        "link": "/api/v1/people/547973"
+       },
+       "battingOrder": 6,
+       "team": {
+        "id": 111,
+        "name": "Boston Red Sox",
+        "link": "/api/v1/teams/111"
+       }
+      },
+      "balls": 0,
+      "strikes": 1,
+      "outs": 3
+     },
+     "venue": {
+      "id": 3313,
+      "name": "Yankee Stadium",
+      "link": "/api/v1/venues/3313"
+     },
+     "content": {
+      "link": "/api/v1/game/813065/content"
+     },
+     "seriesStatus": {
+      "gameNumber": 3,
+      "totalGames": 3,
+      "isTied": false,
+      "isOver": true,
+      "wins": 2,
+      "losses": 1,
+      "winningTeam": {
+       "springLeague": {
+        "id": 115,
+        "name": "Grapefruit League",
+        "link": "/api/v1/league/115",
+        "abbreviation": "GL"
+       },
+       "allStarStatus": "N",
+       "id": 147,
+       "name": "New York Yankees",
+       "link": "/api/v1/teams/147"
+      },
+      "losingTeam": {
+       "springLeague": {
+        "id": 115,
+        "name": "Grapefruit League",
+        "link": "/api/v1/league/115",
+        "abbreviation": "GL"
+       },
+       "allStarStatus": "N",
+       "id": 111,
+       "name": "Boston Red Sox",
+       "link": "/api/v1/teams/111"
+      },
+      "description": "AL Wild Card Series",
+      "shortDescription": "AL Wild Card Series Game 3",
+      "result": "NYY wins 2-1",
+      "shortName": "AL Wild Card Series",
+      "abbreviation": "ALWC"
+     },
+     "isTie": false,
+     "gameNumber": 1,
+     "publicFacing": true,
+     "doubleHeader": "N",
+     "gamedayType": "P",
+     "tiebreaker": "N",
+     "calendarEventID": "14-813065-2025-10-02",
+     "seasonDisplay": "2025",
+     "dayNight": "night",
+     "description": "AL Wild Card 'B' Game 3",
+     "scheduledInnings": 9,
+     "reverseHomeAwayStatus": false,
+     "inningBreakLength": 145,
+     "gamesInSeries": 3,
+     "seriesGameNumber": 3,
+     "seriesDescription": "AL Wild Card Series",
+     "recordSource": "S",
+     "ifNecessary": "N",
+     "ifNecessaryDescription": "Normal Game"
+    }
+   ],
+   "events": []
+  }
+ ]
+}

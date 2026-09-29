@@ -1,0 +1,353 @@
+{
+ "game_pk": 824705,
+ "date": "2026-09-27",
+ "venue": "Tropicana Field",
+ "opponent": "Chicago Cubs",
+ "home_or_away": "home",
+ "won": false,
+ "our_score": 2,
+ "their_score": 6,
+ "record_after": {
+  "wins": 87,
+  "losses": 75
+ },
+ "postseason": null,
+ "line_score": {
+  "innings": [
+   {
+    "num": 1,
+    "us": 1,
+    "them": 2
+   },
+   {
+    "num": 2,
+    "us": 1,
+    "them": 0
+   },
+   {
+    "num": 3,
+    "us": 0,
+    "them": 1
+   },
+   {
+    "num": 4,
+    "us": 0,
+    "them": 0
+   },
+   {
+    "num": 5,
+    "us": 0,
+    "them": 0
+   },
+   {
+    "num": 6,
+    "us": 0,
+    "them": 0
+   },
+   {
+    "num": 7,
+    "us": 0,
+    "them": 0
+   },
+   {
+    "num": 8,
+    "us": 0,
+    "them": 0
+   },
+   {
+    "num": 9,
+    "us": 0,
+    "them": 3
+   }
+  ],
+  "totals": {
+   "us": {
+    "runs": 2,
+    "hits": 5,
+    "errors": 1
+   },
+   "them": {
+    "runs": 6,
+    "hits": 13,
+    "errors": 0
+   }
+  }
+ },
+ "winning_pitcher": "Braxton Garrett",
+ "losing_pitcher": "Tanner Houck",
+ "save_pitcher": "Colin Rea",
+ "top_performers": {
+  "us": [
+   {
+    "id": 668939,
+    "name": "Adley Rutschman",
+    "summary": "1-2 | HR, BB, RBI",
+    "hits": 1,
+    "rbi": 1,
+    "home_runs": 1
+   },
+   {
+    "id": 655316,
+    "name": "Andruw Monasterio",
+    "summary": "0-3 | K, RBI",
+    "hits": 0,
+    "rbi": 1,
+    "home_runs": 0
+   }
+  ],
+  "them": [
+   {
+    "id": 608324,
+    "name": "Alex Bregman",
+    "summary": "4-4 | 2 HR, 2B, BB",
+    "hits": 4,
+    "rbi": 4,
+    "home_runs": 2
+   },
+   {
+    "id": 624424,
+    "name": "Michael Conforto",
+    "summary": "2-5 | 2B, RBI",
+    "hits": 2,
+    "rbi": 1,
+    "home_runs": 0
+   },
+   {
+    "id": 672356,
+    "name": "Gabriel Arias",
+    "summary": "0-1 | RBI",
+    "hits": 0,
+    "rbi": 1,
+    "home_runs": 0
+   }
+  ]
+ },
+ "pitching": {
+  "us": [
+   {
+    "id": 656557,
+    "name": "Tanner Houck",
+    "role": "starter",
+    "summary": "3.0 IP, 3 ER, K, 0 BB",
+    "note": "(L, 0-1)",
+    "innings_pitched": "3.0",
+    "hits": 4,
+    "runs": 3,
+    "earned_runs": 3,
+    "walks": 0,
+    "strikeouts": 1
+   },
+   {
+    "id": 681544,
+    "name": "Wyatt Olds",
+    "role": "reliever",
+    "summary": "0.2 IP, 0 ER, 0 K, BB",
+    "note": null,
+    "innings_pitched": "0.2",
+    "hits": 0,
+    "runs": 0,
+    "earned_runs": 0,
+    "walks": 1,
+    "strikeouts": 0
+   },
+   {
+    "id": 663776,
+    "name": "Patrick Sandoval",
+    "role": "reliever",
+    "summary": "4.2 IP, 3 ER, 5 K, BB",
+    "note": null,
+    "innings_pitched": "4.2",
+    "hits": 7,
+    "runs": 3,
+    "earned_runs": 3,
+    "walks": 1,
+    "strikeouts": 5
+   },
+   {
+    "id": 663558,
+    "name": "Jovani Mor\u00e1n",
+    "role": "reliever",
+    "summary": "0.2 IP, 0 ER, K, BB",
+    "note": null,
+    "innings_pitched": "0.2",
+    "hits": 2,
+    "runs": 0,
+    "earned_runs": 0,
+    "walks": 1,
+    "strikeouts": 1
+   }
+  ],
+  "them": [
+   {
+    "id": 684007,
+    "name": "Shota Imanaga",
+    "role": "starter",
+    "summary": "1.0 IP, ER, 3 K, 0 BB",
+    "note": null,
+    "innings_pitched": "1.0",
+    "hits": 1,
+    "runs": 1,
+    "earned_runs": 1,
+    "walks": 0,
+    "strikeouts": 3
+   },
+   {
+    "id": 666129,
+    "name": "Braxton Garrett",
+    "role": "reliever",
+    "summary": "5.0 IP, ER, 2 K, 3 BB",
+    "note": "(W, 1-1)",
+    "innings_pitched": "5.0",
+    "hits": 4,
+    "runs": 1,
+    "earned_runs": 1,
+    "walks": 3,
+    "strikeouts": 2
+   },
+   {
+    "id": 657097,
+    "name": "Jacob Webb",
+    "role": "reliever",
+    "summary": "1.0 IP, 0 ER, K, 0 BB",
+    "note": "(H, 9)",
+    "innings_pitched": "1.0",
+    "hits": 0,
+    "runs": 0,
+    "earned_runs": 0,
+    "walks": 0,
+    "strikeouts": 1
+   },
+   {
+    "id": 607067,
+    "name": "Colin Rea",
+    "role": "reliever",
+    "summary": "2.0 IP, 0 ER, K, 0 BB",
+    "note": "(S, 2)",
+    "innings_pitched": "2.0",
+    "hits": 0,
+    "runs": 0,
+    "earned_runs": 0,
+    "walks": 0,
+    "strikeouts": 1
+   }
+  ]
+ },
+ "scoring_plays": [
+  {
+   "inning": 1,
+   "half": "top",
+   "team_batting": "them",
+   "pitcher_on_mound": "Tanner Houck",
+   "description": "Alex Bregman homers (27) on a fly ball to left center field. Tyrone Taylor scores.",
+   "runs_on_play": 2,
+   "score_after": {
+    "us": 0,
+    "them": 2
+   }
+  },
+  {
+   "inning": 1,
+   "half": "bottom",
+   "team_batting": "us",
+   "pitcher_on_mound": "Shota Imanaga",
+   "description": "Adley Rutschman homers (13) on a fly ball to left field.",
+   "runs_on_play": 1,
+   "score_after": {
+    "us": 1,
+    "them": 2
+   }
+  },
+  {
+   "inning": 2,
+   "half": "bottom",
+   "team_batting": "us",
+   "pitcher_on_mound": "Braxton Garrett",
+   "description": "Andruw Monasterio grounds into a force out, shortstop Dansby Swanson to second baseman Nico Hoerner. Nick Sogard scores. Caleb Durbin to 3rd. Trevor Story out at 2nd. Andruw Monasterio to 1st.",
+   "runs_on_play": 1,
+   "score_after": {
+    "us": 2,
+    "them": 2
+   }
+  },
+  {
+   "inning": 3,
+   "half": "top",
+   "team_batting": "them",
+   "pitcher_on_mound": "Tanner Houck",
+   "description": "Alex Bregman homers (28) on a fly ball to left field.",
+   "runs_on_play": 1,
+   "score_after": {
+    "us": 2,
+    "them": 3
+   }
+  },
+  {
+   "inning": 9,
+   "half": "top",
+   "team_batting": "them",
+   "pitcher_on_mound": "Patrick Sandoval",
+   "description": "Alex Bregman doubles (33) on a sharp line drive to center fielder Nate Eaton. Miguel Amaya scores. Tyrone Taylor to 3rd.",
+   "runs_on_play": 1,
+   "score_after": {
+    "us": 2,
+    "them": 4
+   }
+  },
+  {
+   "inning": 9,
+   "half": "top",
+   "team_batting": "them",
+   "pitcher_on_mound": "Patrick Sandoval",
+   "description": "Gabriel Arias out on a sacrifice fly to left fielder Jarren Duran. Tyrone Taylor scores.",
+   "runs_on_play": 1,
+   "score_after": {
+    "us": 2,
+    "them": 5
+   }
+  },
+  {
+   "inning": 9,
+   "half": "top",
+   "team_batting": "them",
+   "pitcher_on_mound": "Jovani Mor\u00e1n",
+   "description": "Michael Conforto doubles (17) on a sharp fly ball to right fielder Wilyer Abreu. Alex Bregman scores.",
+   "runs_on_play": 1,
+   "score_after": {
+    "us": 2,
+    "them": 6
+   }
+  }
+ ],
+ "articles": [
+  {
+   "title": "Chicago Cubs at Boston Red Sox Game Story, Scores/Highlights - 09/26/2026",
+   "link": "https://news.google.com/rss/articles/CBMiUEFVX3lxTFAwY01sVnBhTjVva09OSWhnSDdDOEJMeEdDZVlsaXFKNWctMTNIWVZCTU1OQnI0WVpYaURJMUtyMUFwTERob0E2REtXUEF1bEFw0gFQQVVfeXFMUDBjTWxWcGFONW9rT05JaGdIN0M4Qkx4R0NlWWxpcUo1Zy0xM0hZVkJNTU5CcjRZWlhpREkxS3IxQXBMRGhvQTZES1dQQXVsQXA?oc=5",
+   "source": "MLB.com"
+  },
+  {
+   "title": "2026 Cubs Heroes and Goats: Alex Bregman is the Superhero vs. the Red Sox",
+   "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxPSmpzcG5WR1RzV0JULTdWZ01CVkxHb0dRUVZNRkxoLWdYdFRLVkx2MzhvU0hLZ24tc3I2eC01cDNYckpIMnlJTU96dkg4UmpRc3cwa0NrVTBwUUd4aDdXODRSeUpwMHBCOEh3OFpuSDRiLVY1c2tfY3dtSFJOd0xsQU13amFMNTRIR1FCOFA3VkJ4WDNOVFVnMzBXbUhrWGd0dEZjc1E2bGk5ZnMzd3o4OVNOaUl1Nms?oc=5",
+   "source": "Bleed Cubbie Blue"
+  },
+  {
+   "title": "How to watch Cubs vs. Red Sox: TV channel and streaming options for September 27",
+   "link": "https://news.google.com/rss/articles/CBMinAFBVV95cUxQVU1DSVdodHRFRjZyMDVHS0Z3bDVGRTlBemhzS3dtZ2ZqYlpkT3hLRTR3OTBGd3U2a29vOFR4dU95UkJfWjdiYzlSLXJ6dEw5VU1uZUlJU2s1UEJYc2VYWTM4dW5IMlVCRlM0N1lLV2hINUhBLTVGLVRlWWRKYmtiYWpnOWl3RnlaWWQ3eFZrZV9TdmVZby1tSzczbEo?oc=5",
+   "source": "nytimes.com"
+  },
+  {
+   "title": "Chicago Cubs vs. Boston Red Sox at Tropicana Field preview, Sunday 9/27, 2:05 CT",
+   "link": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPUFJwQlNwVG9fX0ZBbFhvYkNhQUdjdzZwMWRtRzZXT1hpTjEtWDNDZzJaTXI4RnJ4cXhObjNfb2R5NmRWTUw5MXI2dFhDOFI0RUtPXzd1UW9SU3MyajNQd2dHeUVGQ1Nvc2F5RXl0QWNfaWJCb05tUzJ3a05EYTlOag?oc=5",
+   "source": "Yahoo Sports"
+  },
+  {
+   "title": "Cubs vs. Red Sox Lineup: Game 162, Shota Imanaga's Farewell? Just Stay Healthy, More",
+   "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxPaUtfcXlyeGlDTkV6UUJxNFNxcXJrTWRPSS1fTWRrZ2FDRmo0RHJUd21iQnJDYkk3VXFBTzRIXzNBLXNxM0dZTVFkaDlQZ3k3VTQyRUJLd0V6b0dJa0FyX2dhTTZfdHIzX1o5MFFialVCMzNxRnBRUUg0WGNleElrZGpBMk9EWjVjaDA2OTBuQVVrbUF6elVsckRQSk1pcjJxNDNkVUVNNlhveGRDRnoxaW1MRGpIUQ?oc=5",
+   "source": "Sports Illustrated"
+  },
+  {
+   "title": "Padres hope to ride energy from loud home crowd when they host Cubs in NL Wild Card Series",
+   "link": "https://news.google.com/rss/articles/CBMigwJBVV95cUxNVGc4TDNqUkZaMkVYUUhUV25qTXcta1I0OTdLVlJ0cEx4ZktsckpBUi1XX2ttY2lJM0pKb0NZVW41TERXYmRCVkswenZjS3U4QWc0WEstMnU0NHZDeURJRXBOTC1VOFFVRzdzbjB2UGtNdWFoakNSbTY0YmVkYUhIRzF4WTIwOHo0bTB1ZnFjT0Q3ZzNJdjV0NXFhNEJQQWl1b1BraVktTHc0UE14d2pjMG83MHJRejFHWjJ2SGdLbldPUjBSSnl4NElGRHo2MUl2ZWRWV3EyZThtVUpGbnNkMllydF93Q3Q0NnVvbDkxTW5DMEZscGRTbTJodDVlV2lxRk9B?oc=5",
+   "source": "Bozeman Daily Chronicle"
+  }
+ ]
+}
