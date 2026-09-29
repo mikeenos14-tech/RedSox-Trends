@@ -1573,21 +1573,62 @@ function statcastCard(player) {
     .join("");
   return `
     <div class="statcast-card">
-      <div class="statcast-card-name">${playerLink(player.player_id, player.name)}</div>
+      <div class="statcast-card-name">${playerLink(player.player_id, player.name)}${player.pa ? `<span class="statcast-card-sample">${player.pa} PA</span>` : ""}</div>
       ${metrics}
     </div>
   `;
 }
 
-function statcastSnapshotCards(snapshot) {
-  const rows = [];
-  Object.entries(snapshot.hitters || {}).forEach(([label, pct]) => {
-    rows.push(statcastMetricRow(`${label} (Hitters)`, { percentile: pct, value: null }));
-  });
-  Object.entries(snapshot.pitchers || {}).forEach(([label, pct]) => {
-    rows.push(statcastMetricRow(`${label} (Pitchers)`, { percentile: pct, value: null }));
-  });
-  return rows.map((row) => `<div class="card statcast-snapshot-card">${row}</div>`);
+// One team-rank card: real rank among 30 clubs from Savant's team
+// leaderboards (display strings come pre-formatted from the backend).
+function teamStatcastCard(block) {
+  const el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = `
+    <div class="label">${block.label}</div>
+    <div class="value">${block.display}</div>
+    <div class="rank-line"><span class="rank-badge ${rankClass(block.rank, block.of)}">${ordinal(block.rank)} of ${block.of}</span>MLB avg: ${block.league_avg_display}</div>
+  `;
+  return el;
+}
+
+// Plain-English read of actual vs. expected wOBA. Deliberately descriptive,
+// not a grade: results running ahead of contact quality is good news for
+// hitters and bad news for pitchers, and small gaps are just noise.
+function luckPhrase(diff) {
+  const size = Math.abs(diff);
+  if (size < 0.005) return "right in line with";
+  return `${size >= 0.015 ? "well" : "slightly"} ${diff > 0 ? "ahead of" : "behind"}`;
+}
+
+function renderTeamStatcast(profile) {
+  const fill = (id, blocks) => {
+    const el = document.getElementById(id);
+    el.innerHTML = "";
+    Object.values(blocks || {}).forEach((b) => el.append(teamStatcastCard(b)));
+    if (!el.children.length) el.innerHTML = '<p class="muted">Team Statcast data unavailable right now.</p>';
+  };
+  fill("team-statcast-hitting", profile.hitting);
+  fill("team-statcast-pitching", profile.pitching);
+
+  const h = profile.hitting_luck;
+  const p = profile.pitching_luck;
+  const luck = document.getElementById("team-statcast-luck");
+  if (!h && !p) return;
+  const signed = (d) => `${d > 0 ? "+" : d < 0 ? "−" : "±"}${fmtRate(Math.abs(d))}`;
+  const parts = [];
+  if (h) {
+    parts.push(
+      `<b>Hitters:</b> a ${fmtRate(h.woba)} wOBA against a ${fmtRate(h.xwoba)} xwOBA (${signed(h.diff)}), results ${luckPhrase(h.diff)} their contact quality.`
+    );
+  }
+  if (p) {
+    parts.push(
+      `<b>Pitchers:</b> opponents have a ${fmtRate(p.woba)} wOBA against a ${fmtRate(p.xwoba)} xwOBA (${signed(p.diff)}), results ${luckPhrase(p.diff)} the contact allowed.`
+    );
+  }
+  luck.innerHTML = `<span class="statcast-luck-label">Results vs. expected</span> ${parts.join(" ")}`;
+  luck.hidden = false;
 }
 
 function leaderboardBlock(label, entries) {
@@ -1652,7 +1693,6 @@ document.getElementById("leaderboard-picker")?.addEventListener("change", (e) =>
 });
 
 async function loadStatcast() {
-  const snapshotEl = document.getElementById("statcast-snapshot");
   const hittersEl = document.getElementById("statcast-hitters-grid");
   const pitchersEl = document.getElementById("statcast-pitchers-grid");
   const leadersEl = document.getElementById("statcast-leaders");
@@ -1662,7 +1702,7 @@ async function loadStatcast() {
     if (!res.ok) throw new Error("Failed to load Statcast data");
     const data = await res.json();
 
-    snapshotEl.innerHTML = statcastSnapshotCards(data.team_snapshot || {}).join("");
+    if (data.team_profile) renderTeamStatcast(data.team_profile);
 
     hittersEl.innerHTML = data.hitters.length
       ? data.hitters.map(statcastCard).join("")

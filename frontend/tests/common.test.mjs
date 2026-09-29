@@ -86,3 +86,9 @@ test("next game day is judged on the Eastern calendar", () => {
   assert.equal(run(`relativeGameDay("2026-09-28", ${lateNight})`), "Tonight");
   assert.equal(run(`relativeGameDay("2026-10-01", ${lateNight})`), "Thu, 10/1");
 });
+
+test("results-vs-expected phrasing treats small gaps as noise", () => {
+  assert.equal(run(`luckPhrase(0.002)`), "right in line with");
+  assert.equal(run(`luckPhrase(0.007)`), "slightly ahead of");
+  assert.equal(run(`luckPhrase(-0.02)`), "well behind");
+});

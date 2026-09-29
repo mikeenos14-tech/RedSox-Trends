@@ -13,6 +13,9 @@ from . import season as season_mod
 
 PERCENTILE_URL = "https://baseballsavant.mlb.com/leaderboard/percentile-rankings"
 CUSTOM_URL = "https://baseballsavant.mlb.com/leaderboard/custom"
+EXPECTED_URL = "https://baseballsavant.mlb.com/leaderboard/expected_statistics"
+CONTACT_URL = "https://baseballsavant.mlb.com/leaderboard/statcast"
+TEAM_ABBR = "BOS"  # Savant's team_id column on team leaderboards
 
 # Baseball Savant has no official public API — this hits the same CSV/JSON
 # export endpoints its own leaderboard pages use client-side (the pattern
@@ -213,10 +216,12 @@ def _build_player_entries(
         if len(stats) < MIN_STATS_FOR_INCLUSION:
             continue
 
+        pa = (custom_values.get(pid) or {}).get("pa")
         entries.append(
             {
                 "player_id": int(pid),
                 "name": display_name(row["player_name"]),
+                "pa": int(pa) if pa is not None else None,
                 "stats": stats,
             }
         )
@@ -255,12 +260,81 @@ def _build_league_leaders(
     return leaders
 
 
-def _team_snapshot(entries: list[dict]) -> dict[str, float]:
-    totals: dict[str, list[int]] = {}
-    for entry in entries:
-        for label, stat in entry["stats"].items():
-            totals.setdefault(label, []).append(stat["percentile"])
-    return {label: round(sum(vals) / len(vals)) for label, vals in totals.items()}
+async def fetch_team_leaderboard(url: str, player_type: str) -> list[dict]:
+    """Savant's team-level leaderboards (type=batter-team / pitcher-team):
+    one row per MLB team, as CSV."""
+    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
+        resp = await client.get(url, params={"type": f"{player_type}-team", "year": season_mod.current(), "csv": "true"})
+        resp.raise_for_status()
+    return list(csv.DictReader(io.StringIO(resp.text.lstrip("\ufeff"))))
+
+
+# Team Statcast profile: (key, label, source leaderboard, CSV field, formatter).
+# Four per side: the signature contact-quality reads fans already know.
+# Hitting: higher is better. Pitching (same fields, contact *allowed*): lower
+# is better.
+TEAM_METRICS = [
+    ("xwoba", "xwOBA", "expected", "est_woba", lambda v: f"{v:.3f}".lstrip("0")),
+    ("barrel_pct", "Barrel%", "contact", "brl_percent", lambda v: f"{v:.1f}%"),
+    ("hard_hit_pct", "Hard-Hit%", "contact", "ev95percent", lambda v: f"{v:.1f}%"),
+    ("avg_ev", "Avg Exit Velo", "contact", "avg_hit_speed", lambda v: f"{v:.1f} mph"),
+]
+
+
+def _team_rank_block(rows: list[dict], field: str, higher_is_better: bool, fmt, team: str) -> dict | None:
+    values = {}
+    for row in rows:
+        try:
+            values[row["team_id"]] = float(row[field])
+        except (KeyError, TypeError, ValueError):
+            continue
+    if team not in values:
+        return None
+    mine = values[team]
+    better = sum(1 for v in values.values() if (v > mine if higher_is_better else v < mine))
+    league_avg = sum(values.values()) / len(values)
+    return {
+        "value": mine,
+        "display": fmt(mine),
+        "rank": better + 1,
+        "of": len(values),
+        "league_avg": round(league_avg, 3),
+        "league_avg_display": fmt(league_avg),
+    }
+
+
+def _luck(expected_rows: list[dict], team: str) -> dict | None:
+    """Actual wOBA minus expected (xwOBA): positive means results ran ahead
+    of contact quality (fortunate for hitters, unfortunate for pitchers).
+    A description, not a skill — no good/bad rank coloring."""
+    diffs = {}
+    for row in expected_rows:
+        try:
+            diffs[row["team_id"]] = (float(row["woba"]), float(row["est_woba"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if team not in diffs:
+        return None
+    woba, xwoba = diffs[team]
+    return {"woba": woba, "xwoba": xwoba, "diff": round(woba - xwoba, 3)}
+
+
+def build_team_profile(league_data: dict, team: str = TEAM_ABBR) -> dict:
+    """Boston's real team-level Statcast ranks among all 30 clubs — replacing
+    the old "snapshot" that averaged individual players' percentiles, which
+    read like a team rank but wasn't one."""
+    profile: dict = {"hitting": {}, "pitching": {}}
+    for side, higher_is_better in (("hitting", True), ("pitching", False)):
+        sources = {
+            "expected": league_data.get(f"team_expected_{side}") or [],
+            "contact": league_data.get(f"team_contact_{side}") or [],
+        }
+        for key, label, source, field, fmt in TEAM_METRICS:
+            block = _team_rank_block(sources[source], field, higher_is_better, fmt, team)
+            if block:
+                profile[side][key] = {"label": label if side == "hitting" else f"{label} Allowed", **block}
+        profile[f"{side}_luck"] = _luck(sources["expected"], team)
+    return profile
 
 
 async def fetch_league_data() -> dict:
@@ -268,19 +342,29 @@ async def fetch_league_data() -> dict:
     player comparison — grouped into one call so a day-scoped cache upstream
     only has to hit Savant once, regardless of which of those three features
     is used first."""
-    hitter_selections = [c for _, c, _, _ in HITTER_STATS]
-    pitcher_selections = [c for _, c, _, _ in PITCHER_STATS]
+    # "pa" rides along so every player card (and the AI notes) can state its
+    # sample size — batters faced, for pitchers.
+    hitter_selections = [c for _, c, _, _ in HITTER_STATS] + ["pa"]
+    pitcher_selections = [c for _, c, _, _ in PITCHER_STATS] + ["pa"]
 
     (
         percentile_batters,
         percentile_pitchers,
         custom_batters,
         custom_pitchers,
+        team_expected_hitting,
+        team_expected_pitching,
+        team_contact_hitting,
+        team_contact_pitching,
     ) = await asyncio.gather(
         fetch_percentile_rankings("batter"),
         fetch_percentile_rankings("pitcher"),
         fetch_custom_leaderboard("batter", hitter_selections),
         fetch_custom_leaderboard("pitcher", pitcher_selections),
+        fetch_team_leaderboard(EXPECTED_URL, "batter"),
+        fetch_team_leaderboard(EXPECTED_URL, "pitcher"),
+        fetch_team_leaderboard(CONTACT_URL, "batter"),
+        fetch_team_leaderboard(CONTACT_URL, "pitcher"),
     )
 
     return {
@@ -288,6 +372,10 @@ async def fetch_league_data() -> dict:
         "percentile_pitchers": percentile_pitchers,
         "custom_batters": custom_batters,
         "custom_pitchers": custom_pitchers,
+        "team_expected_hitting": team_expected_hitting,
+        "team_expected_pitching": team_expected_pitching,
+        "team_contact_hitting": team_contact_hitting,
+        "team_contact_pitching": team_contact_pitching,
     }
 
 
@@ -306,10 +394,7 @@ async def get_statcast_report(league_data: dict) -> dict:
     return {
         "hitters": hitters,
         "pitchers": pitchers,
-        "team_snapshot": {
-            "hitters": _team_snapshot(hitters),
-            "pitchers": _team_snapshot(pitchers),
-        },
+        "team_profile": build_team_profile(league_data),
         "league_leaders": {
             "hitters": _build_league_leaders(percentile_batters, custom_batters, HITTER_LEADER_STATS),
             "pitchers": _build_league_leaders(percentile_pitchers, custom_pitchers, PITCHER_LEADER_STATS),

@@ -495,6 +495,17 @@ async def team_analysis():
         _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_league_context
     )
     summary["league_context"] = {k: v for k, v in lg_ctx.items() if k != "run_diff_league_chart"}
+    # Savant's expected stats, so any "luck" claim is grounded in xwOBA
+    # rather than inferred from runs vs. wOBA (the analysis once called an
+    # offense that was *outperforming* its xwOBA unlucky).
+    try:
+        profile = statcast.build_team_profile(await _get_league_data_cached())
+        summary["statcast_team"] = {
+            side: {b["label"]: {"value": b["display"], "rank": b["rank"], "of": b["of"]} for b in profile[side].values()}
+            for side in ("hitting", "pitching")
+        } | {"hitting_luck": profile["hitting_luck"], "pitching_luck": profile["pitching_luck"]}
+    except Exception as exc:  # noqa: BLE001 — Savant is a scrape; analysis still works without it
+        logger.warning("Statcast team profile unavailable for analysis: %s", exc)
 
     async def compute():
         try:

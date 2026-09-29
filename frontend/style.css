@@ -1034,7 +1034,37 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
 .statcast-metric { margin-bottom: 0.7rem; }
 .statcast-metric:last-child { margin-bottom: 0; }
 
-.statcast-snapshot-card .statcast-metric { margin-bottom: 0; }
+.statcast-card-sample {
+  float: right;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.statcast-subhead { margin: 1rem 0 0.5rem; font-size: 1rem; }
+/* Two per row on a phone (the shared 160px minimum drops these to one
+   column inside a padded section, making eight tall cards to scroll). */
+#team-statcast-hitting, #team-statcast-pitching {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin-bottom: 0.5rem;
+}
+.statcast-luck b { display: block; margin-top: 0.3rem; }
+.statcast-luck {
+  margin: 1rem 0 0.25rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--statcast-cold);
+  background: var(--bad-bg);
+  background: color-mix(in srgb, var(--statcast-cold) 12%, transparent);
+  border-radius: 0 8px 8px 0;
+  line-height: 1.5;
+}
+.statcast-luck-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
 
 .statcast-metric-label {
   display: flex;

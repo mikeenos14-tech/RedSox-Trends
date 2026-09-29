@@ -39,54 +39,69 @@
   </nav>
 
   <main>
+    <section class="statcast-section" id="team-statcast">
+      <h2>Team Statcast Profile <span class="section-sub">Boston's rank among 30 MLB teams</span></h2>
+      <h3 class="statcast-subhead">At the plate</h3>
+      <div class="cards" id="team-statcast-hitting">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
+      <h3 class="statcast-subhead">On the mound <span class="section-sub">contact allowed</span></h3>
+      <div class="cards" id="team-statcast-pitching">
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      </div>
+      <p class="statcast-luck" id="team-statcast-luck" hidden></p>
+      <p class="muted small-note">
+        Team-level Statcast from Baseball Savant: every batted ball this season, ranked against all 30 clubs.
+        xwOBA is the wOBA a team "should" have based on exit velocity and launch angle; the gap between actual
+        and expected is the best available read on whether results have been lucky or unlucky.
+      </p>
+    </section>
+
     <section class="statcast-section" id="statcast">
-      <h2>Statcast Deep Dive <span class="section-sub">Red Sox vs. the league</span></h2>
+      <h2>Statcast Deep Dive <span class="section-sub">Red Sox players vs. the league</span></h2>
       <div id="statcast-notes-text" class="recap-text muted">
         <div class="skeleton skeleton-line long"></div>
         <div class="skeleton skeleton-line medium"></div>
       </div>
 
-      <div class="cards" id="statcast-snapshot">
-        <div class="card"><span class="skeleton skeleton-card"></span></div>
-        <div class="card"><span class="skeleton skeleton-card"></span></div>
-        <div class="card"><span class="skeleton skeleton-card"></span></div>
-        <div class="card"><span class="skeleton skeleton-card"></span></div>
+      <div class="tab-group" id="statcast-tabs">
+        <div class="tab-switcher">
+          <button class="tab-btn active" data-tab="hitters">Hitters</button>
+          <button class="tab-btn" data-tab="pitchers">Pitchers</button>
+        </div>
+
+        <div data-tab-panel="hitters">
+          <div class="statcast-grid" id="statcast-hitters-grid">
+            <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+            <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+            <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
+          </div>
+        </div>
+        <div data-tab-panel="pitchers" hidden>
+          <div class="statcast-grid" id="statcast-pitchers-grid"></div>
+        </div>
       </div>
 
-      <details class="expand-section" id="statcast-full-report">
-        <summary>Show full scouting report</summary>
+      <p class="muted small-note">
+        Percentiles rank each player against every qualified MLB player at that metric, oriented so higher is
+        always better. PA is the player's sample this season (batters faced, for pitchers); only players with a
+        real sample across several signature metrics appear here.
+      </p>
+    </section>
 
-        <div class="tab-group" id="statcast-tabs">
-          <div class="tab-switcher">
-            <button class="tab-btn active" data-tab="hitters">Hitters</button>
-            <button class="tab-btn" data-tab="pitchers">Pitchers</button>
-          </div>
+    <section class="statcast-section" id="statcast-leaders-section">
+      <h2>League Leaders <span class="section-sub">all qualified MLB players</span></h2>
+      <div class="leaderboard-grid" id="statcast-leaders"></div>
 
-          <div data-tab-panel="hitters">
-            <div class="statcast-grid" id="statcast-hitters-grid">
-              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
-              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
-              <div class="statcast-card"><span class="skeleton skeleton-card"></span></div>
-            </div>
-          </div>
-          <div data-tab-panel="pitchers" hidden>
-            <div class="statcast-grid" id="statcast-pitchers-grid"></div>
-          </div>
-        </div>
-
-        <h3>League Leaders</h3>
-        <div class="leaderboard-grid" id="statcast-leaders"></div>
-
-        <div class="leaderboard-explorer">
-          <label for="leaderboard-picker">Explore another leaderboard</label>
-          <select id="leaderboard-picker"></select>
-          <div class="leaderboard-grid" id="leaderboard-explorer-result"></div>
-        </div>
-
-        <p class="muted small-note">
-          Statcast metrics (via Baseball Savant) measure the quality of contact and stuff itself — exit velocity, barrel rate, expected outcomes — rather than results, so they can diverge from traditional stats when a player is over- or under-performing their underlying skill. Percentiles are always oriented so higher = better, ranked against every qualified MLB player at that metric. Only players with a real sample across multiple signature metrics are shown here.
-        </p>
-      </details>
+      <div class="leaderboard-explorer">
+        <label for="leaderboard-picker">Explore another leaderboard</label>
+        <select id="leaderboard-picker"></select>
+        <div class="leaderboard-grid" id="leaderboard-explorer-result"></div>
+      </div>
     </section>
 
     <section class="compare-section" id="compare">

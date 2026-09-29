@@ -9,4 +9,3 @@ loadStatcastNotes();
 
 initCompareTool();
 initTabGroup("statcast-tabs");
-initExpandSection("statcast-full-report", "Show full scouting report", "Hide full scouting report");
