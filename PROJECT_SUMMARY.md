@@ -47,11 +47,10 @@ hallucinated stats.
 - Season Series Tracker (every opponent faced)
 - Bullpen Availability (heuristic rest/fatigue tracker)
 
-**League** (`league.html`) — big-picture context:
-- AI Trend Recap
-- Where Boston Ranks (of 30 MLB teams, stat benchmarks)
-- Front Office Analysis (AI briefing)
-- Headlines (last 3 days, with AI summary)
+**Analysis** (`analysis.html`; renamed from League, `league.html` redirects) — big-picture context:
+- Where Boston Ranks (of 30 MLB teams, plus the league run-differential chart)
+- The Diehard's Take (split cards + AI analysis)
+- Headlines moved to Home
 
 **Players** (`players.html`) — the deepest section, for die-hard fans:
 - Player Hot/Cold Tracker — season vs. last-15-days, heat-mapped vs. league
