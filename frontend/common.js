@@ -586,6 +586,7 @@ async function loadPlayerHighlight() {
       </div>
       <div class="highlight-narrative"><div class="ai-badge">✨ AI-written</div>${paragraphs}</div>
     `;
+    addReportLink(container.querySelector(".highlight-narrative"), "highlight");
   } catch (e) {
     container.innerHTML = `<p class="muted">Couldn't load today's player highlight: ${esc(e.message)}</p>`;
   }
@@ -974,6 +975,64 @@ function renderLeagueRunDiffChart(teams) {
   });
 }
 
+// "Something look off?" under every AI-written section: the fast-detection
+// half of trusting AI text. Sends the section, page, an optional note, and a
+// snapshot of exactly what the reader saw (the text changes daily).
+function addReportLink(container, section) {
+  if (!container || container.querySelector(":scope > .report-row")) return;
+  const row = document.createElement("div");
+  row.className = "report-row";
+  row.innerHTML = `<button type="button" class="report-link">Something look off?</button>`;
+  container.appendChild(row);
+
+  row.querySelector(".report-link").addEventListener("click", () => {
+    row.innerHTML = `
+      <form class="report-form">
+        <label>What looks wrong? <span class="muted">(optional)</span>
+          <textarea maxlength="1000" rows="2" placeholder="e.g. the recap says a two-run double, but only one run scored"></textarea>
+        </label>
+        <div class="report-actions">
+          <button type="submit" class="report-submit">Send report</button>
+          <button type="button" class="report-cancel">Cancel</button>
+        </div>
+      </form>`;
+    const form = row.querySelector("form");
+    form.querySelector("textarea").focus();
+    form.querySelector(".report-cancel").addEventListener("click", () => {
+      row.remove();
+      addReportLink(container, section);
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      // One line per bullet/paragraph, read from the live page (a detached
+      // copy's innerText loses line breaks), minus the badge and this form.
+      const blocks = [...container.querySelectorAll("li, p")]
+        .filter((el) => !el.closest(".report-row"))
+        .map((el) => el.innerText.trim())
+        .filter(Boolean);
+      const shownText = blocks.length ? blocks.join("\n") : container.innerText;
+      form.querySelector(".report-submit").disabled = true;
+      try {
+        const res = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            section,
+            page: location.pathname + location.search,
+            note: form.querySelector("textarea").value,
+            shown_text: shownText.slice(0, 4000),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || "Couldn't send the report");
+        row.innerHTML = `<span class="report-thanks">Thanks — flagged for review.</span>`;
+      } catch (e) {
+        row.innerHTML = `<span class="report-thanks">${esc(e.message)}</span>`;
+      }
+    });
+  });
+}
+
 function addAiBadge(el) {
   el.classList.remove("muted");
   el.insertAdjacentHTML("afterbegin", '<div class="ai-badge">✨ AI-written</div>');
@@ -1030,6 +1089,7 @@ async function loadAnalysisBriefing() {
     const data = await res.json();
     renderBulletText(textEl, data.analysis);
     addAiBadge(textEl);
+    addReportLink(textEl, "analysis");
   } catch (e) {
     textEl.textContent = `Couldn't generate a briefing: ${e.message}`;
   }
@@ -1380,6 +1440,7 @@ async function loadPlayerNotes() {
     const data = await res.json();
     renderBulletText(textEl, data.notes);
     addAiBadge(textEl);
+    addReportLink(textEl, "player_notes");
   } catch (e) {
     textEl.textContent = `Couldn't generate notes: ${e.message}`;
   }
@@ -1516,6 +1577,7 @@ async function loadLastGameRecap() {
       </div>
       <div class="game-recap-narrative"><div class="ai-badge">✨ AI-written</div>${paragraphs}</div>
     `;
+    addReportLink(container.querySelector(".game-recap-narrative"), "recap");
 
     loadWinProbabilityChart();
   } catch (e) {
@@ -1542,6 +1604,7 @@ async function loadGameSignificance() {
 
     renderBulletText(body, data.narration);
     addAiBadge(body);
+    addReportLink(body, "significance");
     section.hidden = false;
   } catch (e) {
     section.hidden = true;
@@ -1823,6 +1886,7 @@ async function loadStatcastNotes() {
     const data = await res.json();
     renderBulletText(textEl, data.notes);
     addAiBadge(textEl);
+    addReportLink(textEl, "statcast_notes");
   } catch (e) {
     textEl.textContent = `Couldn't generate scouting notes: ${e.message}`;
   }

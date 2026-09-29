@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>The Fenway Almanac — Reader Reports</title>
+  <link rel="icon" href="https://www.mlbstatic.com/team-logos/111.svg" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .admin-wrap { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+    .admin-token { display: flex; gap: 0.5rem; margin: 1rem 0; }
+    .admin-token input { flex: 1; padding: 0.5rem; font: inherit; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); }
+    .admin-token button { padding: 0.5rem 1rem; font: inherit; border-radius: 6px; border: 1px solid var(--red); background: var(--red); color: white; cursor: pointer; }
+    .report-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.75rem; }
+    .report-meta { font-size: 0.8rem; color: var(--muted); }
+    .report-note { font-weight: 600; margin: 0.35rem 0; }
+    .report-shown { white-space: pre-wrap; font-size: 0.85rem; color: var(--muted); max-height: 12rem; overflow: auto; border-left: 3px solid var(--border); padding-left: 0.6rem; }
+  </style>
+</head>
+<body>
+  <main class="admin-wrap">
+    <h1>Reader reports</h1>
+    <p class="muted">"Something look off?" reports on AI-written sections, newest first. The token is the
+      <code>FEEDBACK_ADMIN_TOKEN</code> variable set in Railway; it's kept in this tab only.</p>
+    <form class="admin-token" id="token-form">
+      <input type="password" id="token" placeholder="Admin token" autocomplete="off" />
+      <button type="submit">Load reports</button>
+    </form>
+    <div id="reports"></div>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    const SECTION_LABELS = {
+      recap: "Previous Game Recap", significance: "What Stood Out", analysis: "The Diehard's Take",
+      player_notes: "Hot/Cold notes", statcast_notes: "Statcast notes", highlight: "Player Highlight",
+    };
+    async function loadReports(token) {
+      const out = document.getElementById("reports");
+      out.innerHTML = '<p class="muted">Loading…</p>';
+      const res = await fetch("/api/admin/feedback", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        out.innerHTML = `<p class="muted">${res.status === 404 ? "Reports are disabled (FEEDBACK_ADMIN_TOKEN isn't set)." : "Wrong token."}</p>`;
+        return;
+      }
+      const { reports } = await res.json();
+      out.innerHTML = reports.length
+        ? reports.map((r) => `
+            <div class="report-card">
+              <div class="report-meta">#${r.id} · ${esc(SECTION_LABELS[r.section] || r.section)} · ${esc(new Date(r.created_at * 1000).toLocaleString())} · ${esc(r.page)}</div>
+              <div class="report-note">${r.note ? esc(r.note) : '<span class="muted">(no note)</span>'}</div>
+              <div class="report-shown">${esc(r.shown_text)}</div>
+            </div>`).join("")
+        : '<p class="muted">No reports yet.</p>';
+    }
+    const saved = sessionStorage.getItem("feedbackToken");
+    if (saved) loadReports(saved);
+    document.getElementById("token-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const token = document.getElementById("token").value.trim();
+      sessionStorage.setItem("feedbackToken", token);
+      loadReports(token);
+    });
+  </script>
+</body>
+</html>

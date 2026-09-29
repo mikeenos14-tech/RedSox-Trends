@@ -182,3 +182,13 @@ def test_traded_player_gets_only_this_teams_line():
     assert player_stats._team_split(person, "season", "hitting", 137)["plateAppearances"] == 395
     assert player_stats._team_split(person, "season", "hitting", 147) is None
     assert player_stats._first_split(person, "season", "hitting")["plateAppearances"] == 729  # the old, wrong input
+
+
+def test_playoff_context_states_the_wild_card_seed():
+    from app import trends
+
+    ctx = trends._playoff_context({"hasWildcard": True, "clinched": True, "wildCardRank": "2", "wildCardGamesBack": "+3.0"})
+    assert ctx["summary"] == "Has already clinched a playoff spot (Wild Card #2)."
+    assert ctx["wildcard_rank"] == 2
+    leader = trends._playoff_context({"hasWildcard": True, "divisionLeader": True, "clinched": True, "wildCardRank": "-"})
+    assert leader["summary"] == "Has already clinched a playoff spot."

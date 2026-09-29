@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import os
 import time
@@ -10,6 +11,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, Field
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -19,6 +21,7 @@ from . import (
     bullpen,
     cache,
     config,
+    feedback,
     game_recap,
     http,
     league_context,
@@ -476,6 +479,44 @@ async def team_season_review():
         return await season_review.build(standings, postseason_games, ctx, _add_adjusted(roster, baselines, pf))
 
     return await _season_review.get(_today(), compute)
+
+
+class FeedbackIn(BaseModel):
+    section: str = Field(max_length=40)
+    page: str = Field(default="", max_length=feedback.MAX_PAGE)
+    note: str = Field(default="", max_length=feedback.MAX_NOTE)
+    shown_text: str = Field(default="", max_length=feedback.MAX_SHOWN_TEXT)
+
+
+def _client_key(request: Request) -> str:
+    # Railway sits behind a proxy; the first X-Forwarded-For hop is the
+    # reader. Used only for the in-memory rate limit, never stored.
+    forwarded = request.headers.get("x-forwarded-for", "")
+    return forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+
+
+@app.post("/api/feedback", status_code=201)
+async def post_feedback(report: FeedbackIn, request: Request):
+    """'Something look off?' on any AI-written section."""
+    if report.section not in feedback.SECTIONS:
+        raise HTTPException(status_code=400, detail="Unknown section")
+    if feedback.rate_limited(_client_key(request)):
+        raise HTTPException(status_code=429, detail="Thanks — we've got your reports. Try again in a few minutes.")
+    report_id = await asyncio.to_thread(feedback.record, report.section, report.page, report.note, report.shown_text)
+    return {"id": report_id}
+
+
+@app.get("/api/admin/feedback")
+async def admin_feedback(request: Request):
+    """Reader reports, newest first. Requires FEEDBACK_ADMIN_TOKEN as a Bearer
+    token; without that variable set, this endpoint doesn't exist."""
+    token = os.getenv("FEEDBACK_ADMIN_TOKEN")
+    supplied = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not hmac.compare_digest(supplied.encode(), token.encode()):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"reports": await asyncio.to_thread(feedback.recent)}
 
 
 @app.get("/api/team/headlines")

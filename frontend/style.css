@@ -1891,3 +1891,42 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
     gap: 0.85rem;
   }
 }
+
+/* "Something look off?" — quiet until used. */
+.report-row { margin-top: 0.6rem; font-size: 0.8rem; }
+.report-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  font: inherit;
+}
+.report-link:hover, .report-link:focus-visible { color: var(--text); }
+.report-form label { display: block; font-weight: 600; }
+.report-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.5rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+}
+.report-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+.report-actions button {
+  font: inherit;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.report-actions .report-submit { background: var(--red); border-color: var(--red); color: white; }
+.report-thanks { color: var(--muted); }

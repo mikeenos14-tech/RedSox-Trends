@@ -80,15 +80,19 @@ def _playoff_context(standings: dict) -> dict:
     wc_elim_num = standings.get("wildCardEliminationNumber")
 
     is_eliminated = elim_num in ("0", "E") and wc_elim_num in ("0", "E")
+    # The seed, stated outright: given only "+3.0 games clear," the analysis
+    # called Boston "the top Wild Card" when it was the #2 seed.
+    wc_rank = standings.get("wildCardRank")
+    seed = f" (Wild Card #{wc_rank})" if has_wildcard and not division_leader and wc_rank else ""
 
     if clinched:
-        summary = "Has already clinched a playoff spot."
+        summary = f"Has already clinched a playoff spot{seed}."
     elif is_eliminated:
         summary = "Mathematically eliminated from playoff contention."
     elif division_leader:
         summary = "Currently leads their division."
     elif has_wildcard:
-        summary = f"Currently HOLDS a Wild Card spot, {wc_gb} games clear of the cutoff line."
+        summary = f"Currently HOLDS a Wild Card spot{seed}, {wc_gb} games clear of the cutoff line."
     elif wc_gb is not None:
         summary = f"Chasing a Wild Card spot, {wc_gb} games back of the cutoff line."
     else:
@@ -96,6 +100,7 @@ def _playoff_context(standings: dict) -> dict:
 
     return {
         "currently_holds_wildcard_spot": has_wildcard,
+        "wildcard_rank": int(wc_rank) if wc_rank and str(wc_rank).isdigit() else None,
         "division_leader": division_leader,
         "clinched": clinched,
         "wildcard_games_back": wc_gb,
