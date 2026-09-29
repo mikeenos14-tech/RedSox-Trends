@@ -637,6 +637,33 @@ main section { scroll-margin-top: 3.5rem; }
     display: none;
   }
 
+  /* Sortable headers reserved ~18px each for an idle ⇅ hint — on a phone
+     that alone pushed Hot/Cold's advanced view past the screen. Show the
+     arrow only on the active sort column. */
+  /* (thead in the selectors: these must out-rank the base .stat-table
+     th.sortable rules, which come later in this file.) */
+  .stat-table thead th.sortable { padding-right: 0.3rem; font-size: 0.72rem; }
+  .stat-table thead th.sortable:not(.sort-asc):not(.sort-desc)::after { content: none; }
+  .stat-table thead th.sortable.sort-asc, .stat-table thead th.sortable.sort-desc { padding-right: 0.95rem; }
+
+  /* Hot/Cold with "Show advanced stats" on: a phone gets the name plus
+     the advanced columns only — the summary columns are one tap away and
+     showing both scrolled sideways. */
+  /* Hitters keep: Name | wOBA (S) | wOBA (L15) | BABIP | K%.
+     Pitchers keep: Name | FIP (S) | FIP (recent) | K-BB% | LOB%. */
+  .show-advanced #hitters-table th:nth-child(3), .show-advanced #hitters-table td:nth-child(3),
+  .show-advanced #hitters-table th:nth-child(4), .show-advanced #hitters-table td:nth-child(4),
+  .show-advanced #hitters-table th:nth-child(6), .show-advanced #hitters-table td:nth-child(6),
+  .show-advanced #hitters-table th:nth-child(12), .show-advanced #hitters-table td:nth-child(12),
+  .show-advanced #hitters-table th:nth-child(14), .show-advanced #hitters-table td:nth-child(14),
+  .show-advanced #pitchers-table th:nth-child(4), .show-advanced #pitchers-table td:nth-child(4),
+  .show-advanced #pitchers-table th:nth-child(5), .show-advanced #pitchers-table td:nth-child(5),
+  .show-advanced #pitchers-table th:nth-child(7), .show-advanced #pitchers-table td:nth-child(7),
+  .show-advanced #pitchers-table th:nth-child(8), .show-advanced #pitchers-table td:nth-child(8),
+  .show-advanced #pitchers-table th:nth-child(10), .show-advanced #pitchers-table td:nth-child(10) {
+    display: none;
+  }
+
   /* Text cells (names, labels, box-score lines) wrap; numbers never do.
      A two-line "Garrett / Whitlock" is far easier to read on a phone than
      a table that scrolls sideways and hides the Status column. */
