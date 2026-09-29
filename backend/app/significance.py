@@ -62,10 +62,13 @@ async def _fetch_json(client: httpx.AsyncClient, url: str, params: dict) -> dict
     return resp.json()
 
 
-async def get_game_log(client: httpx.AsyncClient, player_id: int, season: int, group: str) -> list[dict]:
-    data = await _fetch_json(
-        client, f"{BASE_URL}/people/{player_id}/stats", {"stats": "gameLog", "group": group, "season": season}
-    )
+async def get_game_log(
+    client: httpx.AsyncClient, player_id: int, season: int, group: str, game_types: str | None = None
+) -> list[dict]:
+    params = {"stats": "gameLog", "group": group, "season": season}
+    if game_types:
+        params["gameType"] = game_types
+    data = await _fetch_json(client, f"{BASE_URL}/people/{player_id}/stats", params)
     stats = data.get("stats") or []
     splits = stats[0].get("splits", []) if stats else []
     # gameNumber breaks the tie within a doubleheader.
@@ -100,8 +103,16 @@ def _hit_streak_result(stat: dict) -> bool | None:
     return False
 
 
-async def get_career_totals(client: httpx.AsyncClient, player_id: int, group: str) -> dict:
-    data = await _fetch_json(client, f"{BASE_URL}/people/{player_id}/stats", {"stats": "career", "group": group})
+async def get_career_totals(
+    client: httpx.AsyncClient, player_id: int, group: str, postseason: bool = False
+) -> dict:
+    params = {"stats": "career", "group": group}
+    if postseason:
+        # gameType=P is career *postseason* totals. (The API's
+        # "careerPlayoffs" / "yearByYearPlayoffs" stat types silently return
+        # regular-season numbers — don't use them.)
+        params["gameType"] = "P"
+    data = await _fetch_json(client, f"{BASE_URL}/people/{player_id}/stats", params)
     stats = data.get("stats") or []
     splits = stats[0].get("splits", []) if stats else []
     return splits[0]["stat"] if splits else {}
@@ -314,6 +325,167 @@ async def check_team_streak(recent_games: list[dict]) -> dict | None:
     return finding
 
 
+# --- postseason checks ----------------------------------------------------------------
+#
+# Same rules as the regular-season checks: real data, hard thresholds,
+# nothing reported when nothing notable happened. "Career postseason" facts
+# come from MLB's career totals with gameType=P; the value *before* this game
+# is that total minus this game and any later postseason games this season,
+# so it's right whether the game is the latest one or a replay.
+
+POSTSEASON_MILESTONES = {
+    "homeRuns": [5, 10, 15, 20, 25],
+    "hits": [25, 50, 75, 100],
+    "rbi": [25, 50, 75],
+    "strikeOuts": [25, 50, 75, 100, 150, 200],
+}
+POSTSEASON_MILESTONE_LABELS = {
+    "homeRuns": "career postseason home runs",
+    "hits": "career postseason hits",
+    "rbi": "career postseason RBI",
+    "strikeOuts": "career postseason strikeouts",
+}
+NUMBER_WORDS = {2: "twice", 3: "three times", 4: "four times"}
+
+
+def _entry_index(log: list[dict], game_pk: int) -> int:
+    for i, g in enumerate(log):
+        if (g.get("game") or {}).get("gamePk") == game_pk:
+            return i
+    raise LogNotCaughtUp()
+
+
+def _career_before_and_after(career: dict, log: list[dict], idx: int, key: str) -> tuple[int, int] | None:
+    """(career postseason total before this game, after it). None when the
+    career endpoint hasn't caught up with this season's postseason log yet."""
+    total = career.get(key)
+    if total is None:
+        return None
+    season_sum = sum(g["stat"].get(key, 0) or 0 for g in log)
+    if total < season_sum:
+        raise LogNotCaughtUp()  # career totals lag the game log right after a final
+    later = sum(g["stat"].get(key, 0) or 0 for g in log[idx + 1 :])
+    after = total - later
+    return after - (log[idx]["stat"].get(key, 0) or 0), after
+
+
+def _postseason_milestones(career: dict, log: list[dict], idx: int, keys: list[str], name: str) -> list[dict]:
+    findings = []
+    for key in keys:
+        span = _career_before_and_after(career, log, idx, key)
+        if not span:
+            continue
+        before, after = span
+        for milestone in POSTSEASON_MILESTONES[key]:
+            if before < milestone <= after:
+                findings.append(
+                    {
+                        "type": "postseason_milestone",
+                        "value": milestone,
+                        "detail": f"{name} reached {milestone} {POSTSEASON_MILESTONE_LABELS[key]}.",
+                    }
+                )
+    return findings
+
+
+def check_postseason_hitting(log: list[dict], career: dict, name: str, game_pk: int) -> list[dict]:
+    idx = _entry_index(log, game_pk)
+    today = log[idx]["stat"]
+    hrs, hits = today.get("homeRuns", 0) or 0, today.get("hits", 0) or 0
+    findings = []
+
+    hr_span = _career_before_and_after(career, log, idx, "homeRuns") if hrs else None
+    first_hr = bool(hr_span) and hr_span[0] == 0
+    if hrs >= MULTI_HR_THRESHOLD:
+        tail = " — the first postseason home runs of his career" if first_hr else ""
+        findings.append({"type": "postseason_multi_hr", "value": hrs, "detail": f"{name} homered {NUMBER_WORDS.get(hrs, f'{hrs} times')}{tail}."})
+    elif first_hr:
+        findings.append({"type": "first_postseason_hr", "value": 1, "detail": f"{name} hit his first career postseason home run."})
+    if hits >= BIG_HIT_THRESHOLD:
+        findings.append({"type": "postseason_big_hit_game", "value": hits, "detail": f"{name} had {hits} hits."})
+
+    keys = [k for k in ("homeRuns", "hits", "rbi") if today.get(k)]
+    findings.extend(_postseason_milestones(career, log, idx, keys, name))
+    return findings
+
+
+def check_postseason_pitching(log: list[dict], career: dict, name: str, game_pk: int) -> list[dict]:
+    idx = _entry_index(log, game_pk)
+    today = log[idx]["stat"]
+    so = today.get("strikeOuts", 0) or 0
+    ip = float(today.get("inningsPitched") or 0)
+    started = (today.get("gamesStarted") or 0) > 0
+    findings = []
+
+    if so >= BIG_K_THRESHOLD:
+        findings.append({"type": "postseason_big_k", "value": so, "detail": f"{name} struck out {so}{' in a postseason start' if started else ''}."})
+    elif ip >= SCORELESS_IP_THRESHOLD and (today.get("earnedRuns") or 0) == 0 and (today.get("runs") or 0) == 0:
+        findings.append({"type": "postseason_scoreless", "value": ip, "detail": f"{name} threw {today.get('inningsPitched')} scoreless innings."})
+
+    for key, label in (("wins", "win"), ("saves", "save")):
+        if today.get(key):
+            span = _career_before_and_after(career, log, idx, key)
+            if span and span[0] == 0:
+                findings.append({"type": f"first_postseason_{label}", "value": 1, "detail": f"{name} earned his first career postseason {label}."})
+
+    if so:
+        findings.extend(_postseason_milestones(career, log, idx, ["strikeOuts"], name))
+    return findings
+
+
+def check_series_outcome(game: dict, team_id: int) -> dict | None:
+    """Clinch, elimination, or forcing a decisive final game — the series
+    facts, stated from MLB's own series status (never computed here)."""
+    ps = mlb_client.postseason_info(game)
+    if not ps or not ps["status"]:
+        return None
+    if ps["is_over"]:
+        if ps["winning_team_id"] == team_id:
+            return {"type": "series_clinched", "value": 1, "detail": f"The Red Sox won the {ps['series']} ({ps['status']})."}
+        return {"type": "series_eliminated", "value": 1, "detail": f"The Red Sox were eliminated from the {ps['series']} ({ps['status']})."}
+    games_in_series = ps.get("games_in_series") or 0
+    if "tied" in ps["status"].lower() and ps.get("game_number") == games_in_series - 1:
+        return {"type": "series_forced_decider", "value": games_in_series, "detail": f"The Red Sox forced a decisive Game {games_in_series} ({ps['status']})."}
+    return None
+
+
+async def get_postseason_significance(game: dict, team_id: int, season: int) -> dict:
+    game_pk = game["gamePk"]
+    is_home = game["teams"]["home"]["team"]["id"] == team_id
+    boxscore = await game_recap.get_boxscore(game_pk)
+    entries = _roster_entries(boxscore, "home" if is_home else "away")
+    hitters = [(pid, name) for pid, name, st in entries if (st.get("batting", {}).get("plateAppearances") or 0) > 0]
+    pitchers = [(pid, name) for pid, name, st in entries if st.get("pitching", {}).get("inningsPitched")]
+    post_types = ",".join(config.POSTSEASON_GAME_TYPES)
+
+    complete = True
+    findings: list[dict] = []
+
+    async def run(pid, name, group, check):
+        nonlocal complete
+        try:
+            log, career = await asyncio.gather(
+                get_game_log(client, pid, season, group, game_types=post_types),
+                get_career_totals(client, pid, group, postseason=True),
+            )
+            findings.extend(check(log, career, name, game_pk))
+        except LogNotCaughtUp:
+            complete = False
+        except httpx.HTTPError:
+            pass  # one player's fetch failing shouldn't sink the rest
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        await asyncio.gather(
+            *(run(pid, name, "hitting", check_postseason_hitting) for pid, name in hitters),
+            *(run(pid, name, "pitching", check_postseason_pitching) for pid, name in pitchers),
+        )
+
+    series = check_series_outcome(game, team_id)
+    if series:
+        findings.insert(0, series)
+    return {"game_pk": game_pk, "date": game["officialDate"], "findings": findings, "complete": complete}
+
+
 def _roster_entries(boxscore: dict, side: str) -> list[tuple[int, str, dict]]:
     """(player_id, name, stats) for every player who actually appeared —
     batted or pitched — on this side of the box score."""
@@ -347,14 +519,10 @@ async def get_game_significance(
     game_pk = game["gamePk"]
     game_date = game["officialDate"]
 
-    # Every check below is built on regular-season game logs, season
-    # counts, and regular-season streaks, none of which apply to a
-    # postseason game (MLB's gameLog excludes postseason by default, so the
-    # checks would silently find nothing anyway). Skip honestly rather than
-    # risk a mislabeled "this season" claim in October — postseason-specific
-    # checks are a separate feature, not a degraded version of these.
+    # The regular-season checks below rest on regular-season logs, season
+    # counts, and streaks; a playoff game gets its own set instead.
     if mlb_client.postseason_info(game):
-        return {"game_pk": game_pk, "date": game_date, "findings": [], "complete": True}
+        return await get_postseason_significance(game, team_id, season)
     is_home = game["teams"]["home"]["team"]["id"] == team_id
     us_side = "home" if is_home else "away"
 
