@@ -80,7 +80,19 @@ ANALYSIS_SYSTEM_PROMPT = (
     "source — `games_back` alone is division standing only and can be misleading "
     "(a team can be far back in the division while holding a Wild Card spot). "
     "Never call a team eliminated or say it has nothing to play for unless "
-    "`playoff_context.summary` says so. Write in natural prose — never name a JSON field or key."
+    "`playoff_context.summary` says so. Write in natural prose — never name a JSON field or key.\n\n"
+    "SEASON PHASE: if `postseason` is present (not null), the regular season "
+    "is OVER and every regular-season number is final. Write about it in the "
+    "past tense ('finished 87-75') and never as a race still in progress — no "
+    "seeding, cushions, magic numbers, or 'what's left to play for.' Bullet 3 "
+    "becomes what the underlying numbers say about how good this team really "
+    "is heading into (or out of) October, not a gap the standings 'should "
+    "close.' Bullet 4 must cover the postseason, using only the `postseason` "
+    "block: the series and opponent, `status` (MLB's own series standing; "
+    "null means the series hasn't started yet), `phase` (in_series, "
+    "awaiting_next_round, eliminated, or won_world_series), and `next_game`. "
+    "Never invent a postseason result, matchup, or starting pitcher that "
+    "isn't given."
 )
 
 
@@ -294,7 +306,13 @@ GAME_RECAP_SYSTEM_PROMPT = (
     "just write a great box-score-grounded recap without forcing in an "
     "article detail. No headers, no bullet points, no score restated as a "
     "headline (the box score is shown separately) — just the narrative "
-    "paragraph itself."
+    "paragraph itself.\n\n"
+    "POSTSEASON: if `postseason` is present, this was a playoff game. Name it "
+    "plainly once (e.g. 'Game 1 of the AL Wild Card Series') and take where "
+    "the series stands only from `postseason.status` (MLB's own standing "
+    "after this game, e.g. 'BOS leads 1-0') — never work out or guess the "
+    "series state yourself, and never cite a season record or treat it as a "
+    "regular-season game."
 )
 
 

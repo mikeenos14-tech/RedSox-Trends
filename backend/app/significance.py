@@ -302,6 +302,15 @@ async def get_game_significance(team_id: int = config.TEAM_ID, season: int = con
 
     game_pk = game["gamePk"]
     game_date = game["officialDate"]
+
+    # Every check below is built on regular-season game logs, season
+    # counts, and regular-season streaks, none of which apply to a
+    # postseason game (MLB's gameLog excludes postseason by default, so the
+    # checks would silently find nothing anyway). Skip honestly rather than
+    # risk a mislabeled "this season" claim in October — postseason-specific
+    # checks are a separate feature, not a degraded version of these.
+    if mlb_client.postseason_info(game):
+        return {"game_pk": game_pk, "date": game_date, "findings": []}
     is_home = game["teams"]["home"]["team"]["id"] == team_id
     us_side = "home" if is_home else "away"
 

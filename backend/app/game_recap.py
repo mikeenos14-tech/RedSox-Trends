@@ -6,16 +6,17 @@ from xml.etree import ElementTree
 
 import httpx
 
-from . import config
+from . import config, mlb_client
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 RSS_URL = "https://news.google.com/rss/search"
 
 
 async def get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
-    """Find the most recently completed regular-season game, with linescore
-    and decisions (W/L/SV) hydrated. Looks back a generous window since the
-    team can have off-days (including the All-Star break) between games."""
+    """Find the most recently completed game — regular season or postseason —
+    with linescore, decisions (W/L/SV) and series status hydrated. Looks back
+    a generous window since the team can have off-days (including the
+    All-Star break and the gap before a postseason series) between games."""
     end = date.today()
     start = end - timedelta(days=10)
 
@@ -25,8 +26,8 @@ async def get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
         "startDate": start.isoformat(),
         "endDate": end.isoformat(),
         "sportId": 1,
-        "gameType": "R",
-        "hydrate": "linescore,decisions",
+        "gameType": config.ALL_GAME_TYPES,
+        "hydrate": "linescore,decisions,seriesStatus",
     }
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(url, params=params)
@@ -36,7 +37,7 @@ async def get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
     completed = []
     for date_entry in data.get("dates", []):
         for game in date_entry.get("games", []):
-            if game["status"]["detailedState"] == "Final":
+            if mlb_client.is_final(game):
                 completed.append(game)
 
     if not completed:
@@ -162,6 +163,7 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
     linescore = game.get("linescore", {})
 
     articles = await _get_game_articles(them["team"]["name"], game["officialDate"])
+    postseason = mlb_client.postseason_info(game)
 
     return {
         "game_pk": game_pk,
@@ -172,10 +174,18 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
         "won": bool(us.get("isWinner")),
         "our_score": us.get("score"),
         "their_score": them.get("score"),
-        "record_after": {
-            "wins": us.get("leagueRecord", {}).get("wins"),
-            "losses": us.get("leagueRecord", {}).get("losses"),
-        },
+        # In a postseason game leagueRecord is the postseason record, not
+        # the season record — `postseason.status` ("BOS leads 1-0") is the
+        # meaningful standing there, so don't hand the recap an ambiguous one.
+        "record_after": (
+            None
+            if postseason
+            else {
+                "wins": us.get("leagueRecord", {}).get("wins"),
+                "losses": us.get("leagueRecord", {}).get("losses"),
+            }
+        ),
+        "postseason": postseason,
         "line_score": {
             # A team that's already ahead doesn't bat in the bottom of the
             # last inning, so that half-inning's "runs" key is simply absent

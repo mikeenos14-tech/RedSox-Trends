@@ -155,3 +155,64 @@ def build_trends_summary(
             "rolling_run_diff_series": _rolling_run_diff_series(games),
         },
     }
+
+
+def summarize_postseason(games: list[dict], team_id: int) -> dict | None:
+    """Where the team stands in October, from its postseason schedule (as
+    returned by mlb_client.get_postseason_games). Deterministic, so the AI
+    analysis and the page chrome read "in the Wild Card Series, tied 0-0"
+    from code rather than inferring it from standings that stopped moving.
+    None when the team has no postseason games at all (the regular season
+    is still on, or they missed the playoffs)."""
+    if not games:
+        return None
+
+    completed = [g for g in games if g["state"] == "final"]
+    remaining = [g for g in games if g["state"] != "final" and not g["postseason"]["is_over"]]
+    last = completed[-1] if completed else None
+    current = remaining[0] if remaining else last
+    series = current["postseason"]
+
+    # The series standing only comes from a game already played in this
+    # same series — before Game 1 there's no standing to report yet.
+    last_in_series = next((g for g in reversed(completed) if g["postseason"]["series"] == series["series"]), None)
+
+    if remaining:
+        phase = "in_series"
+    elif last and last["postseason"]["is_over"]:
+        won = last["postseason"]["winning_team_id"] == team_id
+        if not won:
+            phase = "eliminated"
+        elif last["postseason"]["game_type"] == "W":
+            phase = "won_world_series"
+        else:
+            phase = "awaiting_next_round"
+    else:
+        phase = "in_series"
+
+    next_game = remaining[0] if remaining else None
+    return {
+        "phase": phase,
+        "series": series["series"],
+        "abbreviation": series["abbreviation"],
+        "status": last_in_series["postseason"]["status"] if last_in_series else None,
+        "opponent": current["opponent"],
+        "opponent_id": current["opponent_id"],
+        "next_game": (
+            {
+                "date": next_game["date"],
+                "game_date_utc": next_game["game_date_utc"],
+                "home_or_away": next_game["home_or_away"],
+                "game_number": next_game["postseason"]["game_number"],
+                "if_necessary": next_game["postseason"]["if_necessary"],
+                "state": next_game["state"],
+            }
+            if next_game
+            else None
+        ),
+        "record": {
+            "wins": sum(1 for g in completed if g["won"]),
+            "losses": sum(1 for g in completed if not g["won"]),
+        },
+        "games": completed,
+    }

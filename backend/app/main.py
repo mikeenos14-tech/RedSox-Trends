@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from . import (
     ai_recap,
     bullpen,
+    config,
     game_recap,
     league_context,
     live_game,
@@ -175,10 +176,18 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 async def _build_summary() -> dict:
-    standings = await mlb_client.get_team_standings()
-    games = await mlb_client.get_recent_games()
-    win_pcts = await mlb_client.get_league_win_pcts()
-    return trends.build_trends_summary(standings, games, win_pcts)
+    standings, games, win_pcts, postseason_games = await asyncio.gather(
+        mlb_client.get_team_standings(),
+        mlb_client.get_recent_games(),
+        mlb_client.get_league_win_pcts(),
+        mlb_client.get_postseason_games(),
+    )
+    summary = trends.build_trends_summary(standings, games, win_pcts)
+    # Everything above is regular-season only by design (splits, streaks,
+    # run differential); October lives in its own block so the two never
+    # blend, and so the header and the AI analysis know the season phase.
+    summary["postseason"] = trends.summarize_postseason(postseason_games, config.TEAM_ID)
+    return summary
 
 
 @app.get("/api/team/summary")
@@ -207,22 +216,39 @@ async def team_stat_benchmarks():
 
 @app.get("/api/team/upcoming-schedule")
 async def team_upcoming_schedule():
-    games = await mlb_client.get_upcoming_games()
-    division_teams = await mlb_client.get_division_standings()
+    games, division_teams, season_games, league_records, postseason_games = await asyncio.gather(
+        mlb_client.get_upcoming_games(),
+        mlb_client.get_division_standings(),
+        _get_season_games_cached(),
+        mlb_client.get_league_records(),
+        mlb_client.get_postseason_games(),
+    )
     division_ids = {t["id"] for t in division_teams if not t["is_target"]}
-    season_games = await _get_season_games_cached()
     season_series = mlb_client.build_season_series(season_games)
 
     for g in games:
-        g["is_division_game"] = g["opponent_id"] in division_ids
-        series = season_series.get(g["opponent_id"])
-        g["season_series"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
+        if g["postseason"]:
+            # In October the schedule's leagueRecord is the postseason
+            # record (0-0 before Game 1), and "division game" / "season
+            # series" framing no longer applies — show the opponent's real
+            # regular-season record instead.
+            g["is_division_game"] = False
+            g["season_series"] = None
+            g["opponent_record"] = league_records.get(g["opponent_id"]) or g["opponent_record"]
+        else:
+            g["is_division_game"] = g["opponent_id"] in division_ids
+            series = season_series.get(g["opponent_id"])
+            g["season_series"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
 
     pcts = [float(g["opponent_record"]["pct"]) for g in games if g["opponent_record"].get("pct")]
     home_count = sum(1 for g in games if g["home_or_away"] == "home")
+    postseason = trends.summarize_postseason(postseason_games, config.TEAM_ID)
+    if postseason:
+        postseason = {k: v for k, v in postseason.items() if k != "games"}
 
     return {
         "games": games,
+        "postseason": postseason,
         "summary": {
             "avg_opponent_pct": round(sum(pcts) / len(pcts), 3) if pcts else None,
             "home_count": home_count,
@@ -279,6 +305,7 @@ async def team_profile_endpoint(id: int):
                 "home_or_away": next_game["home_or_away"],
                 "us_probable_pitcher": next_game["us_probable_pitcher"],
                 "us_probable_pitcher_id": next_game["us_probable_pitcher_id"],
+                "postseason": next_game["postseason"],
             }
             if next_game
             else None

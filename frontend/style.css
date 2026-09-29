@@ -673,6 +673,13 @@ main section { scroll-margin-top: 3.5rem; }
   margin-left: 0.35rem;
 }
 
+.game-time {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .il-badge {
   display: inline-block;
   font-size: 0.68rem;

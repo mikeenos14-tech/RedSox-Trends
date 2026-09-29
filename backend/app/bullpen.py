@@ -24,7 +24,10 @@ async def get_bullpen_report(team_id: int = config.TEAM_ID) -> list[dict]:
     a rough "likely available tonight" flag. This is a heuristic, not
     official bullpen-management data — MLB doesn't publish an availability
     feed — but back-to-back-day usage is a reasonable, transparent proxy."""
-    games = await mlb_client.get_recent_games(team_id=team_id, days=LOOKBACK_DAYS)
+    # Postseason games included: October workload is exactly what decides
+    # who's available tonight, and a regular-season-only lookback would
+    # show the whole bullpen as fully rested mid-series.
+    games = await mlb_client.get_recent_games(team_id=team_id, days=LOOKBACK_DAYS, game_types=config.ALL_GAME_TYPES)
     if not games:
         return []
 

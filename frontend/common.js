@@ -176,6 +176,41 @@ function formatGameDate(dateStr) {
   return dt.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
 }
 
+// First pitch in Eastern time — the team's home clock, and the one every
+// Boston broadcast and ticket uses — with the zone stated so nobody has to
+// guess.
+function formatGameTime(utcStr, tbd) {
+  if (!utcStr || tbd) return "TBD";
+  return (
+    new Date(utcStr).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) +
+    " ET"
+  );
+}
+
+// "ALWC Game 1", "ALDS Game 5 (if nec.)" — the label MLB broadcasts use.
+function postseasonGameLabel(ps) {
+  if (!ps) return "";
+  const game = ps.game_number ? ` Game ${ps.game_number}` : "";
+  return `${ps.abbreviation || ps.series}${game}${ps.if_necessary ? " (if nec.)" : ""}`;
+}
+
+// One-line read on where Boston stands in October, from the backend's
+// deterministic postseason summary (never inferred client-side).
+function postseasonStandingText(p) {
+  if (!p) return "";
+  const vs = `vs. ${p.opponent.split(" ").pop()}`;
+  switch (p.phase) {
+    case "eliminated":
+      return `Eliminated in the ${p.series} (${p.status})`;
+    case "won_world_series":
+      return "World Series champions";
+    case "awaiting_next_round":
+      return `Won the ${p.series} (${p.status})`;
+    default:
+      return `${p.abbreviation} ${vs}: ${p.status || "Game 1 next"}`;
+  }
+}
+
 async function loadUpcomingSchedule() {
   const cards = document.getElementById("upcoming-cards");
   const tbody = document.querySelector("#upcoming-table tbody");
@@ -184,15 +219,32 @@ async function loadUpcomingSchedule() {
     if (!res.ok) throw new Error("Failed to load upcoming schedule");
     const data = await res.json();
     const s = data.summary;
+    const p = data.postseason;
 
     cards.innerHTML = "";
-    cards.append(
-      card("Avg Opponent PCT", s.avg_opponent_pct != null ? fmtRate(s.avg_opponent_pct) : "-"),
-      card("Home / Away", `${s.home_count} / ${s.away_count}`),
-      card("Division Games", s.division_game_count)
-    );
+    if (p && p.phase === "in_series") {
+      const next = p.next_game;
+      cards.append(
+        card("Series", `${p.abbreviation} vs. ${p.opponent.split(" ").pop()}`),
+        card("Series Status", p.status || "Not started"),
+        card(
+          "Next Game",
+          next ? `Gm ${next.game_number} · ${formatGameDate(next.date)}, ${formatGameTime(next.game_date_utc)}` : "TBD"
+        )
+      );
+    } else {
+      cards.append(
+        card("Avg Opponent PCT", s.avg_opponent_pct != null ? fmtRate(s.avg_opponent_pct) : "-"),
+        card("Home / Away", `${s.home_count} / ${s.away_count}`),
+        card("Division Games", s.division_game_count)
+      );
+    }
 
     tbody.innerHTML = "";
+    // The division-games footnote only means something when there are
+    // division games in the list (never in October).
+    const divisionNote = document.getElementById("upcoming-division-note");
+    if (divisionNote) divisionNote.style.display = s.division_game_count ? "" : "none";
     if (!data.games.length) {
       tbody.innerHTML = `<tr><td colspan="7">No upcoming games scheduled.</td></tr>`;
       return;
@@ -203,9 +255,13 @@ async function loadUpcomingSchedule() {
       const rec = g.opponent_record;
       const recStr = rec && rec.wins != null ? `${rec.wins}-${rec.losses} (${rec.pct})` : "-";
       const divBadge = g.is_division_game ? `<span class="div-badge">DIV</span>` : "";
-      const seriesStr = g.season_series ? `${g.season_series.wins}-${g.season_series.losses}` : "—";
+      const seriesStr = g.postseason
+        ? postseasonGameLabel(g.postseason)
+        : g.season_series
+          ? `${g.season_series.wins}-${g.season_series.losses}`
+          : "—";
       tr.innerHTML = `
-        <td>${formatGameDate(g.date)}</td>
+        <td>${formatGameDate(g.date)}<span class="game-time">${formatGameTime(g.game_date_utc, g.start_time_tbd)}</span></td>
         <td class="name">${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}${divBadge}</td>
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td class="num">${recStr}</td>
@@ -422,14 +478,26 @@ function renderGameListDetail(games) {
   `;
 }
 
+// Baseball-style rate: ".537", "1.000". Accepts MLB's own strings
+// (".537", "1.000") as well as raw numbers (0.537).
 function fmtPct(pct) {
-  if (pct == null) return "-";
-  return `.${String(pct).replace("0.", "").padEnd(3, "0")}`;
+  if (pct == null || pct === "") return "-";
+  const n = Number(pct);
+  if (Number.isNaN(n)) return String(pct);
+  return n >= 1 ? n.toFixed(3) : n.toFixed(3).replace(/^0/, "");
 }
 
 function renderRecordLine(data) {
+  const record = `${data.record.wins}-${data.record.losses} (${fmtPct(data.record.pct)})`;
+  // Once October starts, games back / Wild Card cushion / regular-season
+  // streak are frozen and meaningless — the series is the only standing
+  // that matters.
+  if (data.postseason) {
+    document.getElementById("record-line").textContent = `${record} • ${postseasonStandingText(data.postseason)}`;
+    return;
+  }
   document.getElementById("record-line").textContent =
-    `${data.record.wins}-${data.record.losses} (.${data.record.pct?.replace("0.", "")}) ` +
+    `${record} ` +
     `• ${data.games_back === "-" ? "1st in div" : data.games_back + " GB"} ` +
     `• WC: ${data.wildcard_games_back ?? "-"} ` +
     `• Streak: ${data.streak ?? "-"}`;
@@ -456,6 +524,37 @@ function renderOverviewCards(data) {
     card("Expected Record", data.expected_record ? `${data.expected_record.wins}-${data.expected_record.losses}` : "-"),
     card("Recent Form", data.recent_form ? data.recent_form.trending : "-")
   );
+}
+
+// Games page: October results in their own table, above the regular
+// season's Last 15 — never blended into it (the Record column there is the
+// season record, which a postseason game doesn't have).
+function renderPostseasonTable(postseason) {
+  const section = document.getElementById("postseason-section");
+  if (!section) return;
+  if (!postseason || !postseason.games.length) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  document.getElementById("postseason-sub").textContent = postseasonStandingText(postseason);
+  const tbody = section.querySelector("tbody");
+  tbody.innerHTML = [...postseason.games]
+    .reverse()
+    .map(
+      (g) => `
+      <tr class="${g.won ? "win" : "loss"}">
+        <td>${formatGameDate(g.date)}</td>
+        <td>${postseasonGameLabel(g.postseason)}</td>
+        <td>${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
+        <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
+        <td>${g.our_score}-${g.their_score}</td>
+        <td class="result">${g.won ? "W" : "L"}</td>
+        <td>${g.postseason.status || "-"}</td>
+      </tr>
+    `
+    )
+    .join("");
 }
 
 function renderGamesTable(games) {
@@ -1090,9 +1189,13 @@ function renderResultBanner(g) {
   banner.hidden = false;
   banner.className = `result-banner ${g.won ? "result-win" : "result-loss"}`;
   document.getElementById("result-banner-badge").textContent = g.won ? "W" : "L";
-  document.getElementById("result-banner-text").textContent = g.won
+  const headline = g.won
     ? `Red Sox top the ${oppShort}, ${winScore}-${loseScore}`
     : `Red Sox fall to the ${oppShort}, ${winScore}-${loseScore}`;
+  const ps = g.postseason;
+  document.getElementById("result-banner-text").textContent = ps
+    ? `${headline} · ${postseasonGameLabel(ps)}${ps.status ? ` · ${ps.status}` : ""}`
+    : headline;
 }
 
 async function loadLastGameRecap() {
@@ -1139,7 +1242,14 @@ async function loadLastGameRecap() {
         <div class="game-recap-result">${resultWord}</div>
         <div>
           <h3>${matchup} &nbsp; ${finalScore}</h3>
-          <p class="muted small-note">${formatLongDate(g.date)} • ${g.venue || ""}</p>
+          <p class="muted small-note">${[
+            formatLongDate(g.date),
+            g.venue,
+            g.postseason ? `${g.postseason.series}, Game ${g.postseason.game_number}` : null,
+            g.postseason?.status,
+          ]
+            .filter(Boolean)
+            .join(" • ")}</p>
         </div>
       </div>
       ${buildLineScoreTable(g)}
@@ -1415,8 +1525,9 @@ async function loadLiveGame() {
     section.hidden = false;
 
     const oppShort = g.opponent.split(" ").pop();
+    const psPrefix = g.postseason ? `${postseasonGameLabel(g.postseason)} · ` : "";
     document.getElementById("live-inning-label").textContent =
-      `${g.inning_half === "top" ? "Top" : "Bot"} ${ordinal(g.inning)} — ${g.home_or_away === "home" ? "vs" : "@"} ${oppShort}`;
+      `${psPrefix}${g.inning_half === "top" ? "Top" : "Bot"} ${ordinal(g.inning)} — ${g.home_or_away === "home" ? "vs" : "@"} ${oppShort}`;
 
     document.getElementById("live-logo-them").src = `https://www.mlbstatic.com/team-logos/${g.opponent_id}.svg`;
     document.getElementById("live-name-them").textContent = oppShort;

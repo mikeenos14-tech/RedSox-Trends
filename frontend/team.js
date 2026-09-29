@@ -104,8 +104,9 @@ function renderNextMatchup(t) {
   document.getElementById("team-next-section").hidden = false;
   const matchup = g.home_or_away === "home" ? `vs. ${t.name}` : `@ ${t.name}`;
   const pitcher = g.us_probable_pitcher ? playerLink(g.us_probable_pitcher_id, g.us_probable_pitcher) : "TBD";
+  const series = g.postseason ? ` &nbsp;&middot;&nbsp; ${postseasonGameLabel(g.postseason)}` : "";
   document.getElementById("team-next-body").innerHTML =
-    `${formatLongDate(g.date)} &nbsp;${matchup} &nbsp;&middot;&nbsp; Our probable pitcher: ${pitcher}`;
+    `${formatLongDate(g.date)} &nbsp;${matchup}${series} &nbsp;&middot;&nbsp; Our probable pitcher: ${pitcher}`;
 }
 
 async function loadTeamProfile() {

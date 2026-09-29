@@ -1,6 +1,7 @@
 loadSummary()
   .then((data) => {
     renderRecordLine(data);
+    renderPostseasonTable(data.postseason);
     renderGamesTable(data.recent_games);
   })
   .catch((e) => {
