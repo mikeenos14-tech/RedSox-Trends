@@ -197,7 +197,16 @@ async def resolve_season(request: Request, call_next):
     # to a new season on Opening Day with no code change or redeploy.
     if request.url.path.startswith("/api/"):
         await season.ensure_fresh()
-    return await call_next(request)
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        # Static HTML/CSS/JS had no Cache-Control, so browsers applied
+        # heuristic freshness and kept serving the previous deploy's
+        # style.css/common.js for hours — new HTML with old JS/CSS.
+        # "no-cache" means always revalidate: unchanged files cost a tiny
+        # 304 via the ETag StaticFiles already sends; changed ones arrive
+        # immediately after a deploy.
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.exception_handler(Exception)
