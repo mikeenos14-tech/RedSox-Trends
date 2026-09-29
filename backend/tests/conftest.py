@@ -10,7 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app import ai_store, config, player_highlight, season
+from app import ai_store, cache, config, player_highlight, season
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -36,6 +36,8 @@ class FakeMLB:
         for suffix, match, payload in self.routes:
             if request.url.path.endswith(suffix) and all(request.url.params.get(k) == v for k, v in match.items()):
                 body = payload(request) if callable(payload) else payload
+                if isinstance(body, str):  # RSS/HTML/CSV endpoints
+                    return httpx.Response(200, text=body)
                 return httpx.Response(200, json=body)
         raise AssertionError(f"Unexpected request in test: {request.url}")
 
@@ -49,6 +51,7 @@ def isolate_module_state():
     directly; snapshot and restore it so no test leaks its season into the
     next."""
     saved = dict(season._state)
+    cache.clear_all()  # every endpoint's in-memory cache starts empty
     yield
     season._state.clear()
     season._state.update(saved)

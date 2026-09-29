@@ -9,6 +9,7 @@ import re
 import httpx
 
 from . import config, player_stats
+from . import http
 from . import season as season_mod
 
 PERCENTILE_URL = "https://baseballsavant.mlb.com/leaderboard/percentile-rankings"
@@ -123,7 +124,7 @@ PITCHER_EXTRA_STATS = [
 
 
 async def fetch_percentile_rankings(player_type: str) -> list[dict]:
-    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
+    async with http.session(timeout=15, headers=HEADERS) as client:
         resp = await client.get(PERCENTILE_URL, params={"year": season_mod.current(), "type": player_type})
         resp.raise_for_status()
         html = resp.text
@@ -138,7 +139,7 @@ async def fetch_percentile_rankings(player_type: str) -> list[dict]:
 
 
 async def fetch_custom_leaderboard(player_type: str, selections: list[str]) -> dict[str, dict]:
-    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
+    async with http.session(timeout=15, headers=HEADERS) as client:
         resp = await client.get(
             CUSTOM_URL,
             params={
@@ -263,7 +264,7 @@ def _build_league_leaders(
 async def fetch_team_leaderboard(url: str, player_type: str) -> list[dict]:
     """Savant's team-level leaderboards (type=batter-team / pitcher-team):
     one row per MLB team, as CSV."""
-    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
+    async with http.session(timeout=15, headers=HEADERS) as client:
         resp = await client.get(url, params={"type": f"{player_type}-team", "year": season_mod.current(), "csv": "true"})
         resp.raise_for_status()
     return list(csv.DictReader(io.StringIO(resp.text.lstrip("\ufeff"))))
@@ -345,7 +346,7 @@ async def fetch_park_factors() -> dict[int, int]:
     """Savant's 3-year rolling Statcast park factors: {home team id: runs
     index} (100 = neutral). Parks without a 3-year sample are absent."""
     params = {"type": "year", "year": season_mod.current(), "batSide": "", "stat": "index_wOBA", "condition": "All", "rolling": 3}
-    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
+    async with http.session(timeout=15, headers=HEADERS) as client:
         resp = await client.get(PARK_FACTORS_URL, params=params)
         resp.raise_for_status()
     match = _PARK_DATA_RE.search(resp.text)

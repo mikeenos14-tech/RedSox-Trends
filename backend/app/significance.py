@@ -5,9 +5,10 @@ import asyncio
 import httpx
 
 from . import config, game_recap, mlb_client
+from . import http
 from . import season as season_mod
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; FenwayAlmanacDashboard/1.0)"}
 
 # Round-number thresholds worth a callout when a career total crosses them
@@ -474,7 +475,7 @@ async def get_postseason_significance(game: dict, team_id: int, season: int) -> 
         except httpx.HTTPError:
             pass  # one player's fetch failing shouldn't sink the rest
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         await asyncio.gather(
             *(run(pid, name, "hitting", check_postseason_hitting) for pid, name in hitters),
             *(run(pid, name, "pitching", check_postseason_pitching) for pid, name in pitchers),
@@ -554,7 +555,7 @@ async def get_game_significance(
         # Any other exception (a transient fetch failure for one player) is
         # skipped — one missing check shouldn't sink the rest.
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         # One game-log fetch per player, shared by every check that needs it.
         hit_logs, pitch_logs = await asyncio.gather(
             asyncio.gather(*(get_game_log(client, pid, season, "hitting") for pid, _ in hitters), return_exceptions=True),

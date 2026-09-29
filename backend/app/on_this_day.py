@@ -7,8 +7,9 @@ from datetime import date
 import httpx
 
 from . import config, game_recap, mlb_client
+from . import http
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 FRANCHISE_FOUNDED = 1901
 MAX_CONCURRENT_REQUESTS = 15
 
@@ -92,7 +93,7 @@ async def _find_candidates(team_id: int, month: int, day: int, exclude_year: int
             except httpx.HTTPError:
                 return None
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         results = await asyncio.gather(*[fetch(client, year) for year in years])
 
     return [g for g in results if g is not None]
@@ -115,7 +116,7 @@ async def get_on_this_day(team_id: int = config.TEAM_ID, today: date | None = No
     candidate_count = None
     if notable:
         # One request instead of searching ~125 seasons.
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with http.session(timeout=10) as client:
             game = await _fetch_game_on_date(client, team_id, notable["date"])
     if game is None:
         notable = None

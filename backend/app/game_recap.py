@@ -8,9 +8,10 @@ from xml.etree import ElementTree
 import httpx
 
 from . import config, mlb_client
+from . import http
 from . import season as season_mod
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 RSS_URL = "https://news.google.com/rss/search"
 
 
@@ -38,7 +39,7 @@ async def get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
         "gameType": config.ALL_GAME_TYPES,
         "hydrate": "linescore,decisions,seriesStatus",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -113,7 +114,7 @@ def pitching_lines(boxscore: dict, side: str) -> list[dict]:
 
 async def get_boxscore(game_pk: int) -> dict:
     url = f"{BASE_URL}/game/{game_pk}/boxscore"
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(url)
         resp.raise_for_status()
         return resp.json()
@@ -124,7 +125,7 @@ async def get_scoring_plays(game_pk: int, us_side: str) -> list[dict]:
     recap needs to say who scored when and off whom, instead of guessing from
     the line score. `fields` trims MLB's ~1MB play-by-play to ~20KB."""
     fields = "allPlays,result,description,awayScore,homeScore,about,inning,halfInning,isScoringPlay,matchup,pitcher,fullName"
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/game/{game_pk}/playByPlay", params={"fields": fields})
         resp.raise_for_status()
         plays = resp.json().get("allPlays", [])
@@ -163,7 +164,7 @@ async def _get_game_articles(opponent: str, game_date: str, limit: int = 6) -> l
         "ceid": "US:en",
     }
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(RSS_URL, params=params)
         resp.raise_for_status()
         xml_text = resp.text

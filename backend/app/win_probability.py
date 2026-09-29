@@ -3,12 +3,13 @@ from __future__ import annotations
 import httpx
 
 from . import config, game_recap
+from . import http
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 
 
 async def _fetch_plays(game_pk: int) -> list[dict]:
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with http.session(timeout=15) as client:
         resp = await client.get(f"{BASE_URL}/game/{game_pk}/winProbability")
         resp.raise_for_status()
         return resp.json()

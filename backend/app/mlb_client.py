@@ -5,9 +5,10 @@ from datetime import date, datetime, timedelta
 import httpx
 
 from . import config
+from . import http
 from . import season as season_mod
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 
 
 def is_final(game: dict) -> bool:
@@ -53,7 +54,7 @@ async def get_team_standings(team_id: int = config.TEAM_ID, season: int | None =
             "season": season,
             "standingsTypes": "regularSeason",
         }
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with http.session(timeout=10) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
@@ -92,7 +93,7 @@ async def get_recent_games(
         "gameType": game_types,
         "hydrate": "linescore,seriesStatus",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -143,7 +144,7 @@ async def get_division_standings(team_id: int = config.TEAM_ID, season: int | No
         "season": season,
         "standingsTypes": "regularSeason",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -181,7 +182,7 @@ async def get_league_records(season: int | None = None) -> dict[int, dict]:
     url = f"{BASE_URL}/standings"
     records: dict[int, dict] = {}
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         for league_id in (103, 104):  # American League, National League
             resp = await client.get(
                 url,
@@ -234,7 +235,7 @@ async def get_upcoming_games(
         "gameType": game_types,
         "hydrate": "probablePitcher,seriesStatus",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -295,7 +296,7 @@ async def get_wildcard_standings(team_id: int = config.TEAM_ID, season: int | No
         "season": season,
         "standingsTypes": "wildCard",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -350,7 +351,7 @@ async def get_postseason_games(team_id: int = config.TEAM_ID, season: int | None
         "gameType": ",".join(config.POSTSEASON_GAME_TYPES),
         "hydrate": "linescore,seriesStatus",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/schedule", params=params)
         resp.raise_for_status()
         data = resp.json()

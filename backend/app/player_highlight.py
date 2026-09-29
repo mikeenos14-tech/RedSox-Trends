@@ -6,9 +6,10 @@ from datetime import date, datetime
 import httpx
 
 from . import config, player_stats
+from . import http
 from . import season as season_mod
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 
 
 eastern_today = config.eastern_today
@@ -28,7 +29,7 @@ def _pick_daily_player_id(roster: list[dict], for_date: date) -> int:
 
 
 async def get_person_bio(person_id: int) -> dict:
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/people/{person_id}")
         resp.raise_for_status()
         data = resp.json()
@@ -45,7 +46,7 @@ async def get_draft_info(person_id: int, draft_year: int | None) -> dict | None:
     if not draft_year:
         return None
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with http.session(timeout=10) as client:
             resp = await client.get(f"{BASE_URL}/draft/{draft_year}", params={"playerId": person_id})
             resp.raise_for_status()
             data = resp.json()
@@ -72,7 +73,7 @@ async def get_stat_lines(person_id: int, season: int | None = None) -> dict:
     instead of vague narrative filler."""
     season = season or season_mod.current()
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with http.session(timeout=10) as client:
             resp = await client.get(
                 f"{BASE_URL}/people/{person_id}/stats",
                 params={"stats": "season,career", "group": "hitting,pitching", "season": season},

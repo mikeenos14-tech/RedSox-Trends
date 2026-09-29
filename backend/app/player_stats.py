@@ -6,9 +6,10 @@ from datetime import date, timedelta
 import httpx
 
 from . import config
+from . import http
 from . import season as season_mod
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 
 # Standard linear weights (approximate modern-era values). These don't need
 # to be exact to the current season to be useful for a form-tracking tool —
@@ -88,7 +89,7 @@ async def get_roster(
     # which is exactly wrong for a "recent form" report.
     season = season or season_mod.current()
     params = {"rosterType": roster_type, "season": season}
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/teams/{team_id}/roster", params=params)
         resp.raise_for_status()
         return resp.json().get("roster", [])
@@ -102,7 +103,7 @@ async def _get_people_with_stats(person_ids: list[int], season: int | None = Non
     hydrate = f"stats(group=[hitting,pitching],type=[season],season={season})"
     params = {"personIds": ",".join(str(pid) for pid in person_ids), "hydrate": hydrate}
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with http.session(timeout=20) as client:
         resp = await client.get(f"{BASE_URL}/people", params=params)
         resp.raise_for_status()
         return resp.json().get("people", [])
@@ -301,7 +302,7 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
 
     people = await _get_people_with_stats(person_ids, season)
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with http.session(timeout=20) as client:
         hitting_logs = await asyncio.gather(
             *(get_game_log(client, pid, season, "hitting") for pid in person_ids), return_exceptions=True
         )

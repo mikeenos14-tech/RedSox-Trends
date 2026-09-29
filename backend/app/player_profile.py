@@ -5,9 +5,10 @@ import asyncio
 import httpx
 
 from . import config, player_highlight, player_stats, statcast
+from . import http
 from . import season as season_mod
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 
 # Home/Away and vs-Left/vs-Right — the same platoon-split concept already
 # referenced elsewhere on the site (Front Office Analysis), just broken out
@@ -20,7 +21,7 @@ GAME_LOG_DISPLAY_COUNT = 20
 
 
 async def _get_splits(person_id: int, group: str, season: int) -> list[dict]:
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(
             f"{BASE_URL}/people/{person_id}/stats",
             params={"stats": "statSplits", "group": group, "season": season, "sitCodes": SPLIT_SIT_CODES},
@@ -74,7 +75,7 @@ async def get_player_profile(person_id: int, get_league_data=None) -> dict | Non
     player_type = _player_type(stat_lines, position)
     group = "pitching" if player_type == "pitcher" else "hitting"
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with http.session(timeout=20) as client:
         game_log_task = player_stats.get_game_log(client, person_id, season, group)
         splits_task = _get_splits(person_id, group, season)
         # The caller's day-cached Savant data when provided — a direct fetch

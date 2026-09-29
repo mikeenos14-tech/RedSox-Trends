@@ -3,14 +3,15 @@ from __future__ import annotations
 import httpx
 
 from . import config, mlb_client, player_highlight
+from . import http
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 LIVE_FEED_URL = "https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
 
 
 async def _find_todays_game(team_id: int) -> dict | None:
     today = player_highlight.eastern_today().isoformat()
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(
             f"{BASE_URL}/schedule",
             params={
@@ -42,7 +43,7 @@ async def get_live_game(team_id: int = config.TEAM_ID) -> dict | None:
         return None
 
     game_pk = game["gamePk"]
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(LIVE_FEED_URL.format(game_pk=game_pk))
         resp.raise_for_status()
         feed = resp.json()

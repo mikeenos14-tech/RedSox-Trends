@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import logging
 import os
 import time
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Awaitable, Callable, TypeVar
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -20,8 +17,10 @@ from . import (
     adjusted,
     ai_recap,
     bullpen,
+    cache,
     config,
     game_recap,
+    http,
     league_context,
     live_game,
     mlb_client,
@@ -58,140 +57,84 @@ async def lifespan(_app: FastAPI):
     yield
     if task:
         task.cancel()
+    await http.aclose_all()
 
 
 app = FastAPI(title="The Fenway Almanac", lifespan=lifespan)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
-_highlight_cache = {"date": None, "data": None}
-_highlight_lock = asyncio.Lock()
-_player_profile_cache: dict[int, dict] = {}
-_player_profile_lock = asyncio.Lock()
-_game_recap_cache = {"game_pk": None, "data": None}
-_game_recap_lock = asyncio.Lock()
-_statcast_cache = {"date": None, "data": None}
-_statcast_lock = asyncio.Lock()
-_league_data_cache = {"date": None, "data": None}
-_league_data_lock = asyncio.Lock()
-_statcast_notes_cache = {"date": None, "text": None}
-_statcast_notes_lock = asyncio.Lock()
-_on_this_day_cache = {"date": None, "data": None}
-_on_this_day_lock = asyncio.Lock()
-_all_team_stats_cache: dict = {"result": None, "fetched_at": 0.0}
-_all_team_stats_lock = asyncio.Lock()
-_team_profile_cache: dict[int, dict] = {}
-_team_profile_lock = asyncio.Lock()
+# Every cache on the site is a cache.Memo; the key is the invalidation rule
+# (see cache.py). Eastern "today" is the day boundary everywhere.
+HEAVY_FETCH_CACHE_SECONDS = 1800  # 30 min: all-30-teams stats, roster game logs, etc.
+HEADLINES_CACHE_SECONDS = 600  # news moves faster than season stats
+UPCOMING_CACHE_SECONDS = 120  # probable starters change, but not minute to minute
+LIVE_GAME_CACHE_SECONDS = 10  # shared across visitors; each miss pulls an ~800KB feed
 
-T = TypeVar("T")
-
-
-def _stable_hash(data) -> str:
-    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
-
-
-async def _cached_by_hash(cache: dict, lock: asyncio.Lock, input_data, compute: Callable[[], Awaitable[T]]) -> T:
-    """Re-runs `compute` only when `input_data` has changed since the last
-    call — used for the paid AI-generation endpoints. The underlying stats
-    are free to re-fetch, so checking whether anything actually changed
-    costs nothing; only the Claude call itself is worth avoiding. This is
-    strictly better than a time-based TTL here: a timer would still force a
-    regeneration on a schedule even when nothing changed (wasted tokens for
-    a differently-worded rehash of the same facts), while hashing the input
-    only ever calls Claude when there's something new to say.
-    """
-    input_hash = _stable_hash(input_data)
-    async with lock:
-        if cache.get("hash") == input_hash and cache.get("result") is not None:
-            return cache["result"]
-        result = await compute()
-        cache["hash"] = input_hash
-        cache["result"] = result
-        return result
+_season_games = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)
+_hot_cold = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)
+_full_roster = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)
+_all_team_stats = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)
+_league_context = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)
+_stat_benchmarks = cache.Memo(ttl=HEAVY_FETCH_CACHE_SECONDS)
+_headlines = cache.Memo(ttl=HEADLINES_CACHE_SECONDS)
+_upcoming = cache.Memo(ttl=UPCOMING_CACHE_SECONDS)
+_live = cache.Memo(ttl=LIVE_GAME_CACHE_SECONDS)
+_league_data = cache.Memo()  # keyed by day: Savant recalculates once daily
+_statcast_report = cache.Memo()  # keyed by day
+_statcast_notes = cache.Memo()  # keyed by day
+_highlight = cache.Memo()  # keyed by day: one featured player per day
+_on_this_day = cache.Memo()  # keyed by day
+_recap = cache.Memo()  # keyed by gamePk: a final game's facts never change
+_win_prob = cache.Memo()  # keyed by gamePk
+_significance = cache.Memo()  # keyed by gamePk; partial results not stored
+_analysis = cache.Memo()  # keyed by input hash: Claude only when inputs change
+_player_notes = cache.Memo()  # keyed by input hash
+_team_profiles = cache.Memo(max_keys=64)  # keyed by (team id, day)
+_player_profiles = cache.Memo(max_keys=128)  # keyed by (player id, day)
 
 
-async def _cached_for(cache: dict, lock: asyncio.Lock, seconds: float, compute: Callable[[], Awaitable[T]]) -> T:
-    """Short time-based cache for endpoints with no AI cost but a heavier
-    free-API fetch (e.g. aggregating all 30 MLB teams, or every roster
-    player's game log) — avoids redoing that work for every visitor within
-    the same short window, without needing to know exactly when the
-    underlying data changes."""
-    now = time.monotonic()
-    async with lock:
-        if cache.get("result") is not None and (now - cache.get("fetched_at", 0.0)) < seconds:
-            return cache["result"]
-        result = await compute()
-        cache["result"] = result
-        cache["fetched_at"] = now
-        return result
+def _today() -> str:
+    return config.eastern_today().isoformat()
 
 
-HEAVY_FETCH_CACHE_SECONDS = 1800  # 30 min — see _cached_for
+def _as_503(compute):
+    """Wrap an AI-generating coroutine so a Claude failure becomes a 503
+    (and isn't cached)."""
 
-_analysis_cache: dict = {"hash": None, "result": None}
-_analysis_lock = asyncio.Lock()
-_player_notes_cache: dict = {"hash": None, "result": None}
-_player_notes_lock = asyncio.Lock()
-_win_prob_cache = {"game_pk": None, "data": None}
-_win_prob_lock = asyncio.Lock()
-_significance_cache = {"game_pk": None, "data": None}
-_significance_lock = asyncio.Lock()
+    async def wrapped():
+        try:
+            return await compute()
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-_league_context_cache: dict = {"result": None, "fetched_at": 0.0}
-_league_context_lock = asyncio.Lock()
-_stat_benchmarks_cache: dict = {"result": None, "fetched_at": 0.0}
-_stat_benchmarks_lock = asyncio.Lock()
-_hot_cold_cache: dict = {"result": None, "fetched_at": 0.0}
-_hot_cold_lock = asyncio.Lock()
-_full_roster_cache: dict = {"result": None, "fetched_at": 0.0}
-_full_roster_lock = asyncio.Lock()
-_season_games_cache: dict = {"result": None, "fetched_at": 0.0}
-_season_games_lock = asyncio.Lock()
-_headlines_cache: dict = {"result": None, "fetched_at": 0.0}
-_headlines_lock = asyncio.Lock()
-
-HEADLINES_CACHE_SECONDS = 600  # 10 min — news moves faster than season stats
+    return wrapped
 
 
 async def _get_season_games_cached() -> list[dict]:
     # Upcoming Schedule and Season Series both need the full-season game
-    # log; without this they'd each fetch the same ~160-game season
-    # schedule from MLB Stats API independently on every single Home page
-    # load. A full year's lookback, clamped to the season's own start date
-    # inside get_recent_games — a fixed "last 200 days" silently dropped
-    # the first games of the season once October ran long.
-    return await _cached_for(
-        _season_games_cache, _season_games_lock, HEAVY_FETCH_CACHE_SECONDS, lambda: mlb_client.get_recent_games(days=366)
-    )
+    # log. A full year's lookback, clamped to the season's own start date
+    # inside get_recent_games — a fixed "last 200 days" silently dropped the
+    # first games of the season once October ran long.
+    return await _season_games.get(None, lambda: mlb_client.get_recent_games(days=366))
 
 
 async def _get_player_hot_cold_cached() -> dict:
-    return await _cached_for(
-        _hot_cold_cache, _hot_cold_lock, HEAVY_FETCH_CACHE_SECONDS, player_stats.get_player_hot_cold_report
-    )
+    return await _hot_cold.get(None, player_stats.get_player_hot_cold_report)
 
 
 async def _get_full_roster_cached() -> dict:
-    return await _cached_for(
-        _full_roster_cache, _full_roster_lock, HEAVY_FETCH_CACHE_SECONDS, player_stats.get_full_roster_report
-    )
+    return await _full_roster.get(None, player_stats.get_full_roster_report)
 
 
 async def _get_all_team_stats_cached() -> dict:
-    # Shared across Boston's own "Where Boston Ranks" and every team-profile
-    # page — the underlying all-30-teams fetch is identical regardless of
-    # which team's rank_block gets computed from it, so clicking into a
-    # handful of different teams within the same cache window costs zero
-    # extra fetches, not one fetch per team.
-    return await _cached_for(
-        _all_team_stats_cache, _all_team_stats_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.fetch_all_team_stats
-    )
+    # Shared by Where Boston Ranks and every team page: the all-30-teams
+    # fetch is identical whichever team's ranks get computed from it.
+    return await _all_team_stats.get(None, league_context.fetch_all_team_stats)
 
 
 async def _get_headlines_cached() -> list[dict]:
-    # The headline list and its "Summarize Coverage" button both need the
-    # same Google News RSS results; without this they'd hit it independently.
-    return await _cached_for(_headlines_cache, _headlines_lock, HEADLINES_CACHE_SECONDS, news.get_recent_headlines)
+    return await _headlines.get(None, news.get_recent_headlines)
 
 
 @app.middleware("http")
@@ -215,7 +158,7 @@ async def resolve_season(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    # Log the full traceback server-side (visible in Render's log viewer)
+    # Log the full traceback server-side (visible in Railway's deploy logs)
     # but never expose exception internals to the client — file paths,
     # package versions, etc. shouldn't be handed to anyone who can trigger
     # an error on a public-facing app.
@@ -287,9 +230,7 @@ async def _adjustment_inputs(team_id: int = config.TEAM_ID) -> tuple:
 
 @app.get("/api/team/league-context")
 async def team_league_context():
-    return await _cached_for(
-        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, _boston_league_context
-    )
+    return await _league_context.get(None, _boston_league_context)
 
 
 @app.get("/api/team/division-standings")
@@ -299,14 +240,7 @@ async def team_division_standings():
 
 @app.get("/api/team/stat-benchmarks")
 async def team_stat_benchmarks():
-    return await _cached_for(
-        _stat_benchmarks_cache, _stat_benchmarks_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_stat_benchmarks
-    )
-
-
-UPCOMING_CACHE_SECONDS = 120
-_upcoming_cache: dict = {"result": None, "fetched_at": 0.0}
-_upcoming_lock = asyncio.Lock()
+    return await _stat_benchmarks.get(None, league_context.get_stat_benchmarks)
 
 
 def _pitcher_line(person: dict) -> dict | None:
@@ -327,7 +261,7 @@ def _pitcher_line(person: dict) -> dict | None:
 async def team_upcoming_schedule():
     # Five MLB requests per build and it's on every Home load — probable
     # starters and records don't change minute to minute.
-    return await _cached_for(_upcoming_cache, _upcoming_lock, UPCOMING_CACHE_SECONDS, _build_upcoming_schedule)
+    return await _upcoming.get(None, _build_upcoming_schedule)
 
 
 async def _build_upcoming_schedule():
@@ -413,38 +347,32 @@ async def team_profile_endpoint(id: int):
     # Day-cached per team, same rationale as the player-profile cache — a
     # team's record/rank/top-performers don't need recomputing on every
     # single visit, only once the calendar day actually turns over.
-    today = player_highlight.eastern_today().isoformat()
-    async with _team_profile_lock:
-        cached = _team_profile_cache.get(id)
-        if cached and cached["date"] == today:
-            return cached["data"]
+    return await _team_profiles.get((id, _today()), lambda: _build_team_profile(id))
 
-        all_team_stats = await _get_all_team_stats_cached()
-        try:
-            profile = await team_profile.get_team_profile(id, all_team_stats, await _park_factors())
-        except ValueError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-        season_games = await _get_season_games_cached()
-        series = mlb_client.build_season_series(season_games).get(id)
-        profile["season_series_vs_us"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
+async def _build_team_profile(id: int) -> dict:
+    all_team_stats, parks = await asyncio.gather(_get_all_team_stats_cached(), _park_factors())
+    try:
+        profile = await team_profile.get_team_profile(id, all_team_stats, parks)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-        upcoming = await mlb_client.get_upcoming_games()
-        next_game = next((g for g in upcoming if g["opponent_id"] == id), None)
-        profile["next_matchup"] = (
-            {
-                "date": next_game["date"],
-                "home_or_away": next_game["home_or_away"],
-                "us_probable_pitcher": next_game["us_probable_pitcher"],
-                "us_probable_pitcher_id": next_game["us_probable_pitcher_id"],
-                "postseason": next_game["postseason"],
-            }
-            if next_game
-            else None
-        )
-
-        _team_profile_cache[id] = {"date": today, "data": profile}
-        return profile
+    season_games, upcoming = await asyncio.gather(_get_season_games_cached(), mlb_client.get_upcoming_games())
+    series = mlb_client.build_season_series(season_games).get(id)
+    profile["season_series_vs_us"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
+    next_game = next((g for g in upcoming if g["opponent_id"] == id), None)
+    profile["next_matchup"] = (
+        {
+            "date": next_game["date"],
+            "home_or_away": next_game["home_or_away"],
+            "us_probable_pitcher": next_game["us_probable_pitcher"],
+            "us_probable_pitcher_id": next_game["us_probable_pitcher_id"],
+            "postseason": next_game["postseason"],
+        }
+        if next_game
+        else None
+    )
+    return profile
 
 
 @app.get("/api/team/win-probability")
@@ -457,16 +385,11 @@ async def team_win_probability():
     if game is None:
         return {"game": None}
 
-    game_pk = game["gamePk"]
-    async with _win_prob_lock:
-        if _win_prob_cache["game_pk"] == game_pk and _win_prob_cache["data"] is not None:
-            return _win_prob_cache["data"]
 
-        data = await win_probability.get_last_game_win_probability(game=game)
-        result = {"game": data}
-        _win_prob_cache["game_pk"] = game_pk
-        _win_prob_cache["data"] = result
-        return result
+    async def compute():
+        return {"game": await win_probability.get_last_game_win_probability(game=game)}
+
+    return await _win_prob.get(game["gamePk"], compute)
 
 
 @app.get("/api/team/last-game-significance")
@@ -482,34 +405,19 @@ async def team_last_game_significance():
     game = await game_recap.get_last_completed_game()
     if game is None:
         return {"game_pk": None, "narration": None}
-    async with _significance_lock:
-        if _significance_cache["game_pk"] == game["gamePk"] and _significance_cache["data"] is not None:
-            return _significance_cache["data"]
 
+    async def compute():
         report = await significance.get_game_significance(game=game)
-        if not report["complete"]:
-            # Some game logs haven't caught up to this game yet (MLB lags a
-            # few minutes after Final). Show nothing for now and let a later
-            # request compute the full answer, rather than caching a partial
-            # one forever or paying for narration of a partial list.
-            return {"game_pk": report["game_pk"], "date": report["date"], "narration": None}
-
-        narration = None
-        if report["findings"]:
-            try:
-                narration = await ai_recap.generate_significance_narration(report["findings"])
-            except RuntimeError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-        result = {"game_pk": report["game_pk"], "date": report["date"], "narration": narration}
-        _significance_cache["game_pk"] = report["game_pk"]
-        _significance_cache["data"] = result
+        result = {"game_pk": report["game_pk"], "date": report["date"], "narration": None, "complete": report["complete"]}
+        # Incomplete = some game logs hadn't caught up yet (MLB lags a few
+        # minutes after Final): show nothing, don't pay for narration of a
+        # partial list, and don't cache — a later request gets the full answer.
+        if report["complete"] and report["findings"]:
+            result["narration"] = await _as_503(lambda: ai_recap.generate_significance_narration(report["findings"]))()
         return result
 
-
-LIVE_GAME_CACHE_SECONDS = 10
-_live_game_cache: dict = {"result": None, "fetched_at": 0.0}
-_live_game_lock = asyncio.Lock()
+    result = await _significance.get(game["gamePk"], compute, store_if=lambda r: r["complete"])
+    return {k: v for k, v in result.items() if k != "complete"}
 
 
 async def _fetch_live_game() -> dict:
@@ -518,15 +426,11 @@ async def _fetch_live_game() -> dict:
 
 @app.get("/api/team/live-game")
 async def team_live_game():
-    # Deliberately uncached — this is the one endpoint on the site whose
-    # whole purpose is "what's true right now," polled by the frontend
-    # every ~15s while a game is in progress. Almost always returns null
-    # (no game live at this moment), which is cheap: one schedule lookup.
-    #
-    # Shared for 10s across all visitors: each miss pulls MLB's full live
-    # feed (~800KB), and every open Home page polls every 15s plus the nav
-    # indicator on every page — without this, cost scales with visitors.
-    return await _cached_for(_live_game_cache, _live_game_lock, LIVE_GAME_CACHE_SECONDS, _fetch_live_game)
+    # "What's true right now," polled every ~15s by open Home pages and every
+    # minute by the nav indicator on every page. Shared for 10s across all
+    # visitors so cost doesn't scale with traffic: each miss pulls MLB's
+    # full live feed (~800KB).
+    return await _live.get(None, _fetch_live_game)
 
 
 @app.get("/api/team/analysis")
@@ -536,9 +440,7 @@ async def team_analysis():
     # analytical read), just in two different voices. One richer paragraph
     # serves both purposes without repeating itself.
     summary = await _build_summary()
-    lg_ctx = await _cached_for(
-        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, _boston_league_context
-    )
+    lg_ctx = await _league_context.get(None, _boston_league_context)
     summary["league_context"] = {k: v for k, v in lg_ctx.items() if k != "run_diff_league_chart"}
     # Savant's expected stats, so any "luck" claim is grounded in xwOBA
     # rather than inferred from runs vs. wOBA (the analysis once called an
@@ -552,13 +454,8 @@ async def team_analysis():
     except Exception as exc:  # noqa: BLE001 — Savant is a scrape; analysis still works without it
         logger.warning("Statcast team profile unavailable for analysis: %s", exc)
 
-    async def compute():
-        try:
-            return await ai_recap.generate_team_analysis(summary)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    analysis = await _cached_by_hash(_analysis_cache, _analysis_lock, summary, compute)
+    # Keyed by the inputs' hash: Claude runs only when something changed.
+    analysis = await _analysis.get(cache.stable_hash(summary), _as_503(lambda: ai_recap.generate_team_analysis(summary)))
     return {"analysis": analysis}
 
 
@@ -566,7 +463,6 @@ async def team_analysis():
 async def team_headlines():
     headlines = await _get_headlines_cached()
     return {"headlines": headlines}
-
 
 
 
@@ -586,13 +482,9 @@ async def players_notes():
     report = await _get_player_hot_cold_cached()
     slim_report = player_stats.slim_for_ai(report)
 
-    async def compute():
-        try:
-            return await ai_recap.generate_player_notes(slim_report)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    notes = await _cached_by_hash(_player_notes_cache, _player_notes_lock, slim_report, compute)
+    notes = await _player_notes.get(
+        cache.stable_hash(slim_report), _as_503(lambda: ai_recap.generate_player_notes(slim_report))
+    )
     return {"notes": notes}
 
 
@@ -602,21 +494,12 @@ async def players_highlight():
     # player_highlight.eastern_today for why): the whole point is one
     # player featured per day for everyone, not a fresh AI-written bio
     # (and roster fetch) on every visit.
-    today = player_highlight.eastern_today().isoformat()
-    async with _highlight_lock:
-        if _highlight_cache["date"] == today and _highlight_cache["data"] is not None:
-            return _highlight_cache["data"]
-
+    async def compute():
         bio = await player_highlight.get_daily_highlight()
-        try:
-            narrative = await ai_recap.generate_player_highlight(bio)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        narrative = await _as_503(lambda: ai_recap.generate_player_highlight(bio))()
+        return {**bio, "narrative": narrative}
 
-        result = {**bio, "narrative": narrative}
-        _highlight_cache["date"] = today
-        _highlight_cache["data"] = result
-        return result
+    return await _highlight.get(_today(), compute)
 
 
 @app.get("/api/players/profile")
@@ -624,25 +507,21 @@ async def players_profile(id: int):
     # Day-cached per player (Eastern) — a player's page doesn't need to
     # recompute career/game-log/Statcast data on every single visit, only
     # once the calendar day actually turns over.
-    today = player_highlight.eastern_today().isoformat()
-    async with _player_profile_lock:
-        cached = _player_profile_cache.get(id)
-        if cached and cached["date"] == today:
-            return cached["data"]
+    return await _player_profiles.get((id, _today()), lambda: _build_player_profile(id))
 
-        profile = await player_profile.get_player_profile(id, get_league_data=_get_league_data_cached)
-        if profile is None:
-            raise HTTPException(status_code=404, detail="Player not found on the current 40-man roster")
-        baselines, pf = await _adjustment_inputs()
-        if baselines:
-            hit, pit = profile.get("hitting_this_season"), profile.get("pitching_this_season")
-            if hit:
-                hit["ops_plus"] = adjusted.ops_plus(hit.get("obp"), hit.get("slg"), baselines, pf)
-            if pit:
-                pit["era_minus"] = adjusted.era_minus(pit.get("era"), baselines, pf)
 
-        _player_profile_cache[id] = {"date": today, "data": profile}
-        return profile
+async def _build_player_profile(id: int) -> dict:
+    profile = await player_profile.get_player_profile(id, get_league_data=_get_league_data_cached)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Player not found on the current 40-man roster")
+    baselines, pf = await _adjustment_inputs()
+    if baselines:
+        hit, pit = profile.get("hitting_this_season"), profile.get("pitching_this_season")
+        if hit:
+            hit["ops_plus"] = adjusted.ops_plus(hit.get("obp"), hit.get("slg"), baselines, pf)
+        if pit:
+            pit["era_minus"] = adjusted.era_minus(pit.get("era"), baselines, pf)
+    return profile
 
 
 async def _get_league_data_cached() -> dict:
@@ -651,28 +530,14 @@ async def _get_league_data_cached() -> dict:
     # official API, so being a light touch matters) on every page view —
     # shared by the team report, player search, and player comparison so
     # only the first of those hit today pays the Savant round-trip.
-    today = player_highlight.eastern_today().isoformat()
-    async with _league_data_lock:
-        if _league_data_cache["date"] == today and _league_data_cache["data"] is not None:
-            return _league_data_cache["data"]
-
-        data = await statcast.fetch_league_data()
-        _league_data_cache["date"] = today
-        _league_data_cache["data"] = data
-        return data
+    return await _league_data.get(_today(), statcast.fetch_league_data)
 
 
 async def _get_statcast_report_cached() -> dict:
-    today = player_highlight.eastern_today().isoformat()
-    async with _statcast_lock:
-        if _statcast_cache["date"] == today and _statcast_cache["data"] is not None:
-            return _statcast_cache["data"]
+    async def compute():
+        return await statcast.get_statcast_report(await _get_league_data_cached())
 
-        league_data = await _get_league_data_cached()
-        report = await statcast.get_statcast_report(league_data)
-        _statcast_cache["date"] = today
-        _statcast_cache["data"] = report
-        return report
+    return await _statcast_report.get(_today(), compute)
 
 
 @app.get("/api/players/statcast")
@@ -699,20 +564,11 @@ async def players_compare(player_id: int, type: str):
 
 @app.get("/api/players/statcast-notes")
 async def players_statcast_notes():
-    today = player_highlight.eastern_today().isoformat()
-    async with _statcast_notes_lock:
-        if _statcast_notes_cache["date"] == today and _statcast_notes_cache["text"] is not None:
-            return {"notes": _statcast_notes_cache["text"]}
-
+    async def compute():
         report = await _get_statcast_report_cached()
-        try:
-            notes = await ai_recap.generate_statcast_notes(report)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return await _as_503(lambda: ai_recap.generate_statcast_notes(report))()
 
-        _statcast_notes_cache["date"] = today
-        _statcast_notes_cache["text"] = notes
-        return {"notes": notes}
+    return {"notes": await _statcast_notes.get(_today(), compute)}
 
 
 @app.get("/api/team/on-this-day")
@@ -721,17 +577,12 @@ async def team_on_this_day():
     # franchise history for today's month/day (~125 small requests) — no
     # AI cost here, this is a plain box-score lookup, but the search itself
     # still shouldn't re-run per visit.
-    today = player_highlight.eastern_today()
-    async with _on_this_day_lock:
-        if _on_this_day_cache["date"] == today.isoformat() and _on_this_day_cache["data"] is not None:
-            return _on_this_day_cache["data"]
+    today = config.eastern_today()
 
-        game = await on_this_day.get_on_this_day(today=today)
-        result = {"game": game}
+    async def compute():
+        return {"game": await on_this_day.get_on_this_day(today=today)}
 
-        _on_this_day_cache["date"] = today.isoformat()
-        _on_this_day_cache["data"] = result
-        return result
+    return await _on_this_day.get(today.isoformat(), compute)
 
 
 @app.get("/api/team/last-game-recap")
@@ -746,22 +597,13 @@ async def team_last_game_recap():
     game = await game_recap.get_last_completed_game()
     if game is None:
         return {"game": None}
-    async with _game_recap_lock:
-        if _game_recap_cache["game_pk"] == game["gamePk"] and _game_recap_cache["data"] is not None:
-            return _game_recap_cache["data"]
 
+    async def compute():
         data = await game_recap.get_last_game_recap_data(game=game)
-        game_pk = data["game_pk"]
+        narrative = await _as_503(lambda: ai_recap.generate_game_recap(data))()
+        return {"game": {**data, "narrative": narrative}}
 
-        try:
-            narrative = await ai_recap.generate_game_recap(data)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-        result = {"game": {**data, "narrative": narrative}}
-        _game_recap_cache["game_pk"] = game_pk
-        _game_recap_cache["data"] = result
-        return result
+    return await _recap.get(game["gamePk"], compute)
 
 
 async def warm_ai_outputs() -> None:

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from xml.etree import ElementTree
 
-import httpx
+from . import http
 
 RSS_URL = "https://news.google.com/rss/search"
 
@@ -20,7 +20,7 @@ async def get_recent_headlines(query: str = "Red Sox", days: int = 3, limit: int
         "ceid": "US:en",
     }
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with http.session(timeout=10) as client:
         resp = await client.get(RSS_URL, params=params)
         resp.raise_for_status()
         xml_text = resp.text

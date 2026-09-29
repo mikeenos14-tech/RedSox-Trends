@@ -3,16 +3,17 @@ from __future__ import annotations
 import httpx
 
 from . import adjusted, config, player_stats
+from . import http
 from . import season as season_mod
 from .player_stats import WOBA_WEIGHTS, _parse_innings
 
-BASE_URL = "https://statsapi.mlb.com/api/v1"
+BASE_URL = http.MLB_API
 
 
 async def _fetch_league_team_stats(group: str, season: int | None = None) -> list[dict]:
     season = season or season_mod.current()
     params = {"stats": "season", "group": group, "season": season, "sportId": 1}
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with http.session(timeout=15) as client:
         resp = await client.get(f"{BASE_URL}/teams/stats", params=params)
         resp.raise_for_status()
         data = resp.json()

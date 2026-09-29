@@ -10,13 +10,8 @@ from app import main
 
 
 @pytest.fixture
-def client(season_2026, monkeypatch):
-    # Fresh in-memory caches per test.
-    monkeypatch.setitem(main._significance_cache, "game_pk", None)
-    monkeypatch.setitem(main._significance_cache, "data", None)
-    monkeypatch.setitem(main._live_game_cache, "result", None)
-    monkeypatch.setitem(main._live_game_cache, "fetched_at", 0.0)
-    return TestClient(main.app)
+def client(season_2026):
+    return TestClient(main.app)  # caches are reset per test by conftest
 
 
 def test_static_files_must_revalidate(client):

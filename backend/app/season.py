@@ -16,6 +16,7 @@ from datetime import date
 import httpx
 
 from . import config
+from . import http
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -82,7 +83,7 @@ async def ensure_fresh() -> None:
         if _state["checked_on"] == today:
             return
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with http.session(timeout=10) as client:
                 info = await _fetch(client, None)
                 if today < info["regular_start"]:
                     info = await _fetch(client, info["season"] - 1)
