@@ -92,3 +92,10 @@ test("results-vs-expected phrasing treats small gaps as noise", () => {
   assert.equal(run(`luckPhrase(0.007)`), "slightly ahead of");
   assert.equal(run(`luckPhrase(-0.02)`), "well behind");
 });
+
+test("outside text is escaped before it becomes HTML", () => {
+  assert.equal(run(`esc('<img src=x onerror="alert(1)"> & Sox\\'s')`), "&lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; Sox&#39;s");
+  assert.equal(run(`esc(null)`), "");
+  assert.equal(run(`safeUrl("https://news.google.com/a?b=1&c=2")`), "https://news.google.com/a?b=1&amp;c=2");
+  assert.equal(run(`safeUrl("javascript:alert(1)")`), "#");
+});

@@ -207,7 +207,7 @@ async function loadPlayerProfile() {
     renderSplits(p);
     renderGameLog(p);
   } catch (e) {
-    document.getElementById("player-hero").innerHTML = `<p class="muted">Couldn't load this player: ${e.message}</p>`;
+    document.getElementById("player-hero").innerHTML = `<p class="muted">Couldn't load this player: ${esc(e.message)}</p>`;
   }
 }
 

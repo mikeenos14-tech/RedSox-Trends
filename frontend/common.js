@@ -28,6 +28,23 @@ function teamLogoUrl(teamId, dark = matchMedia("(prefers-color-scheme: dark)").m
 
 // `onDark`: for surfaces that are navy in both themes (the next-game card and
 // the live ticker), where the standard marks vanish even in light mode.
+// Escape text from outside the site (news feeds, AI output, error messages)
+// before it goes into innerHTML. MLB/Savant data is trusted less by habit
+// than by necessity; anything free-text gets this.
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Only http(s) links from a feed become clickable (no javascript: URLs).
+function safeUrl(url) {
+  return /^https?:\/\//i.test(String(url || "")) ? esc(url) : "#";
+}
+
 function teamLogo(teamId, { onDark = false } = {}) {
   if (onDark) {
     return `<img class="team-logo-icon" src="${teamLogoUrl(teamId, true)}" alt="" onerror="this.style.display='none'" />`;
@@ -121,7 +138,7 @@ async function loadDivisionStandings() {
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7">Couldn't load standings: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7">Couldn't load standings: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -164,7 +181,7 @@ async function loadWildcardStandings() {
     const visibleCount = targetIdx >= 0 ? Math.max(WC_VISIBLE, targetIdx + 1) : WC_VISIBLE;
     addShowMoreToggle(rows, table.closest(".table-scroll") || table, visibleCount, `Show ${rows.length - visibleCount} more teams`);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="8">Couldn't load Wild Card standings: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8">Couldn't load Wild Card standings: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -199,7 +216,7 @@ async function loadSeasonSeries() {
       `Show ${rows.length - SERIES_VISIBLE} more opponents`
     );
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4">Couldn't load season series: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4">Couldn't load season series: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -234,7 +251,7 @@ async function loadBullpen() {
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6">Couldn't load bullpen availability: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6">Couldn't load bullpen availability: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -414,7 +431,7 @@ async function loadUpcomingSchedule() {
       tbody.appendChild(tr);
     });
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7">Couldn't load schedule: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7">Couldn't load schedule: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -462,14 +479,14 @@ async function loadOnThisDay() {
           <p class="muted small-note">${decisions}</p>
         </div>
       </div>
-      ${g.note ? `<p class="on-this-day-note">${g.note}</p>` : ""}
+      ${g.note ? `<p class="on-this-day-note">${esc(g.note)}</p>` : ""}
       <div class="performer-blocks">
         ${buildPerformerList("Red Sox", g.top_performers.us)}
         ${buildPerformerList(oppShort, g.top_performers.them)}
       </div>
     `;
   } catch (e) {
-    container.innerHTML = `<p class="muted">Couldn't load On This Day: ${e.message}</p>`;
+    container.innerHTML = `<p class="muted">Couldn't load On This Day: ${esc(e.message)}</p>`;
   }
 }
 
@@ -500,7 +517,7 @@ async function loadPlayerHighlight() {
       .split(/\n\s*\n/)
       .map((s) => s.trim())
       .filter(Boolean)
-      .map((s) => `<p>${s}</p>`)
+      .map((s) => `<p>${esc(s)}</p>`)
       .join("");
 
     container.innerHTML = `
@@ -514,7 +531,7 @@ async function loadPlayerHighlight() {
       <div class="highlight-narrative"><div class="ai-badge">✨ AI-written</div>${paragraphs}</div>
     `;
   } catch (e) {
-    container.innerHTML = `<p class="muted">Couldn't load today's player highlight: ${e.message}</p>`;
+    container.innerHTML = `<p class="muted">Couldn't load today's player highlight: ${esc(e.message)}</p>`;
   }
 }
 
@@ -864,7 +881,7 @@ async function loadLeagueContext() {
 
     renderLeagueRunDiffChart(d.run_diff_league_chart || []);
   } catch (e) {
-    cards.innerHTML = `<div class="card">Couldn't load league context: ${e.message}</div>`;
+    cards.innerHTML = `<div class="card">Couldn't load league context: ${esc(e.message)}</div>`;
   }
 }
 
@@ -928,8 +945,8 @@ async function loadHeadlines() {
         ? new Date(h.published).toLocaleDateString(undefined, { month: "short", day: "numeric" })
         : "";
       li.innerHTML = `
-        <a href="${h.link}" target="_blank" rel="noopener">${h.title}</a>
-        <span class="meta">${[h.source, date].filter(Boolean).join(" • ")}</span>
+        <a href="${safeUrl(h.link)}" target="_blank" rel="noopener">${esc(h.title)}</a>
+        <span class="meta">${esc([h.source, date].filter(Boolean).join(" • "))}</span>
       `;
       list.appendChild(li);
     });
@@ -942,7 +959,7 @@ async function loadHeadlines() {
       `Show ${data.headlines.length - HEADLINES_VISIBLE} more headlines`
     );
   } catch (e) {
-    list.innerHTML = `<li class="muted">Couldn't load headlines: ${e.message}</li>`;
+    list.innerHTML = `<li class="muted">Couldn't load headlines: ${esc(e.message)}</li>`;
   }
 }
 
@@ -1105,7 +1122,7 @@ async function loadPlayerHotCold() {
       pitchersBody.appendChild(tr);
     });
   } catch (e) {
-    hittersBody.innerHTML = `<tr><td colspan="14">Couldn't load: ${e.message}</td></tr>`;
+    hittersBody.innerHTML = `<tr><td colspan="14">Couldn't load: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -1292,7 +1309,7 @@ async function loadFullRoster() {
       pitchersBody.appendChild(tr);
     });
   } catch (e) {
-    hittersBody.innerHTML = `<tr><td colspan="8">Couldn't load the roster: ${e.message}</td></tr>`;
+    hittersBody.innerHTML = `<tr><td colspan="8">Couldn't load the roster: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -1413,7 +1430,7 @@ async function loadLastGameRecap() {
       .split(/\n\s*\n/)
       .map((s) => s.trim())
       .filter(Boolean)
-      .map((s) => `<p>${s}</p>`)
+      .map((s) => `<p>${esc(s)}</p>`)
       .join("");
 
     container.innerHTML = `
@@ -1446,7 +1463,7 @@ async function loadLastGameRecap() {
 
     loadWinProbabilityChart();
   } catch (e) {
-    container.innerHTML = `<p class="muted">Couldn't load the last game recap: ${e.message}</p>`;
+    container.innerHTML = `<p class="muted">Couldn't load the last game recap: ${esc(e.message)}</p>`;
   }
 }
 
@@ -1735,7 +1752,7 @@ async function loadStatcast() {
     statcastLeagueLeaders = data.league_leaders;
     populateLeaderboardPicker(data.league_leaders, flagship);
   } catch (e) {
-    hittersEl.innerHTML = `<p class="muted">Couldn't load Statcast data: ${e.message}</p>`;
+    hittersEl.innerHTML = `<p class="muted">Couldn't load Statcast data: ${esc(e.message)}</p>`;
   }
 }
 
@@ -1808,7 +1825,7 @@ async function loadLiveGame() {
           (p) => `
           <li>
             <span class="live-scoring-play-inning">${p.half === "top" ? "Top" : "Bot"} ${ordinal(p.inning)}</span>
-            <span class="live-scoring-play-desc">${p.description}</span>
+            <span class="live-scoring-play-desc">${esc(p.description)}</span>
             <span class="live-scoring-play-score">${p.us_score}-${p.them_score}</span>
           </li>
         `
@@ -1882,7 +1899,7 @@ async function runCompareSearch(side, query) {
       el.addEventListener("click", () => selectComparePlayer(side, results[i]));
     });
   } catch (e) {
-    resultsEl.innerHTML = `<div class="compare-result-empty">Couldn't search: ${e.message}</div>`;
+    resultsEl.innerHTML = `<div class="compare-result-empty">Couldn't search: ${esc(e.message)}</div>`;
     resultsEl.hidden = false;
   }
 }
@@ -1904,7 +1921,7 @@ async function selectComparePlayer(side, player) {
     compareSelection[side] = await res.json();
   } catch (e) {
     compareSelection[side] = null;
-    selectedEl.innerHTML += `<p class="muted small-note">Couldn't load stats: ${e.message}</p>`;
+    selectedEl.innerHTML += `<p class="muted small-note">Couldn't load stats: ${esc(e.message)}</p>`;
   }
 
   renderCompareTape();

@@ -132,7 +132,7 @@ async function loadTeamProfile() {
     renderTopPitchers(t);
     renderNextMatchup(t);
   } catch (e) {
-    document.getElementById("team-hero").innerHTML = `<p class="muted">Couldn't load this team: ${e.message}</p>`;
+    document.getElementById("team-hero").innerHTML = `<p class="muted">Couldn't load this team: ${esc(e.message)}</p>`;
   }
 }
 
