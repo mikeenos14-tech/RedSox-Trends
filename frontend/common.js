@@ -18,8 +18,16 @@ let runDiffChart = null;
   });
 })();
 
+// MLB publishes an on-dark variant of every cap logo; the standard navy
+// marks (NYY, DET, TB, ...) are nearly invisible on the dark theme.
+function teamLogoUrl(teamId, dark = matchMedia("(prefers-color-scheme: dark)").matches) {
+  return dark
+    ? `https://www.mlbstatic.com/team-logos/team-cap-on-dark/${teamId}.svg`
+    : `https://www.mlbstatic.com/team-logos/${teamId}.svg`;
+}
+
 function teamLogo(teamId) {
-  return `<img class="team-logo-icon" src="https://www.mlbstatic.com/team-logos/${teamId}.svg" alt="" onerror="this.style.display='none'" />`;
+  return `<picture><source srcset="${teamLogoUrl(teamId, true)}" media="(prefers-color-scheme: dark)" /><img class="team-logo-icon" src="${teamLogoUrl(teamId, false)}" alt="" onerror="this.style.display='none'" /></picture>`;
 }
 
 // player.html only serves the current 40-man Red Sox roster, so this only
@@ -29,8 +37,37 @@ function playerLink(id, name) {
   return id ? `<a href="/player.html?id=${id}" class="player-link">${name}</a>` : name;
 }
 
+// MLB's own abbreviations (statsapi /teams). On a phone, tables show these
+// instead of full names — "New York Yankees" wrapping under its logo was
+// doubling row heights and pushing every table past the screen edge.
+const TEAM_ABBR = {
+  108: "LAA", 109: "AZ", 110: "BAL", 111: "BOS", 112: "CHC", 113: "CIN", 114: "CLE", 115: "COL",
+  116: "DET", 117: "HOU", 118: "KC", 119: "LAD", 120: "WSH", 121: "NYM", 133: "ATH", 134: "PIT",
+  135: "SD", 136: "SEA", 137: "SF", 138: "STL", 139: "TB", 140: "TEX", 141: "TOR", 142: "MIN",
+  143: "PHI", 144: "ATL", 145: "CWS", 146: "MIA", 147: "NYY", 158: "MIL",
+};
+
+// Full name on desktop, abbreviation on phones (CSS swaps them).
+function teamName(id, name) {
+  const abbr = TEAM_ABBR[id];
+  return abbr ? `<span class="tn-full">${name}</span><span class="tn-abbr">${abbr}</span>` : name;
+}
+
 function teamLink(id, name) {
-  return id ? `<a href="/team.html?id=${id}" class="player-link">${name}</a>` : name;
+  return id ? `<a href="/team.html?id=${id}" class="player-link">${teamName(id, name)}</a>` : name;
+}
+
+// "vs"/"@" shown inside the opponent cell only on phones, where the
+// separate H/A column is hidden to save width.
+function haInline(homeOrAway) {
+  return `<span class="ha-inline">${homeOrAway === "home" ? "vs" : "@"}</span>`;
+}
+
+// Full name on desktop, last name on phones (for dense pitcher columns).
+function personName(name) {
+  if (!name) return name;
+  const last = name.split(" ").slice(1).join(" ") || name;
+  return `<span class="pn-full">${name}</span><span class="pn-short">${last}</span>`;
 }
 
 async function loadDivisionStandings() {
@@ -47,7 +84,7 @@ async function loadDivisionStandings() {
       const streakCls = t.streak && t.streak.startsWith("W") ? "streak-w" : t.streak && t.streak.startsWith("L") ? "streak-l" : "";
       tr.innerHTML = `
         <td class="num">${t.division_rank}</td>
-        <td class="name">${teamLogo(t.id)}${t.is_target ? t.name : teamLink(t.id, t.name)}</td>
+        <td class="name">${teamLogo(t.id)}${t.is_target ? teamName(t.id, t.name) : teamLink(t.id, t.name)}</td>
         <td class="num">${t.wins}</td>
         <td class="num">${t.losses}</td>
         <td class="num">${t.pct}</td>
@@ -80,7 +117,7 @@ async function loadWildcardStandings() {
       const status = t.clinched ? '<span class="div-badge">CLINCH</span>' : "";
       tr.innerHTML = `
         <td class="num">${t.wildcard_rank}</td>
-        <td class="name">${teamLogo(t.id)}${t.is_target ? t.name : teamLink(t.id, t.name)}${status}</td>
+        <td class="name">${teamLogo(t.id)}${t.is_target ? teamName(t.id, t.name) : teamLink(t.id, t.name)}${status}</td>
         <td class="num">${t.wins}</td>
         <td class="num">${t.losses}</td>
         <td class="num">${t.pct}</td>
@@ -161,7 +198,7 @@ async function loadBullpen() {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="name">${playerLink(p.player_id, p.name)}</td>
-        <td>${p.last_pitched ? formatGameDate(p.last_pitched) : "5+ days ago"}</td>
+        <td class="nw">${p.last_pitched ? formatGameDate(p.last_pitched) : "5+ days ago"}</td>
         <td class="num">${p.days_rest ?? "5+"}</td>
         <td>${p.last_outing || "—"}</td>
         <td class="num">${p.appearances_last_3_days}${p.pitches_last_3_days ? ` <span class="muted">(${p.pitches_last_3_days}p)</span>` : ""}</td>
@@ -183,12 +220,21 @@ function formatGameDate(dateStr) {
 // First pitch in Eastern time — the team's home clock, and the one every
 // Boston broadcast and ticket uses — with the zone stated so nobody has to
 // guess.
-function formatGameTime(utcStr, tbd) {
+// `compact` returns HTML whose " ET" suffix hides on phones (for dense
+// table cells); otherwise plain text safe for textContent.
+function formatGameTime(utcStr, tbd, { compact = false } = {}) {
   if (!utcStr || tbd) return "TBD";
-  return (
-    new Date(utcStr).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) +
-    " ET"
-  );
+  const time = new Date(utcStr).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  });
+  return compact ? `${time}<span class="lg-only"> ET</span>` : `${time} ET`;
+}
+
+function shortGameDate(dateStr) {
+  const [, m, d] = dateStr.split("-").map(Number);
+  return `${m}/${d}`;
 }
 
 // "ALWC Game 1", "ALDS Game 5 (if nec.)" — the label MLB broadcasts use.
@@ -259,19 +305,21 @@ async function loadUpcomingSchedule() {
       const rec = g.opponent_record;
       const recStr = rec && rec.wins != null ? `${rec.wins}-${rec.losses} (${rec.pct})` : "-";
       const divBadge = g.is_division_game ? `<span class="div-badge">DIV</span>` : "";
+      // Phones get a compact "Gm 3" — the cards above already name the series.
       const seriesStr = g.postseason
-        ? postseasonGameLabel(g.postseason)
+        ? `<span class="lg-only">${postseasonGameLabel(g.postseason)}</span>` +
+          `<span class="sm-only"><span class="nw">Gm ${g.postseason.game_number}</span>${g.postseason.if_necessary ? "<br>if nec." : ""}</span>`
         : g.season_series
           ? `${g.season_series.wins}-${g.season_series.losses}`
           : "—";
       tr.innerHTML = `
-        <td>${formatGameDate(g.date)}<span class="game-time">${formatGameTime(g.game_date_utc, g.start_time_tbd)}</span></td>
-        <td class="name">${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}${divBadge}</td>
+        <td><span class="nw lg-only">${formatGameDate(g.date)}</span><span class="nw sm-only">${shortGameDate(g.date)}</span><span class="game-time">${formatGameTime(g.game_date_utc, g.start_time_tbd, { compact: true })}</span></td>
+        <td class="name">${haInline(g.home_or_away)}${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}${divBadge}</td>
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td class="num">${recStr}</td>
-        <td class="num">${seriesStr}</td>
-        <td>${g.us_probable_pitcher ? playerLink(g.us_probable_pitcher_id, g.us_probable_pitcher) : "TBD"}</td>
-        <td>${g.opponent_probable_pitcher || "TBD"}</td>
+        <td class="${g.postseason ? "" : "num"}">${seriesStr}</td>
+        <td>${g.us_probable_pitcher ? playerLink(g.us_probable_pitcher_id, personName(g.us_probable_pitcher)) : "TBD"}</td>
+        <td>${g.opponent_probable_pitcher ? personName(g.opponent_probable_pitcher) : "TBD"}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -463,8 +511,8 @@ function renderGameListDetail(games) {
       const cls = g.won ? "win" : "loss";
       return `
         <tr class="${cls}">
-          <td>${g.date}</td>
-          <td class="name">${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
+          <td class="nw">${formatGameDate(g.date)}</td>
+          <td class="name">${haInline(g.home_or_away)}${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
           <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
           <td class="num">${g.our_score}-${g.their_score}</td>
           <td class="result">${g.won ? "W" : "L"}</td>
@@ -474,7 +522,7 @@ function renderGameListDetail(games) {
     .join("");
   return `
     <div class="table-scroll">
-      <table class="stat-table">
+      <table class="stat-table gamelist-table">
         <thead><tr><th>Date</th><th>Opp</th><th>H/A</th><th>Score</th><th>Result</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -548,9 +596,9 @@ function renderPostseasonTable(postseason) {
     .map(
       (g) => `
       <tr class="${g.won ? "win" : "loss"}">
-        <td>${formatGameDate(g.date)}</td>
+        <td class="nw">${formatGameDate(g.date)}</td>
         <td>${postseasonGameLabel(g.postseason)}</td>
-        <td>${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
+        <td class="name">${haInline(g.home_or_away)}${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
         <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
         <td>${g.our_score}-${g.their_score}</td>
         <td class="result">${g.won ? "W" : "L"}</td>
@@ -570,8 +618,8 @@ function renderGamesTable(games) {
     tr.className = g.won ? "win" : "loss";
     const rec = g.record_after ? `${g.record_after.wins}-${g.record_after.losses}` : "-";
     tr.innerHTML = `
-      <td>${g.date}</td>
-      <td>${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
+      <td class="nw">${formatGameDate(g.date)}</td>
+      <td class="name">${haInline(g.home_or_away)}${teamLogo(g.opponent_id)}${teamLink(g.opponent_id, g.opponent)}</td>
       <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
       <td>${g.our_score}-${g.their_score}</td>
       <td class="result">${g.won ? "W" : "L"}</td>
@@ -771,7 +819,9 @@ async function loadHeadlines() {
 
     data.headlines.forEach((h) => {
       const li = document.createElement("li");
-      const date = h.published ? new Date(h.published).toLocaleDateString() : "";
+      const date = h.published
+        ? new Date(h.published).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : "";
       li.innerHTML = `
         <a href="${h.link}" target="_blank" rel="noopener">${h.title}</a>
         <span class="meta">${[h.source, date].filter(Boolean).join(" • ")}</span>
@@ -1579,7 +1629,7 @@ async function loadLiveGame() {
     document.getElementById("live-inning-label").textContent =
       `${psPrefix}${g.inning_half === "top" ? "Top" : "Bot"} ${ordinal(g.inning)} — ${g.home_or_away === "home" ? "vs" : "@"} ${oppShort}`;
 
-    document.getElementById("live-logo-them").src = `https://www.mlbstatic.com/team-logos/${g.opponent_id}.svg`;
+    document.getElementById("live-logo-them").src = teamLogoUrl(g.opponent_id);
     document.getElementById("live-name-them").textContent = oppShort;
     document.getElementById("live-score-them").textContent = g.them_score;
     document.getElementById("live-score-us").textContent = g.us_score;

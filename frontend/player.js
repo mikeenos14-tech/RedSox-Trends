@@ -131,19 +131,22 @@ function renderSplits(p) {
   }
 
   const isPitcher = p.player_type === "pitcher";
+  // Third field: "hide-sm" columns drop on phones so the table fits the
+  // screen instead of scrolling (OPS already combines OBP+SLG; FIP says
+  // more than WHIP).
   const cols = isPitcher
-    ? [["ERA", "era"], ["WHIP", "whip"], ["FIP", "fip"], ["K-BB%", "k_bb_pct"], ["IP", "ip_display"]]
-    : [["AVG", "avg"], ["OBP", "obp"], ["SLG", "slg"], ["OPS", "ops"], ["HR", "hr"], ["RBI", "rbi"]];
+    ? [["ERA", "era"], ["WHIP", "whip", "hide-sm"], ["FIP", "fip"], ["K-BB%", "k_bb_pct"], ["IP", "ip_display"]]
+    : [["AVG", "avg"], ["OBP", "obp", "hide-sm"], ["SLG", "slg", "hide-sm"], ["OPS", "ops"], ["HR", "hr"], ["RBI", "rbi"]];
 
   yearEl.textContent = "this season";
-  head.innerHTML = `<tr><th>Split</th>${cols.map(([label]) => `<th>${label}</th>`).join("")}</tr>`;
+  head.innerHTML = `<tr><th>Split</th>${cols.map(([label, , cls]) => `<th class="${cls || ""}">${label}</th>`).join("")}</tr>`;
   body.innerHTML = p.splits
     .map((s) => {
       const cells = cols
-        .map(([, key]) => {
+        .map(([, key, cls]) => {
           const v = s[key];
           const display = typeof v === "number" && key !== "hr" && key !== "rbi" ? pctStrOrRaw(key, v) : (v ?? "-");
-          return `<td class="num">${display}</td>`;
+          return `<td class="num ${cls || ""}">${display}</td>`;
         })
         .join("");
       return `<tr><td class="name">${s.label}</td>${cells}</tr>`;
@@ -154,11 +157,6 @@ function renderSplits(p) {
 function pctStrOrRaw(key, v) {
   const rateStats = ["avg", "obp", "slg", "ops", "k_bb_pct"];
   return rateStats.includes(key) ? pctStr(v) : v;
-}
-
-function shortDate(dateStr) {
-  const [, m, d] = dateStr.split("-").map(Number);
-  return `${m}/${d}`;
 }
 
 function renderGameLog(p) {
@@ -174,8 +172,8 @@ function renderGameLog(p) {
       const resultText = g.won ? "W" : "L";
       return `
         <tr>
-          <td>${shortDate(g.date)}</td>
-          <td class="name">${teamLogo(g.opponent_id)}${g.opponent}</td>
+          <td class="nw">${formatGameDate(g.date)}</td>
+          <td class="name">${haInline(g.home_or_away)}${teamLogo(g.opponent_id)}${teamName(g.opponent_id, g.opponent)}</td>
           <td>${g.home_or_away === "home" ? "vs" : "@"}</td>
           <td class="num ${resultCls}">${resultText}</td>
           <td class="line">${g.summary || "-"}</td>

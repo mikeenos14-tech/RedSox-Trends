@@ -572,34 +572,83 @@ main section { scroll-margin-top: 3.5rem; }
 .stat-table th, .stat-table td { padding: 0.45rem 0.6rem; }
 .stat-table td.name { font-weight: 600; white-space: nowrap; }
 
+/* Desktop shows full team/player names and a separate H/A column; phones
+   swap in abbreviations, last names, and an inline "vs"/"@" instead. */
+.tn-abbr, .pn-short, .ha-inline, .sm-only { display: none; }
+.ha-inline { color: var(--muted); font-weight: 500; margin-right: 0.2rem; }
+
 @media (max-width: 600px) {
-  /* On a real phone, keeping the logo+name on one line would force the
-     table wider than the screen. Wrapping to two lines here is the
-     better tradeoff than a forced horizontal scroll — but only when the
-     rest of the row is narrow enough to fit after that one column
-     shrinks. The game log has too many columns for that (date, opponent,
-     H/A, result, box-score line): letting name wrap there just starves
-     the other nowrap columns of room and they overflow uncontained
-     instead. Kept fully nowrap, it overflows as a whole and scrolls
-     properly within .table-scroll instead, same as the Splits table. */
-  .stat-table td.name {
-    white-space: normal;
+  /* Cards were leaving tables 293px of a 375px screen; tighten the chrome
+     so the table gets the width. */
+  main { padding: 1rem 0.6rem; }
+  main section,
+  .two-col-row > section { padding-left: 0.8rem; padding-right: 0.8rem; }
+
+  .stat-table { font-size: 0.8rem; }
+  .stat-table th, .stat-table td { padding: 0.4rem 0.3rem; }
+  .stat-table .team-logo-icon { width: 16px; height: 16px; margin-right: 0.25rem; }
+
+  .tn-full, .pn-full, .lg-only { display: none; }
+  .tn-abbr, .pn-short, .ha-inline, .sm-only { display: inline; }
+
+  /* Column priorities: every table keeps the columns a fan actually scans
+     for on a phone and drops the rest, so it fits the screen instead of
+     scrolling sideways (see PROJECT_SUMMARY: wrap/fit over horizontal
+     scroll). Listed by column number — keep in sync with the headers. */
+  .hide-sm,
+  /* Wild Card: # Team W L [PCT] WC-GB Elim# [Streak] */
+  #wildcard-table th:nth-child(5), #wildcard-table td:nth-child(5),
+  #wildcard-table th:nth-child(8), #wildcard-table td:nth-child(8),
+  /* Upcoming: Date Opp [H/A] [Opp Record] Series OurSP TheirSP */
+  #upcoming-table th:nth-child(3), #upcoming-table td:nth-child(3),
+  #upcoming-table th:nth-child(4), #upcoming-table td:nth-child(4),
+  /* Last 15 / Last 10 detail: Date Opp [H/A] Score Result [Record] */
+  #games-table th:nth-child(3), #games-table td:nth-child(3),
+  #games-table th:nth-child(6), #games-table td:nth-child(6),
+  .gamelist-table th:nth-child(3), .gamelist-table td:nth-child(3),
+  /* Postseason: [Date] Game Opp [H/A] Score Result Series */
+  #postseason-table th:nth-child(1), #postseason-table td:nth-child(1),
+  #postseason-table th:nth-child(4), #postseason-table td:nth-child(4),
+  /* Bullpen: Pitcher [Last Pitched] Rest Last-Outing [L3D] Status */
+  #bullpen-table th:nth-child(2), #bullpen-table td:nth-child(2),
+  #bullpen-table th:nth-child(5), #bullpen-table td:nth-child(5),
+  /* Hot/Cold hitters: Name [Pos] Form ΔwOBA [AVG] OPS [HR] [RBI] ...adv */
+  #hitters-table th:nth-child(2), #hitters-table td:nth-child(2),
+  #hitters-table th:nth-child(5), #hitters-table td:nth-child(5),
+  #hitters-table th:nth-child(7), #hitters-table td:nth-child(7),
+  #hitters-table th:nth-child(8), #hitters-table td:nth-child(8),
+  /* Hot/Cold pitchers: Name [Role] ERA(S) Form ΔERA ...adv */
+  #pitchers-table th:nth-child(2), #pitchers-table td:nth-child(2),
+  /* Roster hitters: Name [Pos] AVG OPS HR [RBI] [BB%] [K%] */
+  #roster-hitters-table th:nth-child(2), #roster-hitters-table td:nth-child(2),
+  #roster-hitters-table th:nth-child(6), #roster-hitters-table td:nth-child(6),
+  #roster-hitters-table th:nth-child(7), #roster-hitters-table td:nth-child(7),
+  #roster-hitters-table th:nth-child(8), #roster-hitters-table td:nth-child(8),
+  /* Roster pitchers: Name [Role] ERA FIP [K-BB%] IP */
+  #roster-pitchers-table th:nth-child(2), #roster-pitchers-table td:nth-child(2),
+  #roster-pitchers-table th:nth-child(5), #roster-pitchers-table td:nth-child(5),
+  /* Player game log: Date Opp [H/A] Result Line */
+  #player-gamelog-table th:nth-child(3), #player-gamelog-table td:nth-child(3),
+  /* Team page: Name [Pos|Role] ... */
+  #team-hitters-table th:nth-child(2), #team-hitters-table td:nth-child(2),
+  #team-pitchers-table th:nth-child(2), #team-pitchers-table td:nth-child(2) {
+    display: none;
   }
-  #player-gamelog-table td.name {
-    white-space: nowrap;
-  }
-  /* table { width: 100% } above stops an auto-layout table from ever
-     growing past its container to expose real horizontal scroll, even
-     with nowrap cells that need more room — it just clips instead. These
-     two tables have enough nowrap columns to need that growth on a phone
-     screen, so let them size to their content and scroll within
-     .table-scroll rather than silently losing columns off the edge. */
-  #player-gamelog-table,
-  #player-splits-table {
-    width: max-content;
-    min-width: 100%;
-  }
+
+  /* Text cells (names, labels, box-score lines) wrap; numbers never do.
+     A two-line "Garrett / Whitlock" is far easier to read on a phone than
+     a table that scrolls sideways and hides the Status column. */
+  .stat-table td:not(.num) { white-space: normal; }
+  /* ...except dates and team cells ("@ NYY" with its logo), which are
+     short now and unreadable when split across lines. */
+  .stat-table td:has(.tn-abbr), .nw { white-space: nowrap; }
+  .stat-table th { white-space: normal; }
+  #player-gamelog-table td.line { min-width: 6rem; }
+
+  /* Line score: 13 narrow columns; tighter cells let 9 innings fit. */
+  .linescore-table th, .linescore-table td { padding: 0.35rem 0.2rem; font-size: 0.75rem; }
 }
+
 .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stat-table td.delta-up { color: var(--good); font-weight: 700; }
 .stat-table td.delta-down { color: var(--red); font-weight: 700; }
@@ -932,10 +981,6 @@ th { color: var(--muted); font-weight: 600; }
 
 tr.win td.result { color: #2a8a3e; font-weight: 600; }
 tr.loss td.result { color: var(--red); font-weight: 600; }
-
-@media (max-width: 500px) {
-  table { display: block; overflow-x: auto; }
-}
 
 .statcast-section {
   background: var(--card-bg);

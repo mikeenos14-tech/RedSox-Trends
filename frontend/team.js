@@ -14,7 +14,7 @@ function renderTeamHero(t) {
 
   document.title = `${t.name} — The Fenway Almanac`;
   hero.innerHTML = `
-    <img class="team-logo" style="width: 80px; height: 80px;" src="https://www.mlbstatic.com/team-logos/${t.id}.svg" alt="${t.name}" />
+    <picture><source srcset="${teamLogoUrl(t.id, true)}" media="(prefers-color-scheme: dark)" /><img class="team-logo" style="width: 80px; height: 80px;" src="${teamLogoUrl(t.id, false)}" alt="${t.name}" /></picture>
     <div class="player-hero-info">
       <h2>${t.name}</h2>
       <p class="muted">${facts}</p>
