@@ -201,6 +201,8 @@ async def get_league_records(season: int | None = None) -> dict[int, dict]:
                         "wins": record.get("wins"),
                         "losses": record.get("losses"),
                         "pct": record.get("pct"),
+                        "runs_scored": team_record.get("runsScored"),
+                        "runs_allowed": team_record.get("runsAllowed"),
                     }
 
     return records
