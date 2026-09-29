@@ -66,4 +66,4 @@ frontend/
 - [x] Red Sox season trends + AI recap (v1)
 - [ ] Extend to Patriots (NFL) and Bruins (NHL)
 - [ ] Scheduled daily digest email
-- [ ] Deploy publicly (Render/Railway + static frontend)
+- [x] Deploy publicly (Railway)

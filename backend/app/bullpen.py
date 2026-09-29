@@ -18,12 +18,42 @@ def _innings_to_outs(ip: str | None) -> int:
         return 0
 
 
+# Transparent, conventional workload rules — not official (MLB publishes no
+# availability feed), but the same rough reads beat writers use:
+HEAVY_OUTING_PITCHES = 30  # 30+ pitches yesterday usually means a day off
+STATUS_USED_TODAY = "Used today"
+STATUS_UNAVAILABLE = "Likely unavailable"
+STATUS_LIMITED = "Limited"
+STATUS_AVAILABLE = "Available"
+
+
+def availability(outings_by_days_ago: dict[int, dict]) -> str:
+    """Status from a reliever's recent outings, keyed by days ago (0 = today).
+    - pitched today → used today
+    - back-to-back days ending yesterday, 3 outings in the last 4 days, or a
+      30+ pitch outing yesterday → likely unavailable
+    - any other outing yesterday → limited
+    - otherwise → available"""
+    if 0 in outings_by_days_ago:
+        return STATUS_USED_TODAY
+    yesterday = outings_by_days_ago.get(1)
+    if yesterday:
+        if 2 in outings_by_days_ago:
+            return STATUS_UNAVAILABLE
+        if (yesterday.get("pitches") or 0) >= HEAVY_OUTING_PITCHES:
+            return STATUS_UNAVAILABLE
+    if sum(1 for d in outings_by_days_ago if d <= 3) >= 3:
+        return STATUS_UNAVAILABLE
+    if yesterday:
+        return STATUS_LIMITED
+    return STATUS_AVAILABLE
+
+
 async def get_bullpen_report(team_id: int = config.TEAM_ID) -> list[dict]:
-    """Build a simple availability read for every reliever who's appeared
-    recently: last time they pitched, how many times in the last 3 days, and
-    a rough "likely available tonight" flag. This is a heuristic, not
-    official bullpen-management data — MLB doesn't publish an availability
-    feed — but back-to-back-day usage is a reasonable, transparent proxy."""
+    """Availability read for the whole active bullpen — every reliever on the
+    active roster, including ones who haven't pitched lately (a fully rested
+    closer is the most important row, not a missing one). This is a
+    heuristic, not official bullpen-management data; see availability()."""
     # Postseason games included: October workload is exactly what decides
     # who's available tonight, and a regular-season-only lookback would
     # show the whole bullpen as fully rested mid-series.
@@ -31,39 +61,41 @@ async def get_bullpen_report(team_id: int = config.TEAM_ID) -> list[dict]:
     if not games:
         return []
 
-    boxscores = await asyncio.gather(*[game_recap.get_boxscore(g["game_pk"]) for g in games])
-
-    roster = await player_stats.get_roster()
-    pitcher_ids = {
-        entry["person"]["id"]
-        for entry in roster
-        if (entry.get("position") or {}).get("abbreviation") == "P"
+    boxscores, active_roster = await asyncio.gather(
+        asyncio.gather(*[game_recap.get_boxscore(g["game_pk"]) for g in games]),
+        player_stats.get_roster(roster_type="active", team_id=team_id),
+    )
+    active_pitchers = {
+        entry["person"]["id"]: entry["person"]["fullName"]
+        for entry in active_roster
+        if (entry.get("position") or {}).get("abbreviation") in ("P", "TWP")
     }
+    # Relievers = active pitchers who mostly relieve this season. Starters
+    # are left out: their availability is the rotation, not the bullpen.
+    people = await player_stats._get_people_with_stats(list(active_pitchers))
+    relievers = set()
+    for person in people:
+        season_pitch = player_stats._first_split(person, "season", "pitching") or {}
+        games_pitched = season_pitch.get("gamesPitched") or 0
+        if games_pitched == 0 or (season_pitch.get("gamesStarted") or 0) < games_pitched / 2:
+            relievers.add(person["id"])
 
-    appearances: dict[int, list[dict]] = {}
+    appearances: dict[int, list[dict]] = {pid: [] for pid in relievers}
     for game, boxscore in zip(games, boxscores):
         side = game["home_or_away"]
         team_box = boxscore["teams"][side]
         for pid in team_box.get("pitchers", []):
-            if pid not in pitcher_ids:
+            if pid not in relievers:
                 continue
             player = team_box["players"].get(f"ID{pid}")
-            if not player:
-                continue
-            stats = player.get("stats", {}).get("pitching", {})
+            stats = (player or {}).get("stats", {}).get("pitching", {})
             if not stats:
                 continue
-            # A starter's outing doesn't affect bullpen availability the way
-            # a reliever's does — exclude anyone who started that game.
-            if stats.get("gamesStarted"):
-                continue
-            appearances.setdefault(pid, []).append(
+            appearances[pid].append(
                 {
                     "date": game["date"],
-                    "name": player["person"]["fullName"],
                     "innings_pitched": stats.get("inningsPitched"),
                     "pitches": stats.get("numberOfPitches"),
-                    "outs": _innings_to_outs(stats.get("inningsPitched")),
                 }
             )
 
@@ -73,30 +105,34 @@ async def get_bullpen_report(team_id: int = config.TEAM_ID) -> list[dict]:
     # pitcher who threw earlier tonight as having a full day of rest.
     today = player_highlight.eastern_today()
     report = []
-    for pid, outings in appearances.items():
-        outings.sort(key=lambda o: o["date"])
-        last = outings[-1]
-        last_date = datetime.strptime(last["date"], "%Y-%m-%d").date()
-        days_rest = (today - last_date).days
-        appearances_last_3_days = sum(
-            1 for o in outings if (today - datetime.strptime(o["date"], "%Y-%m-%d").date()).days <= 2
-        )
-
-        # Rough, transparent heuristic: pitched yesterday or today, or three
-        # appearances in three days, reads as unlikely to be available.
-        likely_available = not (days_rest <= 0 or appearances_last_3_days >= 3)
-
+    for pid in relievers:
+        outings = sorted(appearances[pid], key=lambda o: o["date"])
+        by_days_ago: dict[int, dict] = {}
+        for o in outings:
+            days_ago = (today - datetime.strptime(o["date"], "%Y-%m-%d").date()).days
+            prior = by_days_ago.get(days_ago)
+            # Doubleheader: combine both outings' pitches for that day.
+            by_days_ago[days_ago] = (
+                {**o, "pitches": (prior.get("pitches") or 0) + (o.get("pitches") or 0)} if prior else o
+            )
+        last = outings[-1] if outings else None
         report.append(
             {
                 "player_id": pid,
-                "name": last["name"],
-                "last_pitched": last["date"],
-                "days_rest": days_rest,
-                "last_outing": f"{last['innings_pitched']} IP, {last['pitches']} pitches" if last["pitches"] else f"{last['innings_pitched']} IP",
-                "appearances_last_3_days": appearances_last_3_days,
-                "likely_available": likely_available,
+                "name": active_pitchers[pid],
+                "last_pitched": last["date"] if last else None,
+                "days_rest": (today - datetime.strptime(last["date"], "%Y-%m-%d").date()).days if last else None,
+                "last_outing": (
+                    (f"{last['innings_pitched']} IP, {last['pitches']} pitches" if last["pitches"] else f"{last['innings_pitched']} IP")
+                    if last
+                    else None
+                ),
+                "appearances_last_3_days": sum(1 for d in by_days_ago if d <= 2),
+                "pitches_last_3_days": sum((o.get("pitches") or 0) for d, o in by_days_ago.items() if d <= 2),
+                "status": availability(by_days_ago),
             }
         )
 
-    report.sort(key=lambda r: (r["days_rest"], -r["appearances_last_3_days"]))
+    order = {STATUS_USED_TODAY: 0, STATUS_UNAVAILABLE: 1, STATUS_LIMITED: 2, STATUS_AVAILABLE: 3}
+    report.sort(key=lambda r: (order[r["status"]], r["days_rest"] if r["days_rest"] is not None else 99, r["name"]))
     return report

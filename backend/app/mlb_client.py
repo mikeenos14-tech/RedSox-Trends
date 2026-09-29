@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 import httpx
 
 from . import config
+from . import season as season_mod
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
@@ -39,11 +40,12 @@ def postseason_info(game: dict) -> dict | None:
     }
 
 
-async def get_team_standings(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> dict:
+async def get_team_standings(team_id: int = config.TEAM_ID, season: int | None = None) -> dict:
     """Fetch this team's standings record entry. Red Sox callers only ever
     need the AL (id 103), but a clicked-into opponent — e.g. an interleague
     matchup — can be an NL team (104), so this tries both leagues rather
     than assuming AL like the original Red Sox-only version did."""
+    season = season or season_mod.current()
     url = f"{BASE_URL}/standings"
     for league_id in (config.LEAGUE_ID, 104 if config.LEAGUE_ID == 103 else 103):
         params = {
@@ -67,15 +69,19 @@ async def get_team_standings(team_id: int = config.TEAM_ID, season: int = config
 async def get_recent_games(
     team_id: int = config.TEAM_ID,
     days: int = 45,
-    season: int = config.SEASON,
+    season: int | None = None,
     game_types: str = config.REGULAR_SEASON_GAME_TYPE,
 ) -> list[dict]:
     """Fetch completed games for this team over the last N days. Regular
     season only by default — callers computing season stats must not have
     October games blended in; callers that care about recent workload (the
     bullpen report) pass config.ALL_GAME_TYPES."""
-    end = date.today()
-    start = end - timedelta(days=days)
+    season = season or season_mod.current()
+    # Anchored to the shown season (not the raw clock) so the season's final
+    # games stay visible all winter, and clamped to its start so an April
+    # lookback never reaches into last September.
+    end = season_mod.anchor_date()
+    start = max(end - timedelta(days=days), season_mod.start_date())
 
     url = f"{BASE_URL}/schedule"
     params = {
@@ -92,10 +98,14 @@ async def get_recent_games(
         data = resp.json()
 
     games = []
+    seen: set[int] = set()
     for date_entry in data.get("dates", []):
         for game in date_entry.get("games", []):
-            if not is_final(game):
+            # A suspended game that's resumed on a later date is listed on
+            # both dates under the same gamePk — count it once.
+            if not is_final(game) or game["gamePk"] in seen:
                 continue
+            seen.add(game["gamePk"])
 
             teams = game["teams"]
             is_home = teams["home"]["team"]["id"] == team_id
@@ -124,8 +134,9 @@ async def get_recent_games(
     return games
 
 
-async def get_division_standings(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> list[dict]:
+async def get_division_standings(team_id: int = config.TEAM_ID, season: int | None = None) -> list[dict]:
     """Fetch the standings for this team's own division, sorted by rank."""
+    season = season or season_mod.current()
     url = f"{BASE_URL}/standings"
     params = {
         "leagueId": config.LEAGUE_ID,
@@ -164,8 +175,9 @@ async def get_division_standings(team_id: int = config.TEAM_ID, season: int = co
     raise ValueError(f"Division for team {team_id} not found in standings for season {season}")
 
 
-async def get_league_records(season: int = config.SEASON) -> dict[int, dict]:
+async def get_league_records(season: int | None = None) -> dict[int, dict]:
     """Regular-season W-L for every MLB team (both leagues), keyed by team id."""
+    season = season or season_mod.current()
     url = f"{BASE_URL}/standings"
     records: dict[int, dict] = {}
 
@@ -193,8 +205,9 @@ async def get_league_records(season: int = config.SEASON) -> dict[int, dict]:
     return records
 
 
-async def get_league_win_pcts(season: int = config.SEASON) -> dict[int, float]:
+async def get_league_win_pcts(season: int | None = None) -> dict[int, float]:
     """Current win% for every MLB team (both leagues), keyed by team id."""
+    season = season or season_mod.current()
     records = await get_league_records(season)
     return {tid: float(r["pct"]) for tid, r in records.items() if r.get("pct") is not None}
 
@@ -209,7 +222,7 @@ async def get_upcoming_games(
     # Eastern, not the server's UTC clock: after 8pm ET, UTC has already
     # rolled over to tomorrow, which would drop a late West Coast start
     # that hasn't begun yet from "upcoming."
-    start = datetime.now(config.EASTERN_TZ).date()
+    start = config.eastern_today()
     end = start + timedelta(days=30)  # generous window in case of postponements/gaps
 
     url = f"{BASE_URL}/schedule"
@@ -269,10 +282,11 @@ async def get_upcoming_games(
     return games[:count]
 
 
-async def get_wildcard_standings(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> list[dict]:
+async def get_wildcard_standings(team_id: int = config.TEAM_ID, season: int | None = None) -> list[dict]:
     """Fetch the Wild Card standings (division leaders excluded — they're
     already in via the division race, so this is specifically who's
     competing for the remaining playoff spots)."""
+    season = season or season_mod.current()
     url = f"{BASE_URL}/standings"
     params = {
         "leagueId": config.LEAGUE_ID,
@@ -322,10 +336,11 @@ def build_season_series(games: list[dict], team_id: int = config.TEAM_ID) -> dic
     return series
 
 
-async def get_postseason_games(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> list[dict]:
+async def get_postseason_games(team_id: int = config.TEAM_ID, season: int | None = None) -> list[dict]:
     """Every postseason game on this team's schedule for the season — played,
     live, or upcoming — oldest first. Empty until the team is actually in a
     postseason series (MLB only schedules clinched teams)."""
+    season = season or season_mod.current()
     params = {
         "teamId": team_id,
         "season": season,
@@ -339,11 +354,15 @@ async def get_postseason_games(team_id: int = config.TEAM_ID, season: int = conf
         data = resp.json()
 
     games = []
+    seen: set[int] = set()
     for date_entry in data.get("dates", []):
         for game in date_entry.get("games", []):
             coded = (game.get("status") or {}).get("codedGameState")
             if coded in ("D", "C"):  # postponed/cancelled — rescheduled copy appears separately
                 continue
+            if game["gamePk"] in seen:  # suspended + resumed: same gamePk on two dates
+                continue
+            seen.add(game["gamePk"])
             teams = game["teams"]
             is_home = teams["home"]["team"]["id"] == team_id
             us = teams["home"] if is_home else teams["away"]

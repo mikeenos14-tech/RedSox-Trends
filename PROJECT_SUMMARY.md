@@ -1,6 +1,6 @@
 # The Fenway Almanac — Project Summary
 
-**Live site:** https://fenway-form-finder.onrender.com
+**Live site:** https://fenway-form-finder-production.up.railway.app
 **Repo:** github.com/mikeenos14-tech/RedSox-Trends
 
 ## What it is
@@ -33,7 +33,7 @@ hallucinated stats.
 - **Charts:** Chart.js (win probability line chart)
 - **Data sources:** MLB Stats API (`statsapi.mlb.com`, free/no key) and
   Baseball Savant (`baseballsavant.mlb.com`, scraped — no official API exists)
-- **Hosting:** Render (free tier), auto-deploys from `main` on every push
+- **Hosting:** Railway (Hobby plan, always-on, Dockerfile deploy), auto-deploys from `main` on every push
 
 ## Site structure (4 pages)
 
@@ -108,9 +108,11 @@ hallucinated stats.
 - Statcast bar colors and the comparison tool's "Player A" blue were
   deliberately kept theme-aware (light/dark) rather than hardcoded, after an
   early contrast bug where a fixed navy was unreadable in dark mode
-- Hosted on Render's free tier, which spins down after ~15 min idle — a
-  known tradeoff, not yet resolved (options discussed: upgrade to a paid
-  Render tier, or a periodic keep-warm ping)
+- Hosted on Railway's always-on Hobby plan (moved from Render's free tier,
+  which spun down after ~15 min idle; the old keep-warm workflow was removed)
+- The season shown is resolved from MLB's own calendar at runtime
+  (`backend/app/season.py`), so the site rolls over on Opening Day with no
+  code change; the completed season stays up through the offseason
 
 ## How this got built
 

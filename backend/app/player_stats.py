@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import httpx
 
 from . import config
+from . import season as season_mod
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
@@ -63,7 +64,7 @@ def _parse_innings(ip_str: str | None) -> float:
 
 
 async def get_roster(
-    season: int = config.SEASON, roster_type: str = "40Man", team_id: int = config.TEAM_ID
+    season: int | None = None, roster_type: str = "40Man", team_id: int = config.TEAM_ID
 ) -> list[dict]:
     # 40Man, not fullSeason — fullSeason includes anyone who passed through
     # the org this year (trades, DFAs, releases included), which surfaces
@@ -72,6 +73,7 @@ async def get_roster(
     # currently playable (not injured, not optioned down) should pass
     # roster_type="active" instead — the 40-man roster includes IL players,
     # which is exactly wrong for a "recent form" report.
+    season = season or season_mod.current()
     params = {"rosterType": roster_type, "season": season}
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(f"{BASE_URL}/teams/{team_id}/roster", params=params)
@@ -79,7 +81,8 @@ async def get_roster(
         return resp.json().get("roster", [])
 
 
-async def _get_people_with_stats(person_ids: list[int], season: int = config.SEASON) -> list[dict]:
+async def _get_people_with_stats(person_ids: list[int], season: int | None = None) -> list[dict]:
+    season = season or season_mod.current()
     if not person_ids:
         return []
 
@@ -271,11 +274,11 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
     roster = await get_roster(roster_type="active")
     person_ids = [entry["person"]["id"] for entry in roster]
     position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in roster}
-    season = config.SEASON
+    season = season_mod.current()
     # Belt-and-suspenders on top of the active-roster filter: skip anyone
     # whose last qualifying game is older than this, in case the active-
     # roster snapshot hasn't caught up with a very recent IL move yet.
-    stale_cutoff = date.today() - timedelta(days=STALE_AFTER_DAYS)
+    stale_cutoff = config.eastern_today() - timedelta(days=STALE_AFTER_DAYS)
 
     people = await _get_people_with_stats(person_ids, season)
 
@@ -374,12 +377,16 @@ async def get_full_roster_report(team_id: int = config.TEAM_ID) -> dict:
     whether each player is currently on the active (26-man) roster so an
     IL stint is visible rather than silently blended in with everyone
     else's season totals."""
-    season = config.SEASON
+    season = season_mod.current()
     full_roster, active_roster = await asyncio.gather(
         get_roster(roster_type="40Man", team_id=team_id),
         get_roster(roster_type="active", team_id=team_id),
     )
     active_ids = {entry["person"]["id"] for entry in active_roster}
+    # MLB's own 40-man status (D10/D15/D60 = injured list, RM = optioned or
+    # reassigned to the minors). "Not on the active roster" is not the same
+    # thing as "injured," so the badge has to come from the real status.
+    status_by_id = {entry["person"]["id"]: (entry.get("status") or {}).get("code") for entry in full_roster}
     position_by_id = {entry["person"]["id"]: entry.get("position", {}).get("abbreviation") for entry in full_roster}
     person_ids = [entry["person"]["id"] for entry in full_roster]
 
@@ -400,6 +407,7 @@ async def get_full_roster_report(team_id: int = config.TEAM_ID) -> dict:
                     "name": name,
                     "position": position_by_id.get(pid),
                     "active": is_active,
+                    "roster_status": None if is_active else status_by_id.get(pid),
                     "season": _hitting_metrics(season_hit),
                 }
             )
@@ -414,6 +422,7 @@ async def get_full_roster_report(team_id: int = config.TEAM_ID) -> dict:
                     "name": name,
                     "role": "SP" if starts >= games / 2 else "RP",
                     "active": is_active,
+                    "roster_status": None if is_active else status_by_id.get(pid),
                     "season": _pitching_metrics(season_pitch),
                 }
             )
@@ -433,14 +442,34 @@ def slim_for_ai(report: dict) -> dict:
     instead of a fixed top-N.
     """
 
+    # Percentages go to the model as percent values (11.0, not 0.110):
+    # handed fractions, it echoed them verbatim ("K-BB% .302") right next to
+    # its own correctly converted "30.2%" — the same formatting bug the UI
+    # had, reproduced in prose.
+    def pct(v):
+        return round(v * 100, 1) if v is not None else None
+
+    def hitter_line(m: dict) -> dict:
+        return {"woba": m["woba"], "babip": m["babip"], "bb_pct": pct(m["bb_pct"]), "k_pct": pct(m["k_pct"]), "iso": m["iso"], "pa": m["pa"]}
+
+    def pitcher_line(m: dict) -> dict:
+        return {
+            "era": m["era"],
+            "fip": m["fip"],
+            "k_bb_pct": pct(m["k_bb_pct"]),
+            "babip_against": m["babip_against"],
+            "lob_pct": pct(m["lob_pct"]),
+            "ip": m["ip_display"],
+        }
+
     def slim_hitter(h: dict) -> dict:
         s, r = h["season"], h["recent"]
         return {
             "name": h["name"],
             "position": h["position"],
             "form_delta_woba": h["form_delta_woba"],
-            "season": s and {"woba": s["woba"], "babip": s["babip"], "bb_pct": s["bb_pct"], "k_pct": s["k_pct"], "iso": s["iso"]},
-            "recent": {"woba": r["woba"], "babip": r["babip"], "bb_pct": r["bb_pct"], "k_pct": r["k_pct"], "iso": r["iso"]},
+            "season": s and hitter_line(s),
+            "recent": hitter_line(r),
         }
 
     def slim_pitcher(p: dict) -> dict:
@@ -449,8 +478,8 @@ def slim_for_ai(report: dict) -> dict:
             "name": p["name"],
             "role": p["role"],
             "form_delta_era": p["form_delta_era"],
-            "season": s and {"era": s["era"], "fip": s["fip"], "k_bb_pct": s["k_bb_pct"], "babip_against": s["babip_against"], "lob_pct": s["lob_pct"]},
-            "recent": {"era": r["era"], "fip": r["fip"], "k_bb_pct": r["k_bb_pct"], "babip_against": r["babip_against"], "lob_pct": r["lob_pct"]},
+            "season": s and pitcher_line(s),
+            "recent": pitcher_line(r),
         }
 
     return {

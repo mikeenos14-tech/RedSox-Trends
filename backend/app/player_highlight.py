@@ -6,12 +6,12 @@ from datetime import date, datetime
 import httpx
 
 from . import config, player_stats
+from . import season as season_mod
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
 
-def eastern_today() -> date:
-    return datetime.now(config.EASTERN_TZ).date()
+eastern_today = config.eastern_today
 
 
 def _pick_daily_player_id(roster: list[dict], for_date: date) -> int:
@@ -66,10 +66,11 @@ async def get_draft_info(person_id: int, draft_year: int | None) -> dict | None:
     return None
 
 
-async def get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
+async def get_stat_lines(person_id: int, season: int | None = None) -> dict:
     """Real season + career stat lines (whichever of hitting/pitching applies
     to this player) — grounds 'what they've been doing' in actual numbers
     instead of vague narrative filler."""
+    season = season or season_mod.current()
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
@@ -134,20 +135,39 @@ async def get_stat_lines(person_id: int, season: int = config.SEASON) -> dict:
 
 
 # Nicknames confirmed from a real, specific, citable source (not the model's
-# own recollection) — see the comment on each entry. Only add to this list
-# when you've actually verified it; leaving it out defaults to the AI's own
+# own recollection) — cited on each entry. Only add to this list when you've
+# actually verified it; leaving it out defaults to the AI's own
 # (deliberately cautious) judgment call, which is the safer default at scale.
-KNOWN_NICKNAMES: dict[int, str] = {
-    678011: "Tony Seagulls",  # per the Red Sox's own Instagram: "Seigler stays loving the Tony Seagulls nickname"
-    676979: "The Pig",  # Crochet himself confirmed he likes it (Sportskeeda: "I like the pig nickname... my wife thinks it's hilarious"); widely used by Red Sox fans/media since his trade to Boston
-    807799: "Macho Man",  # from his Village People walk-up song in Japan (NPB); fans still wave inflatable dumbbells for him now (NESN, Nippon.com)
-    547973: "The Cuban Missile",  # his defining nickname for over a decade, tied to his fastball velocity and Cuban heritage (Bleacher Report, Dallas News, and many others)
-    668939: "Clutchman",  # earned at the 2018 College World Series with Oregon State; still widely used (multiple dedicated write-ups)
-    624133: "The Cooler",  # his agent Scott Boras's nickname for him, highlighting his composure and consistency on the mound
-    643396: "Hawaiian Hustle",  # tied to his Honolulu, HI birthplace and his all-out style of play
-    701350: "Roman Empire",  # obvious pun on his first name, used since his 2025 MLB debut
-    680776: "Captain Chaos",  # per teammate Will Middlebrooks, for the havoc Duran causes on the basepaths (NESN)
+#
+# `origin` is passed to the model verbatim and is the ONLY explanation it may
+# give for the nickname. Leave it None when the origin itself isn't verified
+# — handed a nickname with no origin, the model invented one ("Clutchman"
+# became ninth-inning heroics instead of the 2018 College World Series).
+KNOWN_NICKNAMES: dict[int, dict] = {
+    # Red Sox Instagram: "Seigler stays loving the Tony Seagulls nickname"
+    678011: {"nickname": "Tony Seagulls", "origin": None},
+    # Crochet confirmed he likes it (Sportskeeda: "I like the pig nickname... my wife thinks it's hilarious")
+    676979: {"nickname": "The Pig", "origin": None},
+    # NESN, Nippon.com
+    807799: {"nickname": "Macho Man", "origin": "his Village People \"Macho Man\" walk-up song in Japan (NPB); fans still wave inflatable dumbbells for him"},
+    # Bleacher Report, Dallas News, and many others
+    547973: {"nickname": "The Cuban Missile", "origin": "his fastball velocity and his Cuban heritage"},
+    # multiple dedicated write-ups
+    668939: {"nickname": "Clutchman", "origin": "earned at the 2018 College World Series with Oregon State"},
+    # Boras to reporters, Oct 2025 (On Pattison / Breaking AC): "Oh, he's the cooler"
+    624133: {"nickname": "The Cooler", "origin": "agent Scott Boras's name for his composure — told what's needed, Boras said, he just says \"OK, I'll go do it\""},
+    # Texas Rangers' own "Hawaiian Hustle" Heart & Hustle Award campaign; his Hawaii Food Bank T-shirt fundraiser
+    643396: {"nickname": "Hawaiian Hustle", "origin": "his Honolulu roots and all-out style of play"},
+    # FanSided: "Roman Anthony earns 'Roman Empire' nickname with epic grand slam"
+    701350: {"nickname": "Roman Empire", "origin": "a broadcaster's call after his 497-foot grand slam for Triple-A Worcester"},
+    # NESN, per Will Middlebrooks
+    680776: {"nickname": "Captain Chaos", "origin": "teammate Will Middlebrooks's name for the havoc he causes on the basepaths"},
 }
+
+
+def verified_nickname(person_id: int) -> str | None:
+    entry = KNOWN_NICKNAMES.get(person_id)
+    return entry["nickname"] if entry else None
 
 
 async def get_daily_highlight(for_date: date | None = None) -> dict:
@@ -190,7 +210,8 @@ async def get_daily_highlight(for_date: date | None = None) -> dict:
         "draft_pick_number": draft_info.get("pick_number") if draft_info else None,
         "draft_school": draft_info.get("school_name") if draft_info else None,
         "draft_school_location": draft_info.get("school_location") if draft_info else None,
-        "verified_nickname": KNOWN_NICKNAMES.get(person_id),
+        "verified_nickname": verified_nickname(person_id),
+        "verified_nickname_origin": (KNOWN_NICKNAMES.get(person_id) or {}).get("origin"),
         "mlb_debut": bio.get("mlbDebutDate"),
         "headshot_url": f"https://midfield.mlbstatic.com/v1/people/{person_id}/spots/240",
         **stat_lines,

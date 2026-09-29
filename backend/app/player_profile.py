@@ -5,6 +5,7 @@ import asyncio
 import httpx
 
 from . import config, player_highlight, player_stats, statcast
+from . import season as season_mod
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
@@ -49,13 +50,13 @@ def _player_type(stat_lines: dict, position: str | None) -> str:
     return "hitter"
 
 
-async def get_player_profile(person_id: int) -> dict | None:
+async def get_player_profile(person_id: int, get_league_data=None) -> dict | None:
     """Everything a dedicated player page needs, consolidated into one call:
     bio, season/career stat lines, recent game log, home/away and platoon
     splits, and (when the player qualifies) their Statcast percentile
     profile. Returns None if this player isn't on the current 40-man roster
     — the page only serves current Red Sox players, not league-wide lookup."""
-    season = config.SEASON
+    season = season_mod.current()
     full_roster, active_roster = await asyncio.gather(
         player_stats.get_roster(roster_type="40Man"),
         player_stats.get_roster(roster_type="active"),
@@ -76,7 +77,9 @@ async def get_player_profile(person_id: int) -> dict | None:
     async with httpx.AsyncClient(timeout=20) as client:
         game_log_task = player_stats.get_game_log(client, person_id, season, group)
         splits_task = _get_splits(person_id, group, season)
-        league_data_task = statcast.fetch_league_data()
+        # The caller's day-cached Savant data when provided — a direct fetch
+        # re-scrapes four Savant pages for every uncached player page.
+        league_data_task = (get_league_data or statcast.fetch_league_data)()
         game_log, splits, league_data = await asyncio.gather(game_log_task, splits_task, league_data_task)
 
     statcast_profile = statcast.get_player_comparison_data(person_id, player_type, league_data)
@@ -108,6 +111,7 @@ async def get_player_profile(person_id: int) -> dict | None:
         "position": position,
         "player_type": player_type,
         "active": is_active,
+        "roster_status": None if is_active else (entry.get("status") or {}).get("code"),
         "jersey_number": bio.get("primaryNumber"),
         "age": bio.get("currentAge"),
         "birthplace": ", ".join(p for p in birthplace_parts if p) or None,
@@ -116,7 +120,7 @@ async def get_player_profile(person_id: int) -> dict | None:
         "bat_side": bat_side,
         "pitch_hand": pitch_hand,
         "mlb_debut": bio.get("mlbDebutDate"),
-        "verified_nickname": player_highlight.KNOWN_NICKNAMES.get(person_id),
+        "verified_nickname": player_highlight.verified_nickname(person_id),
         "headshot_url": f"https://midfield.mlbstatic.com/v1/people/{person_id}/spots/240",
         **stat_lines,
         "game_log": game_log_display,

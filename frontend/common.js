@@ -148,20 +148,24 @@ async function loadBullpen() {
 
     tbody.innerHTML = "";
     if (!data.pitchers.length) {
-      tbody.innerHTML = `<tr><td colspan="6">No relief appearances in the last 5 days.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6">No games in the last 5 days.</td></tr>`;
       return;
     }
+    const STATUS_CLASS = {
+      "Used today": "delta-down",
+      "Likely unavailable": "delta-down",
+      Limited: "delta-warn",
+      Available: "delta-up",
+    };
     data.pitchers.forEach((p) => {
       const tr = document.createElement("tr");
-      const statusCls = p.likely_available ? "delta-up" : "delta-down";
-      const statusText = p.likely_available ? "Likely available" : "Rest likely needed";
       tr.innerHTML = `
         <td class="name">${playerLink(p.player_id, p.name)}</td>
-        <td>${formatGameDate(p.last_pitched)}</td>
-        <td class="num">${p.days_rest}</td>
-        <td>${p.last_outing}</td>
-        <td class="num">${p.appearances_last_3_days}</td>
-        <td class="num ${statusCls}">${statusText}</td>
+        <td>${p.last_pitched ? formatGameDate(p.last_pitched) : "5+ days ago"}</td>
+        <td class="num">${p.days_rest ?? "5+"}</td>
+        <td>${p.last_outing || "—"}</td>
+        <td class="num">${p.appearances_last_3_days}${p.pitches_last_3_days ? ` <span class="muted">(${p.pitches_last_3_days}p)</span>` : ""}</td>
+        <td class="num ${STATUS_CLASS[p.status] || ""}">${p.status}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -842,13 +846,15 @@ async function loadStatBenchmarks() {
   }
 }
 
-function deltaCell(delta, higherIsBetter, smallSample, extraClass = "") {
+// `fmt` formats the magnitude in the stat's own convention (".036" for
+// wOBA, "1.25" for ERA) so a delta always reads like the stat it's a delta of.
+function deltaCell(delta, higherIsBetter, smallSample, fmt, extraClass = "") {
   if (smallSample) return `<td class="num flag ${extraClass}">small sample</td>`;
   if (delta == null) return `<td class="num ${extraClass}">-</td>`;
-  const good = higherIsBetter ? delta > 0 : delta > 0;
+  const good = higherIsBetter ? delta > 0 : delta < 0;
   const cls = delta === 0 ? "" : good ? "delta-up" : "delta-down";
-  const sign = delta > 0 ? "+" : "";
-  return `<td class="num ${cls} ${extraClass}">${sign}${delta}</td>`;
+  const sign = delta > 0 ? "+" : delta < 0 ? "−" : "";
+  return `<td class="num ${cls} ${extraClass}">${sign}${fmt(Math.abs(delta))}</td>`;
 }
 
 // A quick, plain-language read (🔥/🧊/steady) for the default "simple" view
@@ -898,7 +904,7 @@ async function loadPlayerHotCold() {
         <td class="name">${playerLink(h.id, h.name)}</td>
         <td>${h.position || "-"}</td>
         ${formBadge(h.form_delta_woba, h.small_sample, HITTER_HOT_THRESHOLD)}
-        ${deltaCell(h.form_delta_woba, true, h.small_sample)}
+        ${deltaCell(h.form_delta_woba, true, h.small_sample, fmtRate)}
         <td class="num">${s ? pctStr(s.avg) : "-"}</td>
         <td class="num">${s ? pctStr(s.ops) : "-"}</td>
         <td class="num">${s && s.hr != null ? s.hr : "-"}</td>
@@ -906,8 +912,8 @@ async function loadPlayerHotCold() {
         <td class="num adv-col ${wobaCls}">${s ? pctStr(s.woba) : "-"}</td>
         <td class="num adv-col">${pctStr(r.woba)}</td>
         <td class="num adv-col ${babipCls}">${s ? pctStr(s.babip) : "-"}</td>
-        <td class="num adv-col ${bbCls}">${s ? pctStr(s.bb_pct) : "-"}</td>
-        <td class="num adv-col ${kCls}">${s ? pctStr(s.k_pct) : "-"}</td>
+        <td class="num adv-col ${bbCls}">${s ? fmtPct1(s.bb_pct) : "-"}</td>
+        <td class="num adv-col ${kCls}">${s ? fmtPct1(s.k_pct) : "-"}</td>
         <td class="num adv-col ${isoCls}">${s ? pctStr(s.iso) : "-"}</td>
       `;
       hittersBody.appendChild(tr);
@@ -931,12 +937,12 @@ async function loadPlayerHotCold() {
         <td>${p.role}</td>
         <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
         ${formBadge(p.form_delta_era, p.small_sample, PITCHER_HOT_THRESHOLD)}
-        ${deltaCell(p.form_delta_era, true, p.small_sample)}
+        ${deltaCell(p.form_delta_era, true, p.small_sample, fmtEra)}
         <td class="num adv-col">${r.era ?? "-"}</td>
         <td class="num adv-col ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
         <td class="num adv-col ${kbbCls}">${s ? fmtPct1(s.k_bb_pct) : "-"}</td>
         <td class="num adv-col ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
-        <td class="num adv-col ${lobCls}">${s ? pctStr(s.lob_pct) : "-"}</td>
+        <td class="num adv-col ${lobCls}">${s ? fmtPct1(s.lob_pct) : "-"}</td>
       `;
       pitchersBody.appendChild(tr);
     });
@@ -960,7 +966,8 @@ function sortTableByColumn(table, colIndex, th) {
   const valueOf = (tr) => {
     const cell = tr.children[colIndex];
     const raw = cell ? cell.textContent.trim() : "";
-    const num = parseFloat(raw.replace(/[%,]/g, ""));
+    // Normalize the typographic minus used in delta cells so it sorts as negative.
+    const num = parseFloat(raw.replace(/\u2212/g, "-").replace(/[%,]/g, ""));
     return raw && !Number.isNaN(num) ? num : raw.toLowerCase();
   };
 
@@ -1071,6 +1078,17 @@ function initExpandSection(detailsId, showLabel, hideLabel) {
   });
 }
 
+// Short label for a player who isn't on the active roster, from MLB's own
+// 40-man status code — injured and optioned are different things.
+const ROSTER_STATUS_LABELS = { D7: "IL-7", D10: "IL-10", D15: "IL-15", D60: "IL-60", RM: "Minors", BRV: "Bereavement", PL: "Paternity" };
+function rosterStatusBadge(player) {
+  if (player.active) return "";
+  const code = player.roster_status;
+  const label = ROSTER_STATUS_LABELS[code] || "Inactive";
+  const cls = code && code.startsWith("D") ? "il-badge" : "il-badge status-badge-minor";
+  return ` <span class="${cls}">${label}</span>`;
+}
+
 async function loadFullRoster() {
   const hittersBody = document.querySelector("#roster-hitters-table tbody");
   const pitchersBody = document.querySelector("#roster-pitchers-table tbody");
@@ -1082,7 +1100,7 @@ async function loadFullRoster() {
     hittersBody.innerHTML = "";
     data.hitters.forEach((h) => {
       const s = h.season;
-      const il = h.active ? "" : ' <span class="il-badge">IL</span>';
+      const il = rosterStatusBadge(h);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="name">${playerLink(h.id, h.name)}${il}</td>
@@ -1091,8 +1109,8 @@ async function loadFullRoster() {
         <td class="num">${pctStr(s.ops)}</td>
         <td class="num">${s.hr ?? "-"}</td>
         <td class="num">${s.rbi ?? "-"}</td>
-        <td class="num">${pctStr(s.bb_pct)}</td>
-        <td class="num">${pctStr(s.k_pct)}</td>
+        <td class="num">${fmtPct1(s.bb_pct)}</td>
+        <td class="num">${fmtPct1(s.k_pct)}</td>
       `;
       hittersBody.appendChild(tr);
     });
@@ -1100,7 +1118,7 @@ async function loadFullRoster() {
     pitchersBody.innerHTML = "";
     data.pitchers.forEach((p) => {
       const s = p.season;
-      const il = p.active ? "" : ' <span class="il-badge">IL</span>';
+      const il = rosterStatusBadge(p);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="name">${playerLink(p.id, p.name)}${il}</td>
@@ -1259,7 +1277,7 @@ async function loadLastGameRecap() {
         ${buildPerformerList(oppShort, g.top_performers.them)}
       </div>
       <div class="chart-wrap">
-        <canvas id="win-prob-chart" height="90"></canvas>
+        <div class="win-prob-canvas"><canvas id="win-prob-chart" aria-label="Red Sox win probability by play"></canvas></div>
         <p class="muted small-note" id="win-prob-note">Loading win probability…</p>
       </div>
       <div class="game-recap-narrative"><div class="ai-badge">✨ AI-written</div>${paragraphs}</div>
@@ -1324,23 +1342,55 @@ async function loadWinProbabilityChart() {
         labels,
         datasets: [
           {
-            label: "Red Sox Win Probability",
+            label: "Red Sox win probability",
             data: values,
             borderColor: "#bd3039",
-            backgroundColor: "rgba(189, 48, 57, 0.12)",
-            fill: true,
+            // Fill relative to the 50% line, so the shading itself shows
+            // who was ahead.
+            fill: { target: { value: 50 }, above: "rgba(189, 48, 57, 0.16)", below: "rgba(128, 128, 128, 0.14)" },
             tension: 0.15,
-            pointRadius: 0,
+            // Scoring plays get a marker; everything else stays a line.
+            pointRadius: g.points.map((p) => (p.is_scoring_play ? 3.5 : 0)),
+            pointHoverRadius: g.points.map((p) => (p.is_scoring_play ? 5 : 3)),
+            pointBackgroundColor: "#bd3039",
             borderWidth: 2,
+          },
+          {
+            label: "Even",
+            data: values.map(() => 50),
+            borderColor: "rgba(128, 128, 128, 0.55)",
+            borderDash: [4, 4],
+            borderWidth: 1,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
           },
         ],
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: true } },
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            filter: (item) => item.datasetIndex === 0,
+            callbacks: {
+              title: (items) => {
+                const p = g.points[items[0].dataIndex];
+                return `${p.half === "top" ? "Top" : "Bottom"} ${ordinal(p.inning)}`;
+              },
+              label: (item) => `Red Sox ${item.parsed.y.toFixed(0)}%`,
+              afterLabel: (item) => {
+                const p = g.points[item.dataIndex];
+                return p.is_scoring_play && p.description ? p.description : "";
+              },
+            },
+          },
+        },
         scales: {
-          y: { min: 0, max: 100, title: { display: true, text: "Win Probability %" } },
-          x: { ticks: { maxTicksLimit: 12 } },
+          y: { min: 0, max: 100, ticks: { stepSize: 25, callback: (v) => `${v}%` } },
+          x: { ticks: { maxTicksLimit: 10, maxRotation: 0 } },
         },
       },
     });

@@ -3,12 +3,14 @@ from __future__ import annotations
 import httpx
 
 from . import config
+from . import season as season_mod
 from .player_stats import FIP_CONSTANT, WOBA_WEIGHTS, _parse_innings
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
 
-async def _fetch_league_team_stats(group: str, season: int = config.SEASON) -> list[dict]:
+async def _fetch_league_team_stats(group: str, season: int | None = None) -> list[dict]:
+    season = season or season_mod.current()
     params = {"stats": "season", "group": group, "season": season, "sportId": 1}
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(f"{BASE_URL}/teams/stats", params=params)
@@ -93,10 +95,11 @@ def _avg(values: list[float]) -> float:
     return round(sum(values) / len(values), 3) if values else 0.0
 
 
-async def get_stat_benchmarks(season: int = config.SEASON) -> dict:
+async def get_stat_benchmarks(season: int | None = None) -> dict:
     """League-average rate stats, used as the baseline for player-level
     heat-coloring (team-level aggregates are a close proxy for the true
     player-weighted league average, and are much cheaper to compute)."""
+    season = season or season_mod.current()
     hitting_splits = await _fetch_league_team_stats("hitting", season)
     pitching_splits = await _fetch_league_team_stats("pitching", season)
 
@@ -140,13 +143,14 @@ async def get_stat_benchmarks(season: int = config.SEASON) -> dict:
     }
 
 
-async def fetch_all_team_stats(season: int = config.SEASON) -> dict:
+async def fetch_all_team_stats(season: int | None = None) -> dict:
     """The expensive part of get_league_context (all 30 teams' hitting and
     pitching splits) split out on its own so it can be fetched once and
     reused to compute the rank block for whichever team is asked about —
     a team-profile page for an opponent needs the exact same underlying
     data as Boston's own "Where Boston Ranks," just re-centered on a
     different team_id, and shouldn't cost a second fetch to get it."""
+    season = season or season_mod.current()
     hitting_splits = await _fetch_league_team_stats("hitting", season)
     pitching_splits = await _fetch_league_team_stats("pitching", season)
     return {"hitting": hitting_splits, "pitching": pitching_splits}

@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 
 import anthropic
 from anthropic import AsyncAnthropic
@@ -6,6 +8,8 @@ from anthropic import AsyncAnthropic
 from . import config
 
 MODEL = "claude-sonnet-5"
+
+logger = logging.getLogger("uvicorn.error")
 
 
 def _client() -> AsyncAnthropic:
@@ -132,11 +136,15 @@ PLAYER_NOTES_SYSTEM_PROMPT = (
     "cold, whichever stand out most — don't force an even split). For each, say "
     "in one tight sentence whether the peripherals (BABIP, FIP vs ERA, K%/BB%) "
     "suggest the change is real or likely to regress. League-average BABIP is "
-    "roughly .300. Output exactly one bullet per player, each starting with '- ', "
-    "in this exact shape: '- Name (pos/role): one sentence of verdict + the 1-2 "
-    "key numbers backing it up.' Plain text only — no markdown bold/italics, no "
-    "headers, no preamble or closing remarks. Keep the whole thing under 120 "
-    "words total."
+    "roughly .300. Fields ending in _pct are already percentages (11.0 means "
+    "11.0%) — write them with a % sign; wOBA/BABIP/ISO are rate stats written "
+    "baseball-style ('.311'). `pa`/`ip` are sample sizes: weigh them, and "
+    "never call a small sample reliable. Output exactly one bullet per "
+    "player, each starting with '- ', in this exact shape: '- Name (pos/role): "
+    "one sentence of verdict with the 1-2 key numbers woven into it.' State "
+    "each number once — never repeat numbers after the sentence. Plain text "
+    "only — no markdown bold/italics, no headers, no preamble or closing "
+    "remarks. Keep the whole thing under 120 words total."
 )
 
 
@@ -231,8 +239,11 @@ PLAYER_HIGHLIGHT_SYSTEM_PROMPT = (
     ".247 with 3 home runs in 49 games this year') rather than vague "
     "'broad strokes' language. Real numbers are always better than color "
     "here.\n"
-    "3. Color: if verified_nickname is present, use it here confidently and "
-    "explain it if the meaning is obvious from the name itself. Otherwise, "
+    "3. Color: if verified_nickname is present, use it here confidently. "
+    "Explain where it came from ONLY using verified_nickname_origin, in a "
+    "single clause, adding no detail of your own (no positions, moments, or "
+    "anecdotes it doesn't state); if that field is null, don't explain or "
+    "speculate about the origin at all — just use the nickname. Otherwise, "
     "one or two genuine, well-known fun facts or a memorable moment — ONLY "
     "if you are confident it's real and specific to this player. If you "
     "aren't, write something true and general instead (a real physical/"
@@ -247,7 +258,10 @@ PLAYER_HIGHLIGHT_SYSTEM_PROMPT = (
     "go beyond the verified fields for genuinely well-known public "
     "knowledge, and never invent a specific college, draft slot, nickname, "
     "quote, or award that isn't either in the verified data or something "
-    "you're genuinely confident is real for this exact player. Write in "
+    "you're genuinely confident is real for this exact player — and never "
+    "add a hometown, high school, or town that isn't in the verified data "
+    "(the birthplace field is the only hometown you have). Skip filler about "
+    "how or why he joined the Red Sox; you aren't given that. Write in "
     "warm, literate, precisely-worded prose, not encyclopedic tone. Don't "
     "repeat the player's full name more than twice total."
 )
@@ -276,10 +290,11 @@ GAME_RECAP_SYSTEM_PROMPT = (
     "sharp, dryly funny columnist, not someone shouting from the bleachers. "
     "Excellent grammar and precise vocabulary throughout; wit should be "
     "understated and exact, never a forced quip or slang-heavy aside. Given "
-    "verified box score data as JSON (final score, line score by inning, "
-    "winning/losing/save pitchers, top batting performances, pitching lines) "
-    "plus a list of real news article headlines about this exact game, write "
-    "ONE tight paragraph (4-6 sentences) recapping the game for a fellow fan "
+    "a verified fact sheet for one game — final score, every scoring play in "
+    "order with the score after it and any lead changes already marked, "
+    "every pitcher's full line with their starter/reliever role, the top "
+    "hitters, and real news headlines — write ONE tight paragraph (4-6 "
+    "sentences) recapping the game for a fellow fan "
     "who missed it.\n\n"
     "CLARITY IS NON-NEGOTIABLE — a reader should be able to reconstruct "
     "exactly what happened from your paragraph alone, on one read. Describe "
@@ -287,14 +302,23 @@ GAME_RECAP_SYSTEM_PROMPT = (
     "happened, but earlier Y had already...'). Always name a player directly "
     "when you know their name from the data — never refer to someone as "
     "another player's 'counterpart' or by role alone (e.g. 'the opposing "
-    "closer') when the actual name is sitting right there in the JSON. Avoid "
+    "closer') when the actual name is sitting right there in the fact sheet. Avoid "
     "stacking multiple distinct events into one overloaded clause; if a "
     "sentence needs two 'and's to hold together, split it into two "
     "sentences.\n\n"
+    "The fact sheet is pre-computed and authoritative: restate its facts, "
+    "never recompute them. Use its run counts exactly as given (a play that "
+    "scored 1 run is never 'two-run'), describe ties and lead changes only "
+    "where it marks them, and call an outing scoreless only if its line says "
+    "0 R. A run scored while a reliever was pitching can be charged to the "
+    "pitcher before him — for who allowed runs, go by each pitcher's R/ER. "
+    "The only ballpark you may name is the one on the FINAL line. Don't "
+    "characterize the standings, playoff race, or any player's history "
+    "with another team — none of that is on the fact sheet.\n\n"
     "Reference specific verified facts: the score, who pitched well or "
     "struggled, who delivered the big hit, and any real storyline the "
     "article headlines point to (e.g. a milestone, an injury scare, a "
-    "notable streak) — but only mention something the articles or box score "
+    "notable streak) — but only mention something the headlines or fact sheet "
     "actually support, never invent a specific quote, injury, or storyline "
     "that isn't backed by the data you were given. This also covers trend "
     "claims: you have data for exactly ONE game, not this team's history "
@@ -307,9 +331,9 @@ GAME_RECAP_SYSTEM_PROMPT = (
     "article detail. No headers, no bullet points, no score restated as a "
     "headline (the box score is shown separately) — just the narrative "
     "paragraph itself.\n\n"
-    "POSTSEASON: if `postseason` is present, this was a playoff game. Name it "
+    "POSTSEASON: if the fact sheet has a POSTSEASON line, this was a playoff game. Name it "
     "plainly once (e.g. 'Game 1 of the AL Wild Card Series') and take where "
-    "the series stands only from `postseason.status` (MLB's own standing "
+    "the series stands only from the POSTSEASON line (MLB's own standing "
     "after this game, e.g. 'BOS leads 1-0') — never work out or guess the "
     "series state yourself, and never cite a season record or treat it as a "
     "regular-season game."
@@ -362,19 +386,140 @@ async def generate_statcast_notes(report: dict) -> str:
     return _extract_text(message)
 
 
-async def generate_game_recap(game_data: dict) -> str:
-    slim_articles = [{"title": a["title"], "source": a["source"]} for a in game_data.get("articles", [])]
-    payload = {**game_data, "articles": slim_articles}
+def _ordinal_inning(n: int) -> str:
+    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
 
-    message = await _create_message(
-        model=MODEL,
-        max_tokens=700,
-        system=GAME_RECAP_SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Game data:\n{json.dumps(payload, indent=2)}",
-            }
-        ],
-    )
-    return _extract_text(message)
+
+def build_recap_fact_sheet(game: dict) -> str:
+    """The game as plain, pre-computed English sentences — scoring sequence
+    with running score, lead changes, and every pitcher's full line spelled
+    out. Built in code because, handed raw JSON, the model repeatedly
+    miscounted (an RBI double became "two-run," a 1-run relief outing became
+    "scoreless," a 3-2 game became "a 2-2 tie"). Restating clear facts is
+    reliable; deriving them from nested numbers is not."""
+    # Full opponent name: a last-word short form breaks on "White Sox" /
+    # "Blue Jays" ("Sox", "Jays").
+    us, them = "Red Sox", game["opponent"]
+    lines = [
+        f"FINAL: {us} {game['our_score']}, {game['opponent']} {game['their_score']} "
+        f"({'Red Sox win' if game['won'] else 'Red Sox loss'}; {'home' if game['home_or_away'] == 'home' else 'road'} game"
+        f"{', at ' + game['venue'] if game.get('venue') else ''})."
+    ]
+    ps = game.get("postseason")
+    if ps:
+        lines.append(f"POSTSEASON: {ps['series']}, Game {ps['game_number']}. Series standing after this game: {ps['status'] or 'n/a'}.")
+
+    lines.append("\nSCORING, IN ORDER (runs on the play, then the score after it):")
+    leader = None
+    for play in game.get("scoring_plays", []):
+        sa = play["score_after"]
+        batting = us if play["team_batting"] == "us" else them
+        runs = play["runs_on_play"]
+        lines.append(
+            f"- {play['half'].capitalize()} {_ordinal_inning(play['inning'])}, {batting} scored {runs} "
+            f"run{'s' if runs != 1 else ''} ({play['pitcher_on_mound']} pitching): {play['description']} "
+            f"Score: {us} {sa['us']}, {them} {sa['them']}."
+        )
+        now = "us" if sa["us"] > sa["them"] else "them" if sa["them"] > sa["us"] else None
+        if now != leader:
+            if now is None:
+                lines.append("  -> This play TIED the game.")
+            else:
+                lines.append(f"  -> {us if now == 'us' else them} {'took the lead' if leader is None else 'took the lead back'} here.")
+            leader = now
+    if not game.get("scoring_plays"):
+        lines.append("- (scoring plays unavailable)")
+
+    lines.append("\nPITCHERS (in order of appearance; R = all runs charged, ER = earned runs charged):")
+    for side, team in (("us", us), ("them", them)):
+        for p in game.get("pitching", {}).get(side, []):
+            decision = f" — {p['note'].strip('() ')}" if p.get("note") else ""
+            lines.append(
+                f"- {team}: {p['name']} ({p['role']}): {p['innings_pitched']} IP, {p.get('hits')} H, "
+                f"{p.get('runs')} R, {p.get('earned_runs')} ER, {p.get('walks')} BB, {p.get('strikeouts')} K{decision}"
+                + ("  [allowed no runs]" if not p.get("runs") else "")
+            )
+
+    lines.append("\nTOP HITTERS (box-score line: H-AB | extras):")
+    for side, team in (("us", us), ("them", them)):
+        for b in game.get("top_performers", {}).get(side, []):
+            lines.append(f"- {team}: {b['name']} {b['summary']} ({b['hits']} H, {b['home_runs']} HR, {b['rbi']} RBI)")
+
+    if game.get("record_after"):
+        lines.append(f"\nRed Sox record after this game: {game['record_after']['wins']}-{game['record_after']['losses']}.")
+    arts = game.get("articles") or []
+    if arts:
+        lines.append("\nNEWS HEADLINES ABOUT THIS GAME (may include other recent games; use only what clearly matches):")
+        lines.extend(f"- {a['title']} ({a['source']})" for a in arts)
+    return "\n".join(lines)
+
+
+_RUN_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "1": 1, "2": 2, "3": 3, "4": 4}
+_HIT_TYPES = {
+    "single": "singles", "double": "doubles", "triple": "triples",
+    "homer": "homers", "home run": "homers", "shot": "homers", "blast": "homers", "bomb": "homers",
+}
+_N_RUN_HIT_RE = re.compile(
+    r"\b(one|two|three|four|[1-4])-run (single|double|triple|homer|home run|shot|blast|bomb)\b", re.IGNORECASE
+)
+_GRAND_SLAM_RE = re.compile(r"\bgrand slam\b", re.IGNORECASE)
+
+
+def _hits_with_runs(game: dict) -> set[tuple[int, str]]:
+    """(runs, verb) for every run-scoring hit, e.g. (1, "doubles")."""
+    found = set()
+    for play in game.get("scoring_plays", []):
+        m = re.search(r"\b(singles|doubles|triples|homers)\b", play["description"])
+        if m:
+            found.add((play["runs_on_play"], m.group(1)))
+    return found
+
+
+def invalid_run_counts(text: str, game: dict) -> list[str]:
+    """Phrases like "two-run double" that match no actual scoring play. A
+    narrow, mechanical backstop: the model kept writing "two-run double" for
+    a play the fact sheet explicitly marks as 1 run, despite prompt rules —
+    so the count is checked in code, not trusted."""
+    allowed = _hits_with_runs(game)
+    bad = [
+        m.group(0)
+        for m in _N_RUN_HIT_RE.finditer(text)
+        if (_RUN_WORDS[m.group(1).lower()], _HIT_TYPES[m.group(2).lower()]) not in allowed
+    ]
+    if _GRAND_SLAM_RE.search(text) and (4, "homers") not in allowed:
+        bad.append("grand slam")
+    # The model's prior pulls every Red Sox game to Fenway; flag it when the
+    # fact sheet's venue says otherwise (retry only — no safe mechanical fix).
+    if "fenway" in text.lower() and "fenway" not in (game.get("venue") or "").lower():
+        bad.append("Fenway")
+    return bad
+
+
+def _strip_run_counts(text: str, bad: list[str]) -> str:
+    # "two-run double" -> "double": always true, never wrong.
+    for phrase in bad:
+        text = re.sub(rf"\b{re.escape(phrase)}\b", _N_RUN_HIT_RE.sub(r"\2", phrase) if phrase != "grand slam" else "home run", text)
+    return text
+
+
+async def generate_game_recap(game_data: dict) -> str:
+    sheet = build_recap_fact_sheet(game_data)
+
+    async def attempt() -> str:
+        message = await _create_message(
+            model=MODEL,
+            max_tokens=700,
+            system=GAME_RECAP_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": f"Game fact sheet:\n{sheet}"}],
+        )
+        return _extract_text(message)
+
+    text = await attempt()
+    if invalid_run_counts(text, game_data):
+        text = await attempt()
+    bad = invalid_run_counts(text, game_data)
+    if bad:
+        logger.warning("Recap for game %s still has unsupported claims after retry: %s", game_data.get("game_pk"), bad)
+        text = _strip_run_counts(text, [b for b in bad if b != "Fenway"])
+    return text

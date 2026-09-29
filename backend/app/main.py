@@ -24,6 +24,7 @@ from . import (
     player_highlight,
     player_profile,
     player_stats,
+    season,
     significance,
     statcast,
     team_profile,
@@ -128,11 +129,13 @@ HEADLINES_CACHE_SECONDS = 600  # 10 min — news moves faster than season stats
 
 async def _get_season_games_cached() -> list[dict]:
     # Upcoming Schedule and Season Series both need the full-season game
-    # log; without this they'd each fetch the same ~150-game season
+    # log; without this they'd each fetch the same ~160-game season
     # schedule from MLB Stats API independently on every single Home page
-    # load.
+    # load. A full year's lookback, clamped to the season's own start date
+    # inside get_recent_games — a fixed "last 200 days" silently dropped
+    # the first games of the season once October ran long.
     return await _cached_for(
-        _season_games_cache, _season_games_lock, HEAVY_FETCH_CACHE_SECONDS, lambda: mlb_client.get_recent_games(days=200)
+        _season_games_cache, _season_games_lock, HEAVY_FETCH_CACHE_SECONDS, lambda: mlb_client.get_recent_games(days=366)
     )
 
 
@@ -163,6 +166,16 @@ async def _get_headlines_cached() -> list[dict]:
     # The headline list and its "Summarize Coverage" button both need the
     # same Google News RSS results; without this they'd hit it independently.
     return await _cached_for(_headlines_cache, _headlines_lock, HEADLINES_CACHE_SECONDS, news.get_recent_headlines)
+
+
+@app.middleware("http")
+async def resolve_season(request: Request, call_next):
+    # Cheap no-op except on the first API request of each Eastern day, when
+    # it re-checks MLB's calendar — this is what rolls the whole site over
+    # to a new season on Opening Day with no code change or redeploy.
+    if request.url.path.startswith("/api/"):
+        await season.ensure_fresh()
+    return await call_next(request)
 
 
 @app.exception_handler(Exception)
@@ -343,15 +356,24 @@ async def team_last_game_significance():
     # a completed game's real facts never change, so there's nothing to
     # recompute on a later request for the same game. The one AI call inside
     # (narration only, never invention) only fires on a genuine cache miss.
+    #
+    # The cache is checked against the last game's gamePk (one cheap
+    # schedule lookup) *before* running any checks — the full check suite is
+    # dozens of MLB requests and must not run on every Home page view.
+    game = await game_recap.get_last_completed_game()
+    if game is None:
+        return {"game_pk": None, "narration": None}
     async with _significance_lock:
-        cached = _significance_cache["data"]
-        report = await significance.get_game_significance()
-        if report is None:
-            return {"game_pk": None, "narration": None}
+        if _significance_cache["game_pk"] == game["gamePk"] and _significance_cache["data"] is not None:
+            return _significance_cache["data"]
 
-        game_pk = report["game_pk"]
-        if _significance_cache["game_pk"] == game_pk and cached is not None:
-            return cached
+        report = await significance.get_game_significance(game=game)
+        if not report["complete"]:
+            # Some game logs haven't caught up to this game yet (MLB lags a
+            # few minutes after Final). Show nothing for now and let a later
+            # request compute the full answer, rather than caching a partial
+            # one forever or paying for narration of a partial list.
+            return {"game_pk": report["game_pk"], "date": report["date"], "narration": None}
 
         narration = None
         if report["findings"]:
@@ -360,10 +382,19 @@ async def team_last_game_significance():
             except RuntimeError as exc:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-        result = {"game_pk": game_pk, "date": report["date"], "narration": narration}
-        _significance_cache["game_pk"] = game_pk
+        result = {"game_pk": report["game_pk"], "date": report["date"], "narration": narration}
+        _significance_cache["game_pk"] = report["game_pk"]
         _significance_cache["data"] = result
         return result
+
+
+LIVE_GAME_CACHE_SECONDS = 10
+_live_game_cache: dict = {"result": None, "fetched_at": 0.0}
+_live_game_lock = asyncio.Lock()
+
+
+async def _fetch_live_game() -> dict:
+    return {"game": await live_game.get_live_game()}
 
 
 @app.get("/api/team/live-game")
@@ -372,7 +403,11 @@ async def team_live_game():
     # whole purpose is "what's true right now," polled by the frontend
     # every ~15s while a game is in progress. Almost always returns null
     # (no game live at this moment), which is cheap: one schedule lookup.
-    return {"game": await live_game.get_live_game()}
+    #
+    # Shared for 10s across all visitors: each miss pulls MLB's full live
+    # feed (~800KB), and every open Home page polls every 15s plus the nav
+    # indicator on every page — without this, cost scales with visitors.
+    return await _cached_for(_live_game_cache, _live_game_lock, LIVE_GAME_CACHE_SECONDS, _fetch_live_game)
 
 
 @app.get("/api/team/analysis")
@@ -464,7 +499,7 @@ async def players_profile(id: int):
         if cached and cached["date"] == today:
             return cached["data"]
 
-        profile = await player_profile.get_player_profile(id)
+        profile = await player_profile.get_player_profile(id, get_league_data=_get_league_data_cached)
         if profile is None:
             raise HTTPException(status_code=404, detail="Player not found on the current 40-man roster")
 
@@ -567,15 +602,18 @@ async def team_last_game_recap():
     # off-day there's no new "yesterday's game" to speak of, so this should
     # just keep serving whatever the last real game was rather than trying
     # (and failing) to refresh once a day.
-    data = await game_recap.get_last_game_recap_data()
-    if data is None:
+    #
+    # Checked by gamePk first (one schedule lookup) so a cache hit skips the
+    # box score and Google News fetches entirely.
+    game = await game_recap.get_last_completed_game()
+    if game is None:
         return {"game": None}
-
-    game_pk = data["game_pk"]
     async with _game_recap_lock:
-        cached = _game_recap_cache["data"]
-        if _game_recap_cache["game_pk"] == game_pk and cached is not None:
-            return cached
+        if _game_recap_cache["game_pk"] == game["gamePk"] and _game_recap_cache["data"] is not None:
+            return _game_recap_cache["data"]
+
+        data = await game_recap.get_last_game_recap_data(game=game)
+        game_pk = data["game_pk"]
 
         try:
             narrative = await ai_recap.generate_game_recap(data)

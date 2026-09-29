@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from xml.etree import ElementTree
@@ -7,6 +8,7 @@ from xml.etree import ElementTree
 import httpx
 
 from . import config, mlb_client
+from . import season as season_mod
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 RSS_URL = "https://news.google.com/rss/search"
@@ -17,8 +19,15 @@ async def get_last_completed_game(team_id: int = config.TEAM_ID) -> dict | None:
     with linescore, decisions (W/L/SV) and series status hydrated. Looks back
     a generous window since the team can have off-days (including the
     All-Star break and the gap before a postseason series) between games."""
-    end = date.today()
-    start = end - timedelta(days=10)
+    # Anchored to the shown season, so the offseason keeps showing the
+    # season's final game rather than "no game found" for five months.
+    end = season_mod.anchor_date()
+    # During the regular season, 10 days covers any off-day gap (All-Star
+    # break included). After it, the gap can be weeks — waiting out a
+    # postseason round, eliminated early, or the whole offseason (where the
+    # anchor is MLB's listed postseason end date) — so look back further.
+    lookback = 60 if season_mod.regular_season_over() else 10
+    start = max(end - timedelta(days=lookback), season_mod.start_date())
 
     url = f"{BASE_URL}/schedule"
     params = {
@@ -76,7 +85,7 @@ def top_batting_lines(boxscore: dict, side: str, limit: int = 3) -> list[dict]:
 def pitching_lines(boxscore: dict, side: str) -> list[dict]:
     team = boxscore["teams"][side]
     lines = []
-    for pid in team.get("pitchers", []):
+    for order, pid in enumerate(team.get("pitchers", [])):
         player = team["players"].get(f"ID{pid}")
         if not player:
             continue
@@ -87,10 +96,15 @@ def pitching_lines(boxscore: dict, side: str) -> list[dict]:
             {
                 "id": player["person"]["id"],
                 "name": player["person"]["fullName"],
+                # Box-score order: the first pitcher listed started the game.
+                "role": "starter" if order == 0 else "reliever",
                 "summary": stats.get("summary", ""),
                 "note": stats.get("note"),
                 "innings_pitched": stats.get("inningsPitched"),
+                "hits": stats.get("hits"),
+                "runs": stats.get("runs"),
                 "earned_runs": stats.get("earnedRuns"),
+                "walks": stats.get("baseOnBalls"),
                 "strikeouts": stats.get("strikeOuts"),
             }
         )
@@ -103,6 +117,39 @@ async def get_boxscore(game_pk: int) -> dict:
         resp = await client.get(url)
         resp.raise_for_status()
         return resp.json()
+
+
+async def get_scoring_plays(game_pk: int, us_side: str) -> list[dict]:
+    """Every scoring play in order, with the score after it — the sequence the
+    recap needs to say who scored when and off whom, instead of guessing from
+    the line score. `fields` trims MLB's ~1MB play-by-play to ~20KB."""
+    fields = "allPlays,result,description,awayScore,homeScore,about,inning,halfInning,isScoringPlay,matchup,pitcher,fullName"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(f"{BASE_URL}/game/{game_pk}/playByPlay", params={"fields": fields})
+        resp.raise_for_status()
+        plays = resp.json().get("allPlays", [])
+
+    them_side = "away" if us_side == "home" else "home"
+    scoring = [p for p in plays if p.get("about", {}).get("isScoringPlay")]
+    result = []
+    prev = {"us": 0, "them": 0}
+    for p in scoring:
+        after = {"us": p["result"][f"{us_side}Score"], "them": p["result"][f"{them_side}Score"]}
+        result.append(
+            {
+                "inning": p["about"]["inning"],
+                "half": p["about"]["halfInning"],
+                "team_batting": "us" if (p["about"]["halfInning"] == "bottom") == (us_side == "home") else "them",
+                "pitcher_on_mound": (p.get("matchup", {}).get("pitcher") or {}).get("fullName"),
+                "description": p["result"]["description"],
+                # Computed, not left to the model: it read "doubles… Amaya
+                # scores" as a two-run double.
+                "runs_on_play": (after["us"] - prev["us"]) + (after["them"] - prev["them"]),
+                "score_after": after,
+            }
+        )
+        prev = after
+    return result
 
 
 async def _get_game_articles(opponent: str, game_date: str, limit: int = 6) -> list[dict]:
@@ -141,13 +188,14 @@ async def _get_game_articles(opponent: str, game_date: str, limit: int = 6) -> l
     return articles
 
 
-async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None:
+async def get_last_game_recap_data(team_id: int = config.TEAM_ID, game: dict | None = None) -> dict | None:
     """Build the full data payload for the 'Previous Game Recap' feature:
     box score facts (deterministic, from the MLB Stats API) plus real
     articles about the game (for the AI narrative to draw on). Returns None
     if no completed game is found in the lookback window (e.g. season hasn't
     started, or preseason)."""
-    game = await get_last_completed_game(team_id)
+    if game is None:
+        game = await get_last_completed_game(team_id)
     if game is None:
         return None
 
@@ -162,7 +210,10 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
     decisions = game.get("decisions", {})
     linescore = game.get("linescore", {})
 
-    articles = await _get_game_articles(them["team"]["name"], game["officialDate"])
+    articles, scoring_plays = await asyncio.gather(
+        _get_game_articles(them["team"]["name"], game["officialDate"]),
+        get_scoring_plays(game_pk, us_side),
+    )
     postseason = mlb_client.postseason_info(game)
 
     return {
@@ -222,5 +273,6 @@ async def get_last_game_recap_data(team_id: int = config.TEAM_ID) -> dict | None
             "us": pitching_lines(boxscore, us_side),
             "them": pitching_lines(boxscore, them_side),
         },
+        "scoring_plays": scoring_plays,
         "articles": articles,
     }

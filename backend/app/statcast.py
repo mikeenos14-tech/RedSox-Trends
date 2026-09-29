@@ -9,6 +9,7 @@ import re
 import httpx
 
 from . import config, player_stats
+from . import season as season_mod
 
 PERCENTILE_URL = "https://baseballsavant.mlb.com/leaderboard/percentile-rankings"
 CUSTOM_URL = "https://baseballsavant.mlb.com/leaderboard/custom"
@@ -120,7 +121,7 @@ PITCHER_EXTRA_STATS = [
 
 async def fetch_percentile_rankings(player_type: str) -> list[dict]:
     async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
-        resp = await client.get(PERCENTILE_URL, params={"year": config.SEASON, "type": player_type})
+        resp = await client.get(PERCENTILE_URL, params={"year": season_mod.current(), "type": player_type})
         resp.raise_for_status()
         html = resp.text
 
@@ -138,7 +139,7 @@ async def fetch_custom_leaderboard(player_type: str, selections: list[str]) -> d
         resp = await client.get(
             CUSTOM_URL,
             params={
-                "year": config.SEASON,
+                "year": season_mod.current(),
                 "type": player_type,
                 "min": 1,  # no min PA/IP filter — match percentile-rankings' broader inclusion
                 "selections": ",".join(selections),

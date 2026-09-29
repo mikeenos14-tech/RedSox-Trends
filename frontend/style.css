@@ -603,6 +603,7 @@ main section { scroll-margin-top: 3.5rem; }
 .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stat-table td.delta-up { color: var(--good); font-weight: 700; }
 .stat-table td.delta-down { color: var(--red); font-weight: 700; }
+.stat-table td.delta-warn { color: var(--warn); font-weight: 700; }
 .stat-table td.flag { color: var(--warn); font-size: 0.78rem; }
 
 .heat-good { background: var(--good-bg); color: var(--good); }
@@ -673,6 +674,14 @@ main section { scroll-margin-top: 3.5rem; }
   margin-left: 0.35rem;
 }
 
+.win-prob-canvas {
+  position: relative;
+  height: 240px;
+}
+@media (max-width: 600px) {
+  .win-prob-canvas { height: 200px; }
+}
+
 .game-time {
   display: block;
   font-size: 0.75rem;
@@ -688,6 +697,10 @@ main section { scroll-margin-top: 3.5rem; }
   border: 1px solid var(--red);
   border-radius: 4px;
   padding: 0 0.3rem;
+}
+.status-badge-minor {
+  color: var(--muted);
+  border-color: var(--muted);
 }
 
 .highlight-section {

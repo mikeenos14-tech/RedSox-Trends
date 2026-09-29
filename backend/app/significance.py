@@ -5,6 +5,7 @@ import asyncio
 import httpx
 
 from . import config, game_recap, mlb_client
+from . import season as season_mod
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; FenwayAlmanacDashboard/1.0)"}
@@ -31,8 +32,15 @@ MILESTONE_LABELS = {
 # A streak only gets called out at these lengths (extending) so a routine
 # "hit safely in 6 straight" doesn't fire every single game once past the
 # floor — only at genuinely round, broadcast-nameable numbers.
-STREAK_MIN = 5
-STREAK_CALLOUT_LENGTHS = {5, 10, 15, 20, 25, 30}
+#
+# Hitting streaks start at 10: at a 5-game floor, 40 real games produced
+# ~30 "hit safely in 5 straight" / "5-game streak ended" callouts — routine,
+# not rare. Team win/loss streaks keep the 5-game floor; a 5-game team
+# streak is genuinely uncommon and broadcast-worthy.
+HITTING_STREAK_MIN = 10
+HITTING_STREAK_CALLOUT_LENGTHS = {10, 15, 20, 25, 30, 35, 40}
+TEAM_STREAK_MIN = 5
+TEAM_STREAK_CALLOUT_LENGTHS = {5, 10, 15, 20}
 
 MULTI_HR_THRESHOLD = 2
 BIG_HIT_THRESHOLD = 4
@@ -60,7 +68,36 @@ async def get_game_log(client: httpx.AsyncClient, player_id: int, season: int, g
     )
     stats = data.get("stats") or []
     splits = stats[0].get("splits", []) if stats else []
-    return sorted(splits, key=lambda g: g["date"])
+    # gameNumber breaks the tie within a doubleheader.
+    return sorted(splits, key=lambda g: (g["date"], (g.get("game") or {}).get("gameNumber", 1)))
+
+
+class LogNotCaughtUp(Exception):
+    """MLB's aggregated gameLog endpoint can lag a few minutes behind the
+    schedule/boxscore going Final. Raised (rather than returning "no
+    finding") so the caller knows the result is incomplete and must not be
+    cached as this game's final answer."""
+
+
+def _this_game(log: list[dict], game_pk: int) -> dict:
+    """The log entry for this exact game. Matched on gamePk, not date — in a
+    doubleheader, a log that has only caught up through Game 1 has the right
+    date but the wrong game."""
+    if not log or (log[-1].get("game") or {}).get("gamePk") != game_pk:
+        raise LogNotCaughtUp()
+    return log[-1]
+
+
+def _hit_streak_result(stat: dict) -> bool | None:
+    """Official scoring rule 9.23(b): a game whose plate appearances were all
+    walks, HBP, catcher's interference, or sacrifice bunts neither extends
+    nor ends a hitting streak (None). A sacrifice fly with no hit does end
+    it."""
+    if (stat.get("hits") or 0) > 0:
+        return True
+    if (stat.get("atBats") or 0) == 0 and (stat.get("sacFlies") or 0) == 0:
+        return None
+    return False
 
 
 async def get_career_totals(client: httpx.AsyncClient, player_id: int, group: str) -> dict:
@@ -84,7 +121,15 @@ def _trailing_streak(results_desc: list[bool]) -> int:
     return streak
 
 
-def _streak_finding(had_event_asc: list[bool], today_had_event: bool, extend_type: str, snap_type: str, label: str):
+def _streak_finding(
+    had_event_asc: list[bool],
+    today_had_event: bool,
+    extend_type: str,
+    snap_type: str,
+    label: str,
+    min_length: int,
+    callout_lengths: set[int],
+):
     """Shared logic for both hitting streaks and team win/loss streaks: given
     a chronological (ascending) list of booleans ending with today's game,
     decide whether today extended a real streak to a callout-worthy length,
@@ -97,7 +142,7 @@ def _streak_finding(had_event_asc: list[bool], today_had_event: bool, extend_typ
 
     if today_had_event:
         current_streak = _trailing_streak(desc)
-        if current_streak in STREAK_CALLOUT_LENGTHS:
+        if current_streak in callout_lengths:
             return {"type": extend_type, "value": current_streak, "label": label}
         return None
 
@@ -111,26 +156,23 @@ def _streak_finding(had_event_asc: list[bool], today_had_event: bool, extend_typ
     if not before_today or not before_today[0]:
         return None
     prior_streak = _trailing_streak(before_today)
-    if prior_streak >= STREAK_MIN:
+    if prior_streak >= min_length:
         return {"type": snap_type, "value": prior_streak, "label": label}
     return None
 
 
-async def check_hitting_streak(
-    client: httpx.AsyncClient, player_id: int, name: str, season: int, game_date: str
-) -> dict | None:
-    log = await get_game_log(client, player_id, season, "hitting")
-    played = [g for g in log if g["stat"].get("plateAppearances", 0) > 0]
-    # MLB's aggregated gameLog endpoint can lag a few minutes behind the
-    # schedule/boxscore going Final — if it hasn't caught up yet, bail
-    # rather than risk treating a prior game's line as today's.
-    if not played or played[-1]["date"] != game_date:
-        return None
+def check_hitting_streak(log: list[dict], name: str, game_pk: int) -> dict | None:
+    today_result = _hit_streak_result(_this_game(log, game_pk)["stat"])
+    if today_result is None:
+        return None  # a walks-only day: the streak is simply paused
+    results = [_hit_streak_result(g["stat"]) for g in log if (g["stat"].get("plateAppearances") or 0) > 0]
+    had_hit_asc = [r for r in results if r is not None]
+    today_had_hit = today_result
 
-    today_had_hit = played[-1]["stat"].get("hits", 0) > 0
-    had_hit_asc = [g["stat"].get("hits", 0) > 0 for g in played]
-
-    finding = _streak_finding(had_hit_asc, today_had_hit, "hitting_streak_extended", "hitting_streak_snapped", name)
+    finding = _streak_finding(
+        had_hit_asc, today_had_hit, "hitting_streak_extended", "hitting_streak_snapped", name,
+        HITTING_STREAK_MIN, HITTING_STREAK_CALLOUT_LENGTHS,
+    )
     if not finding:
         return None
     if finding["type"] == "hitting_streak_extended":
@@ -140,13 +182,8 @@ async def check_hitting_streak(
     return finding
 
 
-async def check_multi_hit_or_hr(
-    client: httpx.AsyncClient, player_id: int, name: str, season: int, game_date: str
-) -> dict | None:
-    log = await get_game_log(client, player_id, season, "hitting")
-    if not log or log[-1]["date"] != game_date:
-        return None
-    today = log[-1]["stat"]
+def check_multi_hit_or_hr(log: list[dict], name: str, game_pk: int) -> dict | None:
+    today = _this_game(log, game_pk)["stat"]
     hits = today.get("hits", 0)
     hrs = today.get("homeRuns", 0)
 
@@ -167,13 +204,8 @@ async def check_multi_hit_or_hr(
     return None
 
 
-async def check_pitching_outing(
-    client: httpx.AsyncClient, player_id: int, name: str, season: int, game_date: str
-) -> dict | None:
-    log = await get_game_log(client, player_id, season, "pitching")
-    if not log or log[-1]["date"] != game_date:
-        return None
-    today = log[-1]["stat"]
+def check_pitching_outing(log: list[dict], name: str, game_pk: int) -> dict | None:
+    today = _this_game(log, game_pk)["stat"]
     ip = float(today.get("inningsPitched") or 0)
     so = today.get("strikeOuts", 0)
     er = today.get("earnedRuns", 0)
@@ -181,10 +213,12 @@ async def check_pitching_outing(
     if so >= BIG_K_THRESHOLD:
         season_high = max((g["stat"].get("strikeOuts", 0) for g in log), default=0)
         if so >= season_high:
+            # A tie with an earlier start is "matched," not "a season high."
+            tied = sum(1 for g in log if g["stat"].get("strikeOuts", 0) == so) > 1
             return {
                 "type": "big_strikeout_game",
                 "value": so,
-                "detail": f"{name} struck out {so} — a season high.",
+                "detail": f"{name} struck out {so} — {'matching his season high' if tied else 'a season high'}.",
             }
         return {
             "type": "big_strikeout_game",
@@ -202,12 +236,11 @@ async def check_pitching_outing(
 
 
 async def check_batting_milestones(
-    client: httpx.AsyncClient, player_id: int, name: str, season: int, game_date: str
+    client: httpx.AsyncClient, player_id: int, name: str, log: list[dict], game_pk: int
 ) -> list[dict]:
-    log = await get_game_log(client, player_id, season, "hitting")
-    if not log or log[-1]["date"] != game_date:
+    today = _this_game(log, game_pk)["stat"]
+    if not any(today.get(k) for k in ("hits", "homeRuns", "rbi")):
         return []
-    today = log[-1]["stat"]
     career = await get_career_totals(client, player_id, "hitting")
 
     findings = []
@@ -230,12 +263,11 @@ async def check_batting_milestones(
 
 
 async def check_pitching_milestones(
-    client: httpx.AsyncClient, player_id: int, name: str, season: int, game_date: str
+    client: httpx.AsyncClient, player_id: int, name: str, log: list[dict], game_pk: int
 ) -> list[dict]:
-    log = await get_game_log(client, player_id, season, "pitching")
-    if not log or log[-1]["date"] != game_date:
+    today = _this_game(log, game_pk)["stat"]
+    if not any(today.get(k) for k in ("strikeOuts", "wins", "saves")):
         return []
-    today = log[-1]["stat"]
     career = await get_career_totals(client, player_id, "pitching")
 
     findings = []
@@ -264,7 +296,10 @@ async def check_team_streak(recent_games: list[dict]) -> dict | None:
     today_won = games_asc[-1]["won"]
     won_asc = [g["won"] for g in games_asc]
 
-    finding = _streak_finding(won_asc, today_won, "team_streak_extended", "team_streak_snapped", "Red Sox")
+    finding = _streak_finding(
+        won_asc, today_won, "team_streak_extended", "team_streak_snapped", "Red Sox",
+        TEAM_STREAK_MIN, TEAM_STREAK_CALLOUT_LENGTHS,
+    )
     if not finding:
         return None
 
@@ -292,11 +327,20 @@ def _roster_entries(boxscore: dict, side: str) -> list[tuple[int, str, dict]]:
     return entries
 
 
-async def get_game_significance(team_id: int = config.TEAM_ID, season: int = config.SEASON) -> dict | None:
+async def get_game_significance(
+    team_id: int = config.TEAM_ID, season: int | None = None, game: dict | None = None
+) -> dict | None:
     """Real, computed callouts for the team's most recently completed game —
     streaks, rare stat lines, career milestones — never an AI guess at what
-    was notable. Returns None if there's no completed game to check."""
-    game = await game_recap.get_last_completed_game(team_id)
+    was notable. Returns None if there's no completed game to check.
+
+    `complete` is False when any player's game log hadn't caught up to this
+    game yet — the result is then partial and must not be cached as final.
+    Accepts an already-fetched `game` so the caller can check its own cache
+    by gamePk before paying for any of this."""
+    season = season or season_mod.current()
+    if game is None:
+        game = await game_recap.get_last_completed_game(team_id)
     if game is None:
         return None
 
@@ -310,7 +354,7 @@ async def get_game_significance(team_id: int = config.TEAM_ID, season: int = con
     # risk a mislabeled "this season" claim in October — postseason-specific
     # checks are a separate feature, not a degraded version of these.
     if mlb_client.postseason_info(game):
-        return {"game_pk": game_pk, "date": game_date, "findings": []}
+        return {"game_pk": game_pk, "date": game_date, "findings": [], "complete": True}
     is_home = game["teams"]["home"]["team"]["id"] == team_id
     us_side = "home" if is_home else "away"
 
@@ -321,27 +365,56 @@ async def get_game_significance(team_id: int = config.TEAM_ID, season: int = con
 
     entries = _roster_entries(boxscore, us_side)
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        tasks = []
-        for pid, name, stats in entries:
-            if stats.get("batting", {}).get("atBats", 0) > 0 or stats.get("batting", {}).get("plateAppearances", 0) > 0:
-                tasks.append(check_hitting_streak(client, pid, name, season, game_date))
-                tasks.append(check_multi_hit_or_hr(client, pid, name, season, game_date))
-                tasks.append(check_batting_milestones(client, pid, name, season, game_date))
-            if stats.get("pitching", {}).get("inningsPitched"):
-                tasks.append(check_pitching_outing(client, pid, name, season, game_date))
-                tasks.append(check_pitching_milestones(client, pid, name, season, game_date))
+    hitters = [
+        (pid, name)
+        for pid, name, stats in entries
+        if stats.get("batting", {}).get("atBats", 0) > 0 or stats.get("batting", {}).get("plateAppearances", 0) > 0
+    ]
+    pitchers = [(pid, name) for pid, name, stats in entries if stats.get("pitching", {}).get("inningsPitched")]
 
-        tasks.append(check_team_streak(recent_games))
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
+    complete = True
     findings: list[dict] = []
-    for r in results:
-        if isinstance(r, Exception) or r is None:
-            continue
-        if isinstance(r, list):
-            findings.extend(r)
-        else:
-            findings.append(r)
 
-    return {"game_pk": game_pk, "date": game["officialDate"], "findings": findings}
+    def collect(result) -> None:
+        nonlocal complete
+        if isinstance(result, LogNotCaughtUp):
+            complete = False
+        elif isinstance(result, list):
+            findings.extend(result)
+        elif isinstance(result, dict):
+            findings.append(result)
+        # Any other exception (a transient fetch failure for one player) is
+        # skipped — one missing check shouldn't sink the rest.
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        # One game-log fetch per player, shared by every check that needs it.
+        hit_logs, pitch_logs = await asyncio.gather(
+            asyncio.gather(*(get_game_log(client, pid, season, "hitting") for pid, _ in hitters), return_exceptions=True),
+            asyncio.gather(*(get_game_log(client, pid, season, "pitching") for pid, _ in pitchers), return_exceptions=True),
+        )
+
+        milestone_tasks = []
+        for (pid, name), log in zip(hitters, hit_logs):
+            if isinstance(log, Exception):
+                continue
+            for check in (check_hitting_streak, check_multi_hit_or_hr):
+                try:
+                    collect(check(log, name, game_pk))
+                except LogNotCaughtUp as exc:
+                    collect(exc)
+            milestone_tasks.append(check_batting_milestones(client, pid, name, log, game_pk))
+        for (pid, name), log in zip(pitchers, pitch_logs):
+            if isinstance(log, Exception):
+                continue
+            try:
+                collect(check_pitching_outing(log, name, game_pk))
+            except LogNotCaughtUp as exc:
+                collect(exc)
+            milestone_tasks.append(check_pitching_milestones(client, pid, name, log, game_pk))
+
+        for r in await asyncio.gather(*milestone_tasks, return_exceptions=True):
+            collect(r)
+
+    collect(await check_team_streak(recent_games))
+
+    return {"game_pk": game_pk, "date": game["officialDate"], "findings": findings, "complete": complete}

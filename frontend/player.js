@@ -6,7 +6,7 @@ function statTile(label, value) {
 
 function renderHero(p) {
   const hero = document.getElementById("player-hero");
-  const statusBadge = p.active ? "" : ' <span class="il-badge">IL</span>';
+  const statusBadge = rosterStatusBadge(p);
   const nickname = p.verified_nickname ? ` "${p.verified_nickname}"` : "";
   const facts = [
     p.position ? `<b>Pos:</b> ${p.position}` : null,

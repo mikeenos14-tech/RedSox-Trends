@@ -1,4 +1,5 @@
 import os
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -14,7 +15,6 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 TEAM_ID = 111  # Boston Red Sox
 LEAGUE_ID = 103  # American League
-SEASON = 2026
 
 # MLB Stats API gameType codes. Regular-season stats (standings splits,
 # season series, hot/cold, trends) must stay "R"-only, but anything that
@@ -24,9 +24,13 @@ REGULAR_SEASON_GAME_TYPE = "R"
 POSTSEASON_GAME_TYPES = ("F", "D", "L", "W")  # Wild Card, Division Series, LCS, World Series
 ALL_GAME_TYPES = ",".join((REGULAR_SEASON_GAME_TYPE, *POSTSEASON_GAME_TYPES))
 
-# The server (Render) runs on UTC, but "today" for anything day-boundary
+# The server (Railway) runs on UTC, but "today" for anything day-boundary
 # sensitive (the daily Player Highlight rotation/cache) should mean
 # midnight for the site's actual audience, not midnight UTC — which would
 # otherwise flip over around 8pm ET the evening before. ZoneInfo handles
 # the EST/EDT switch automatically, unlike a fixed UTC offset.
 EASTERN_TZ = ZoneInfo("America/New_York")
+
+
+def eastern_today() -> date:
+    return datetime.now(EASTERN_TZ).date()
