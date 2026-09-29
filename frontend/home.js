@@ -12,6 +12,7 @@ loadWildcardStandings();
 loadLastGameRecap();
 loadGameSignificance();
 loadUpcomingSchedule();
+loadHeadlines();
 loadSeasonSeries();
 loadLiveGame();
 initExpandSection("live-scoring-plays", "Show scoring plays", "Hide scoring plays");

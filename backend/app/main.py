@@ -7,8 +7,9 @@ import time
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Awaitable, Callable, TypeVar
+from typing import Awaitable, Callable, Optional, TypeVar
 
+import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -258,8 +259,33 @@ async def team_stat_benchmarks():
     )
 
 
+UPCOMING_CACHE_SECONDS = 120
+_upcoming_cache: dict = {"result": None, "fetched_at": 0.0}
+_upcoming_lock = asyncio.Lock()
+
+
+def _pitcher_line(person: dict) -> Optional[dict]:
+    stat = player_stats._first_split(person, "season", "pitching")
+    if not stat:
+        return None
+    return {
+        "era": stat.get("era"),
+        "wins": stat.get("wins"),
+        "losses": stat.get("losses"),
+        "innings_pitched": stat.get("inningsPitched"),
+        "strikeouts": stat.get("strikeOuts"),
+        "whip": stat.get("whip"),
+    }
+
+
 @app.get("/api/team/upcoming-schedule")
 async def team_upcoming_schedule():
+    # Five MLB requests per build and it's on every Home load — probable
+    # starters and records don't change minute to minute.
+    return await _cached_for(_upcoming_cache, _upcoming_lock, UPCOMING_CACHE_SECONDS, _build_upcoming_schedule)
+
+
+async def _build_upcoming_schedule():
     games, division_teams, season_games, league_records, postseason_games = await asyncio.gather(
         mlb_client.get_upcoming_games(),
         mlb_client.get_division_standings(),
@@ -284,6 +310,22 @@ async def team_upcoming_schedule():
             series = season_series.get(g["opponent_id"])
             g["season_series"] = {"wins": series["wins"], "losses": series["losses"]} if series else None
 
+    # Season lines for every listed probable starter, in one request — the
+    # next-game card shows the matchup, not just two names.
+    pitcher_ids = sorted(
+        {pid for g in games for pid in (g["us_probable_pitcher_id"], g["opponent_probable_pitcher_id"]) if pid}
+    )
+    lines: dict = {}
+    if pitcher_ids:
+        try:
+            people = await player_stats._get_people_with_stats(pitcher_ids)
+            lines = {p["id"]: _pitcher_line(p) for p in people}
+        except httpx.HTTPError as exc:
+            logger.warning("Probable-pitcher stats unavailable: %s", exc)
+    for g in games:
+        g["us_probable_pitcher_line"] = lines.get(g["us_probable_pitcher_id"])
+        g["opponent_probable_pitcher_line"] = lines.get(g["opponent_probable_pitcher_id"])
+
     pcts = [float(g["opponent_record"]["pct"]) for g in games if g["opponent_record"].get("pct")]
     home_count = sum(1 for g in games if g["home_or_away"] == "home")
     postseason = trends.summarize_postseason(postseason_games, config.TEAM_ID)
@@ -292,6 +334,7 @@ async def team_upcoming_schedule():
 
     return {
         "games": games,
+        "team_record": league_records.get(config.TEAM_ID),
         "postseason": postseason,
         "summary": {
             "avg_opponent_pct": round(sum(pcts) / len(pcts), 3) if pcts else None,

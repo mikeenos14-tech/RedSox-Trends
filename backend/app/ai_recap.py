@@ -149,8 +149,11 @@ PLAYER_NOTES_SYSTEM_PROMPT = (
     "but every verdict still has to be backed by the real numbers, never a "
     "joke standing in for one. Given "
     "JSON with each hitter's and "
-    "pitcher's season stats vs. their last-15-games-played stats (wOBA, BABIP, BB%/K%, ISO "
-    "for hitters; ERA, FIP, K-BB%, BABIP-against, strand rate for pitchers), pick "
+    "pitcher's season stats vs. their recent-form stats (wOBA, BABIP, BB%/K%, ISO "
+    "for hitters; ERA, FIP, K-BB%, BABIP-against, strand rate for pitchers) — "
+    "recent means the last 15 games for hitters, the last 5 starts for "
+    "starters, and the last 10 appearances for relievers (each pitcher's "
+    "`window` says which; name it accurately if you mention it), pick "
     "ONLY the 3-5 single most notable form changes across the whole list (hot or "
     "cold, whichever stand out most — don't force an even split). For each, say "
     "in one tight sentence whether the peripherals (BABIP, FIP vs ERA, K%/BB%) "
@@ -454,6 +457,7 @@ def build_recap_fact_sheet(game: dict) -> str:
 
     lines.append("\nSCORING, IN ORDER (runs on the play, then the score after it):")
     leader = None
+    led_before: set[str] = set()
     for play in game.get("scoring_plays", []):
         sa = play["score_after"]
         batting = us if play["team_batting"] == "us" else them
@@ -468,7 +472,11 @@ def build_recap_fact_sheet(game: dict) -> str:
             if now is None:
                 lines.append("  -> This play TIED the game.")
             else:
-                lines.append(f"  -> {us if now == 'us' else them} {'took the lead' if leader is None else 'took the lead back'} here.")
+                # "Retook" only if this team really led earlier — a direct
+                # flip from the other side's lead is just "took the lead".
+                verb = "retook the lead" if now in led_before else "took the lead"
+                lines.append(f"  -> {us if now == 'us' else them} {verb} here.")
+                led_before.add(now)
             leader = now
     if not game.get("scoring_plays"):
         lines.append("- (scoring plays unavailable)")

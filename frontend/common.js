@@ -26,7 +26,12 @@ function teamLogoUrl(teamId, dark = matchMedia("(prefers-color-scheme: dark)").m
     : `https://www.mlbstatic.com/team-logos/${teamId}.svg`;
 }
 
-function teamLogo(teamId) {
+// `onDark`: for surfaces that are navy in both themes (the next-game card and
+// the live ticker), where the standard marks vanish even in light mode.
+function teamLogo(teamId, { onDark = false } = {}) {
+  if (onDark) {
+    return `<img class="team-logo-icon" src="${teamLogoUrl(teamId, true)}" alt="" onerror="this.style.display='none'" />`;
+  }
   return `<picture><source srcset="${teamLogoUrl(teamId, true)}" media="(prefers-color-scheme: dark)" /><img class="team-logo-icon" src="${teamLogoUrl(teamId, false)}" alt="" onerror="this.style.display='none'" /></picture>`;
 }
 
@@ -46,6 +51,28 @@ const TEAM_ABBR = {
   135: "SD", 136: "SEA", 137: "SF", 138: "STL", 139: "TB", 140: "TEX", 141: "TOR", 142: "MIN",
   143: "PHI", 144: "ATL", 145: "CWS", 146: "MIA", 147: "NYY", 158: "MIL",
 };
+
+// MLB's short team names (statsapi /teams "teamName").
+const TEAM_SHORT = {
+  108: "Angels", 109: "D-backs", 110: "Orioles", 111: "Red Sox", 112: "Cubs", 113: "Reds", 114: "Guardians",
+  115: "Rockies", 116: "Tigers", 117: "Astros", 118: "Royals", 119: "Dodgers", 120: "Nationals", 121: "Mets",
+  133: "Athletics", 134: "Pirates", 135: "Padres", 136: "Mariners", 137: "Giants", 138: "Cardinals", 139: "Rays",
+  140: "Rangers", 141: "Blue Jays", 142: "Twins", 143: "Phillies", 144: "Braves", 145: "White Sox", 146: "Marlins",
+  147: "Yankees", 158: "Brewers",
+};
+
+// "Yankees", "White Sox", "Blue Jays" — never the last word alone, which
+// turned the White Sox into "Sox" ("Red Sox top the Sox"). Matches by id when
+// the payload has one, else by the full name's ending; historical names
+// ("Washington Senators") fall back to the nickname.
+function shortTeamName(fullName, id) {
+  if (id && TEAM_SHORT[id]) return TEAM_SHORT[id];
+  const match = Object.values(TEAM_SHORT)
+    .filter((short) => fullName.endsWith(short))
+    .sort((a, b) => b.length - a.length)[0];
+  if (match) return match;
+  return fullName.split(" ").slice(/ (Sox|Jays)$/.test(fullName) ? -2 : -1).join(" ");
+}
 
 // Full name on desktop, abbreviation on phones (CSS swaps them).
 function teamName(id, name) {
@@ -248,7 +275,7 @@ function postseasonGameLabel(ps) {
 // deterministic postseason summary (never inferred client-side).
 function postseasonStandingText(p) {
   if (!p) return "";
-  const vs = `vs. ${p.opponent.split(" ").pop()}`;
+  const vs = `vs. ${shortTeamName(p.opponent, p.opponent_id)}`;
   switch (p.phase) {
     case "eliminated":
       return `Eliminated in the ${p.series} (${p.status})`;
@@ -261,6 +288,68 @@ function postseasonStandingText(p) {
   }
 }
 
+// "Tonight" / "Tomorrow" / "Thu, 10/1", judged on the Eastern calendar (the
+// team's, and the one game dates are listed in).
+function relativeGameDay(dateStr, now = new Date()) {
+  const eastern = (d) => d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const today = eastern(now);
+  const tomorrow = eastern(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+  if (dateStr === today) return "Tonight";
+  if (dateStr === tomorrow) return "Tomorrow";
+  return formatGameDate(dateStr);
+}
+
+function pitcherLineText(line) {
+  if (!line || line.era == null) return "";
+  return `${line.wins}-${line.losses}, ${line.era} ERA, ${line.strikeouts} K`;
+}
+
+// The first thing a fan wants on Home: who, when, and who's pitching. Built
+// from the upcoming-schedule response the page already loads — no extra
+// request. Hidden while a game is live (the live ticker takes its place).
+function renderNextGame(data) {
+  const section = document.getElementById("next-game");
+  if (!section) return;
+  const g = (data.games || [])[0];
+  if (!g) {
+    section.hidden = true;
+    return;
+  }
+
+  const ps = g.postseason;
+  const series = data.postseason;
+  const opp = shortTeamName(g.opponent, g.opponent_id);
+  const when = `${relativeGameDay(g.date)}, ${formatGameTime(g.game_date_utc, g.start_time_tbd)}`;
+  document.getElementById("next-game-eyebrow").textContent = ps ? `${postseasonGameLabel(ps)} · ${when}` : `Next game · ${when}`;
+  document.getElementById("next-game-status").textContent = ps ? (series && series.status) || "Series begins" : "";
+
+  const rec = (r) => (r && r.wins != null ? `${r.wins}-${r.losses}` : "");
+  const side = (logoId, name, record, isUs) => `
+    <div class="next-game-team${isUs ? " is-us" : ""}">
+      ${teamLogo(logoId, { onDark: true })}
+      <span class="next-game-team-name">${name}</span>
+      <span class="next-game-team-record">${record}</span>
+    </div>`;
+  const us = side(111, "Red Sox", rec(data.team_record), true);
+  const them = side(g.opponent_id, opp, rec(g.opponent_record), false);
+  const away = g.home_or_away === "away";
+  document.getElementById("next-game-matchup").innerHTML =
+    `${away ? us : them}<span class="next-game-at">@</span>${away ? them : us}`;
+
+  const pitcher = (label, name, id, line, link) => `
+    <div class="next-game-pitcher">
+      <span class="next-game-pitcher-label">${label}</span>
+      <span class="next-game-pitcher-name">${name ? (link ? playerLink(id, name) : name) : "TBD"}</span>
+      <span class="next-game-pitcher-line">${pitcherLineText(line)}</span>
+    </div>`;
+  document.getElementById("next-game-pitchers").innerHTML =
+    pitcher("Red Sox", g.us_probable_pitcher, g.us_probable_pitcher_id, g.us_probable_pitcher_line, true) +
+    pitcher(opp, g.opponent_probable_pitcher, null, g.opponent_probable_pitcher_line, false);
+
+  document.getElementById("next-game-meta").textContent = g.venue || "";
+  section.hidden = false;
+}
+
 async function loadUpcomingSchedule() {
   const cards = document.getElementById("upcoming-cards");
   const tbody = document.querySelector("#upcoming-table tbody");
@@ -270,12 +359,13 @@ async function loadUpcomingSchedule() {
     const data = await res.json();
     const s = data.summary;
     const p = data.postseason;
+    renderNextGame(data);
 
     cards.innerHTML = "";
     if (p && p.phase === "in_series") {
       const next = p.next_game;
       cards.append(
-        card("Series", `${p.abbreviation} vs. ${p.opponent.split(" ").pop()}`),
+        card("Series", `${p.abbreviation} vs. ${shortTeamName(p.opponent, p.opponent_id)}`),
         card("Series Status", p.status || "Not started"),
         card(
           "Next Game",
@@ -352,7 +442,7 @@ async function loadOnThisDay() {
 
     const resultCls = g.won ? "win" : "loss";
     const resultWord = g.won ? "W" : "L";
-    const oppShort = g.opponent.split(" ").pop();
+    const oppShort = shortTeamName(g.opponent, g.opponent_id);
     const matchup = g.home_or_away === "home" ? `Red Sox vs. ${oppShort}` : `Red Sox @ ${oppShort}`;
 
     const decisions = [
@@ -368,9 +458,11 @@ async function loadOnThisDay() {
         <div class="game-recap-result">${resultWord}</div>
         <div>
           <h3>${g.year} — ${matchup} &nbsp; ${g.our_score}-${g.their_score}</h3>
+          ${g.postseason_label ? `<p class="small-note on-this-day-series">${g.postseason_label}</p>` : ""}
           <p class="muted small-note">${decisions}</p>
         </div>
       </div>
+      ${g.note ? `<p class="on-this-day-note">${g.note}</p>` : ""}
       <div class="performer-blocks">
         ${buildPerformerList("Red Sox", g.top_performers.us)}
         ${buildPerformerList(oppShort, g.top_performers.them)}
@@ -806,6 +898,9 @@ function addAiBadge(el) {
 
 async function loadHeadlines() {
   const list = document.getElementById("headlines-list");
+  // A cached older page script can still call this on a page that no longer
+  // has the list (headlines moved League -> Home); do nothing there.
+  if (!list) return;
   try {
     const res = await fetch("/api/team/headlines");
     if (!res.ok) throw new Error("Failed to load headlines");
@@ -911,6 +1006,8 @@ function deltaCell(delta, higherIsBetter, smallSample, fmt, extraClass = "") {
 // — the precise delta number lives behind "Show advanced stats" instead of
 // being the only signal a casual visitor gets.
 const HITTER_HOT_THRESHOLD = 0.025;
+// Pitchers are judged on FIP change (see player_stats: ERA over 5 starts is
+// mostly sequencing and defense).
 const PITCHER_HOT_THRESHOLD = 0.5;
 
 function formBadge(delta, smallSample, hotThreshold) {
@@ -971,7 +1068,7 @@ async function loadPlayerHotCold() {
 
     pitchersBody.innerHTML = "";
     const notablePitchers = data.pitchers.filter((p) =>
-      isNotableForm(p.form_delta_era, p.small_sample, PITCHER_HOT_THRESHOLD)
+      isNotableForm(p.form_delta_fip, p.small_sample, PITCHER_HOT_THRESHOLD)
     );
     notablePitchers.forEach((p) => {
       const s = p.season;
@@ -984,12 +1081,13 @@ async function loadPlayerHotCold() {
       const lobCls = s ? warnIfFar(s.lob_pct, b.lob_pct ?? 0.72, 0.08) : "";
       tr.innerHTML = `
         <td class="name">${playerLink(p.id, p.name)}</td>
-        <td>${p.role}</td>
-        <td class="num ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
-        ${formBadge(p.form_delta_era, p.small_sample, PITCHER_HOT_THRESHOLD)}
-        ${deltaCell(p.form_delta_era, true, p.small_sample, fmtEra)}
+        <td title="Recent form = ${p.window}">${p.role}</td>
+        <td class="num ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
+        ${formBadge(p.form_delta_fip, p.small_sample, PITCHER_HOT_THRESHOLD)}
+        ${deltaCell(p.form_delta_fip, true, p.small_sample, fmtEra)}
+        <td class="num adv-col">${r.fip ?? "-"}</td>
+        <td class="num adv-col ${eraCls}">${s ? (s.era ?? "-") : "-"}</td>
         <td class="num adv-col">${r.era ?? "-"}</td>
-        <td class="num adv-col ${fipCls}">${s ? (s.fip ?? "-") : "-"}</td>
         <td class="num adv-col ${kbbCls}">${s ? fmtPct1(s.k_bb_pct) : "-"}</td>
         <td class="num adv-col ${babipAgstCls}">${s ? pctStr(s.babip_against) : "-"}</td>
         <td class="num adv-col ${lobCls}">${s ? fmtPct1(s.lob_pct) : "-"}</td>
@@ -1202,7 +1300,7 @@ async function loadPlayerNotes() {
 }
 
 function buildLineScoreTable(g) {
-  const oppShort = g.opponent.split(" ").pop();
+  const oppShort = shortTeamName(g.opponent, g.opponent_id);
   const topLabel = g.home_or_away === "home" ? oppShort : "BOS";
   const bottomLabel = g.home_or_away === "home" ? "BOS" : oppShort;
   const topRuns = g.home_or_away === "home" ? g.line_score.totals.them : g.line_score.totals.us;
@@ -1250,7 +1348,7 @@ function renderResultBanner(g) {
   const banner = document.getElementById("result-banner");
   if (!banner || !g) return;
 
-  const oppShort = g.opponent.split(" ").pop();
+  const oppShort = shortTeamName(g.opponent, g.opponent_id);
   const winScore = Math.max(g.our_score, g.their_score);
   const loseScore = Math.min(g.our_score, g.their_score);
 
@@ -1286,7 +1384,7 @@ async function loadLastGameRecap() {
 
     const resultCls = g.won ? "win" : "loss";
     const resultWord = g.won ? "W" : "L";
-    const oppShort = g.opponent.split(" ").pop();
+    const oppShort = shortTeamName(g.opponent, g.opponent_id);
     const matchup = g.home_or_away === "home" ? `Red Sox vs. ${oppShort}` : `Red Sox @ ${oppShort}`;
     const finalScore = `${g.our_score}-${g.their_score}`;
 
@@ -1383,7 +1481,7 @@ async function loadWinProbabilityChart() {
 
     const labels = g.points.map((p) => `${p.half === "top" ? "T" : "B"}${p.inning}`);
     const values = g.points.map((p) => p.us_win_pct);
-    const oppShort = g.opponent.split(" ").pop();
+    const oppShort = shortTeamName(g.opponent, g.opponent_id);
 
     if (winProbChart) winProbChart.destroy();
     winProbChart = new Chart(ctx, {
@@ -1617,6 +1715,7 @@ async function loadLiveGame() {
     const data = await res.json();
     const g = data.game;
 
+    document.getElementById("next-game")?.classList.toggle("is-live", !!g);
     if (!g) {
       section.hidden = true;
       return;
@@ -1624,12 +1723,12 @@ async function loadLiveGame() {
 
     section.hidden = false;
 
-    const oppShort = g.opponent.split(" ").pop();
+    const oppShort = shortTeamName(g.opponent, g.opponent_id);
     const psPrefix = g.postseason ? `${postseasonGameLabel(g.postseason)} · ` : "";
     document.getElementById("live-inning-label").textContent =
       `${psPrefix}${g.inning_half === "top" ? "Top" : "Bot"} ${ordinal(g.inning)} — ${g.home_or_away === "home" ? "vs" : "@"} ${oppShort}`;
 
-    document.getElementById("live-logo-them").src = teamLogoUrl(g.opponent_id);
+    document.getElementById("live-logo-them").src = teamLogoUrl(g.opponent_id, true);  // ticker is navy in both themes
     document.getElementById("live-name-them").textContent = oppShort;
     document.getElementById("live-score-them").textContent = g.them_score;
     document.getElementById("live-score-us").textContent = g.us_score;

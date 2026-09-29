@@ -7,6 +7,5 @@ loadSummary()
     document.getElementById("record-line").textContent = `Couldn't load data: ${e.message}`;
   });
 
-loadHeadlines();
 loadLeagueContext();
 loadAnalysisBriefing();

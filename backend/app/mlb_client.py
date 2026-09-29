@@ -258,6 +258,7 @@ async def get_upcoming_games(
 
             games.append(
                 {
+                    "game_pk": game["gamePk"],
                     "date": game["officialDate"],
                     "game_date_utc": game["gameDate"],
                     "start_time_tbd": bool(game["status"].get("startTimeTBD")),
@@ -272,6 +273,7 @@ async def get_upcoming_games(
                     "us_probable_pitcher": (us.get("probablePitcher") or {}).get("fullName"),
                     "us_probable_pitcher_id": (us.get("probablePitcher") or {}).get("id"),
                     "opponent_probable_pitcher": (them.get("probablePitcher") or {}).get("fullName"),
+                    "opponent_probable_pitcher_id": (them.get("probablePitcher") or {}).get("id"),
                     "venue": (game.get("venue") or {}).get("name"),
                     "game_number": game.get("gameNumber", 1),
                     "postseason": postseason,

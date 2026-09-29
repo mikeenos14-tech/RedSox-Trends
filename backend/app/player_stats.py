@@ -251,6 +251,12 @@ def _pitching_metrics(stat: dict) -> dict:
 
 
 RECENT_GAMES_WINDOW = 15
+# Recent-form windows by role. "Last 15 games" is ~4 weeks for a hitter or a
+# reliever, but 15 *starts* reaches back to mid-July — not recent form at all.
+# Five starts (~a month) is the conventional starter window; ten appearances
+# gives a reliever enough innings (~10 IP) to say anything.
+STARTER_RECENT_STARTS = 5
+RELIEVER_RECENT_APPEARANCES = 10
 
 
 async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) -> dict:
@@ -328,43 +334,58 @@ async def get_player_hot_cold_report(recent_games: int = RECENT_GAMES_WINDOW) ->
             )
 
         pitching_log = pitching_log_by_id.get(pid, [])
-        recent_pitch_games = [
-            g for g in pitching_log if _parse_innings(g["stat"].get("inningsPitched")) > 0
-        ][-recent_games:]
+        appearances = [g for g in pitching_log if _parse_innings(g["stat"].get("inningsPitched")) > 0]
+        season_pitch = _first_split(person, "season", "pitching")
+        games = (season_pitch or {}).get("gamesPitched") or len(appearances)
+        starts = (season_pitch or {}).get("gamesStarted") or 0
+        role = "SP" if games and starts >= games / 2 else "RP"
+        if role == "SP":
+            recent_pitch_games = [g for g in appearances if (g["stat"].get("gamesStarted") or 0) > 0][-STARTER_RECENT_STARTS:]
+            window = f"last {STARTER_RECENT_STARTS} starts"
+        else:
+            recent_pitch_games = appearances[-RELIEVER_RECENT_APPEARANCES:]
+            window = f"last {RELIEVER_RECENT_APPEARANCES} appearances"
         if recent_pitch_games and date.fromisoformat(recent_pitch_games[-1]["date"]) >= stale_cutoff:
-            season_pitch = _first_split(person, "season", "pitching")
             recent_metrics = _pitching_metrics(_sum_pitching_games(recent_pitch_games))
             season_metrics = _pitching_metrics(season_pitch) if season_pitch else None
             enough_sample = (recent_metrics["ip"] or 0) >= MIN_RECENT_IP and (
                 season_metrics is not None and (season_metrics["ip"] or 0) >= MIN_SEASON_IP
             )
-            games = (season_pitch or {}).get("gamesPitched") or len(recent_pitch_games)
-            starts = (season_pitch or {}).get("gamesStarted") or 0
+
+            def delta(key: str, digits: int):
+                # Positive = pitching better recently (lower ERA/FIP).
+                if not enough_sample or season_metrics[key] is None or recent_metrics[key] is None:
+                    return None
+                return round(season_metrics[key] - recent_metrics[key], digits)
+
             pitchers.append(
                 {
                     "id": pid,
                     "name": name,
-                    "role": "SP" if starts >= games / 2 else "RP",
+                    "role": role,
+                    "window": window,
                     "season": season_metrics,
                     "recent": recent_metrics,
                     "small_sample": not enough_sample,
-                    "form_delta_era": (
-                        round(season_metrics["era"] - recent_metrics["era"], 2)
-                        if enough_sample
-                        and season_metrics
-                        and recent_metrics["era"] is not None
-                        and season_metrics["era"] is not None
-                        else None
-                    ),
+                    # FIP drives the Hot/Cold read: over 5 starts or 10 relief
+                    # outings, ERA is dominated by sequencing and defense;
+                    # strikeouts, walks, and homers stabilize much faster.
+                    "form_delta_fip": delta("fip", 2),
+                    "form_delta_era": delta("era", 2),
                 }
             )
 
     hitters.sort(key=lambda h: h["form_delta_woba"] if h["form_delta_woba"] is not None else -99, reverse=True)
-    pitchers.sort(key=lambda p: p["form_delta_era"] if p["form_delta_era"] is not None else -99, reverse=True)
+    pitchers.sort(key=lambda p: p["form_delta_fip"] if p["form_delta_fip"] is not None else -99, reverse=True)
 
     return {
         "league_avg_babip": LEAGUE_AVG_BABIP,
         "window_games": recent_games,
+        "windows": {
+            "hitters": f"last {recent_games} games",
+            "starters": f"last {STARTER_RECENT_STARTS} starts",
+            "relievers": f"last {RELIEVER_RECENT_APPEARANCES} appearances",
+        },
         "hitters": hitters,
         "pitchers": pitchers,
     }
@@ -477,6 +498,8 @@ def slim_for_ai(report: dict) -> dict:
         return {
             "name": p["name"],
             "role": p["role"],
+            "window": p["window"],
+            "form_delta_fip": p["form_delta_fip"],
             "form_delta_era": p["form_delta_era"],
             "season": s and pitcher_line(s),
             "recent": pitcher_line(r),
@@ -484,7 +507,7 @@ def slim_for_ai(report: dict) -> dict:
 
     return {
         "league_avg_babip": report["league_avg_babip"],
-        "window_games": report["window_games"],
+        "windows": report["windows"],
         "hitters": [slim_hitter(h) for h in report["hitters"] if not h["small_sample"]],
         "pitchers": [slim_pitcher(p) for p in report["pitchers"] if not p["small_sample"]],
     }

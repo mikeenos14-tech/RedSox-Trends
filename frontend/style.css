@@ -206,11 +206,11 @@ header h1 {
 
 .page-home .standings-section,
 .page-home .series-section,
+.page-home .headlines-section,
 .page-home .upcoming-section {
   border-top: 4px solid var(--red);
 }
 
-.page-league .headlines-section,
 .page-league .league-section,
 .page-league .analysis-section {
   border-top: 4px solid var(--navy);
@@ -721,6 +721,21 @@ main section { scroll-margin-top: 3.5rem; }
   border-radius: 4px;
   padding: 0 0.3rem;
   margin-left: 0.35rem;
+}
+
+.on-this-day-series {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  color: var(--warn);
+}
+.on-this-day-note {
+  margin: 0.9rem 0 0.25rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-bg);
+  border-radius: 0 8px 8px 0;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .win-prob-canvas {
@@ -1362,6 +1377,88 @@ tr.loss td.result { color: var(--red); font-weight: 600; }
 
 @media (max-width: 500px) {
   .tape-val { width: 4.5rem; font-size: 0.78rem; }
+}
+
+/* Next game — the pre-game counterpart of the live ticker (same navy
+   broadcast card, no glow), shown until first pitch. */
+.next-game {
+  background: linear-gradient(135deg, var(--navy), #071b3d);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 4px solid var(--monster-green);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin: 0 auto 2rem;
+  max-width: 900px;
+  color: white;
+}
+.next-game.is-live { display: none; }
+.next-game-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.next-game-eyebrow {
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.next-game-status {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #9fd8b8;
+}
+.next-game-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 1.1rem;
+}
+.next-game-team {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.next-game-team .team-logo-icon { width: 36px; height: 36px; margin: 0; }
+.next-game-team-record {
+  font-family: Inter, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+.next-game-at { opacity: 0.6; font-weight: 600; }
+.next-game-pitchers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 0.9rem;
+}
+.next-game-pitcher { display: flex; flex-direction: column; gap: 0.15rem; }
+.next-game-pitcher-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+.next-game-pitcher-name { font-weight: 700; }
+.next-game-pitcher-name a { color: white; }
+.next-game-pitcher-line { font-size: 0.8rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.next-game-meta { margin-top: 0.75rem; font-size: 0.78rem; opacity: 0.6; }
+
+@media (max-width: 600px) {
+  .next-game { margin: 0 0.6rem 1.25rem; padding: 1rem; }
+  .next-game-team { font-size: 1.3rem; flex-direction: column; gap: 0.2rem; text-align: center; }
+  .next-game-team .team-logo-icon { width: 30px; height: 30px; }
 }
 
 .live-ticker {

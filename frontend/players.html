@@ -40,7 +40,7 @@
 
   <main>
     <section class="players-section" id="players">
-      <h2>Player Hot/Cold Tracker <span class="section-sub">last 15 games played vs. season</span></h2>
+      <h2>Player Hot/Cold Tracker <span class="section-sub">recent form vs. season</span></h2>
       <div id="player-notes-text" class="recap-text muted">
         <div class="skeleton skeleton-line long"></div>
         <div class="skeleton skeleton-line medium"></div>
@@ -81,15 +81,15 @@
             <table id="pitchers-table" class="stat-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Role</th><th>ERA (S)</th><th>Form</th><th>Δ ERA</th>
-                  <th class="adv-col">ERA (L15)</th>
-                  <th class="adv-col">FIP</th><th class="adv-col">K-BB%</th><th class="adv-col">BABIP-agst</th><th class="adv-col">LOB%</th>
+                  <th>Name</th><th>Role</th><th>FIP (S)</th><th>Form</th><th>Δ FIP</th>
+                  <th class="adv-col">FIP (recent)</th>
+                  <th class="adv-col">ERA (S)</th><th class="adv-col">ERA (recent)</th><th class="adv-col">K-BB%</th><th class="adv-col">BABIP-agst</th><th class="adv-col">LOB%</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="skeleton-row"><td colspan="10"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="10"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="10"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="11"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="11"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="11"><span class="skeleton"></span></td></tr>
               </tbody>
             </table>
           </div>
@@ -104,7 +104,10 @@
         <span class="legend-swatch heat-bad">red</span> = below average.
         BABIP, BABIP-against, and strand rate (LOB%) are luck/sequencing indicators rather than skill stats, so
         <span class="legend-swatch heat-warn">amber</span> there just flags "far from typical" (~.300 BABIP, ~72% LOB%), not good-or-bad.
-        Players with fewer than 20 recent PA / 5 recent IP show season stats only (sample too small to trend).
+        "Recent" means the last 15 games for hitters, the last 5 starts for starters, and the last 10
+        appearances for relievers. Pitchers are judged on FIP change, which steadies much faster than ERA
+        over a handful of outings. Players with fewer than 20 recent PA / 5 recent IP show season stats only
+        (sample too small to trend).
       </p>
     </section>
 
