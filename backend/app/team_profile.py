@@ -24,7 +24,7 @@ def _top_performers(roster_report: dict) -> dict:
     }
 
 
-async def get_team_profile(team_id: int, all_team_stats: dict) -> dict:
+async def get_team_profile(team_id: int, all_team_stats: dict, park_factors: dict | None = None) -> dict:
     """Everything a team-detail page needs, consolidated into one call:
     record/standing, where they rank league-wide (reusing the same
     already-fetched all-30-teams data Boston's own rank uses — no extra
@@ -35,7 +35,7 @@ async def get_team_profile(team_id: int, all_team_stats: dict) -> dict:
     """
     standings = await mlb_client.get_team_standings(team_id=team_id)
     roster_report = await player_stats.get_full_roster_report(team_id=team_id)
-    rank = league_context.compute_league_context(team_id, all_team_stats)
+    rank = league_context.compute_league_context(team_id, all_team_stats, park_factors)
 
     league_record = standings.get("leagueRecord") or {}
     last_ten = next(

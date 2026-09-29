@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import httpx
 
-from . import config
+from . import adjusted, config, player_stats
 from . import season as season_mod
-from .player_stats import FIP_CONSTANT, WOBA_WEIGHTS, _parse_innings
+from .player_stats import WOBA_WEIGHTS, _parse_innings
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 
@@ -70,7 +70,7 @@ def _team_fip(stat: dict) -> float | None:
     bb = stat.get("baseOnBalls", 0) or 0
     hbp = stat.get("hitByPitch", 0) or 0
     so = stat.get("strikeOuts", 0) or 0
-    return round(((13 * hr) + 3 * (bb + hbp) - (2 * so)) / ip + FIP_CONSTANT, 2)
+    return round(((13 * hr) + 3 * (bb + hbp) - (2 * so)) / ip + player_stats.fip_constant(), 2)
 
 
 def _rank_asc(values: dict[int, float], team_id: int) -> tuple[int, int] | None:
@@ -153,10 +153,15 @@ async def fetch_all_team_stats(season: int | None = None) -> dict:
     season = season or season_mod.current()
     hitting_splits = await _fetch_league_team_stats("hitting", season)
     pitching_splits = await _fetch_league_team_stats("pitching", season)
-    return {"hitting": hitting_splits, "pitching": pitching_splits}
+    all_team_stats = {"hitting": hitting_splits, "pitching": pitching_splits}
+    # Every FIP on the site uses this season's real constant from here on.
+    baselines = adjusted.league_baselines(all_team_stats)
+    if baselines:
+        player_stats.set_fip_constant(baselines["fip_constant"])
+    return all_team_stats
 
 
-def compute_league_context(team_id: int, all_team_stats: dict) -> dict:
+def compute_league_context(team_id: int, all_team_stats: dict, park_factors: dict | None = None) -> dict:
     hitting_splits = all_team_stats["hitting"]
     pitching_splits = all_team_stats["pitching"]
 
@@ -206,6 +211,23 @@ def compute_league_context(team_id: int, all_team_stats: dict) -> dict:
 
     run_diff = {tid: runs_scored.get(tid, 0) - runs_allowed.get(tid, 0) for tid in team_names}
 
+    # Park-adjusted indexes (100 = league average) — only with real park
+    # factors; without them these are omitted rather than silently unadjusted.
+    team_ops_plus: dict[int, float] = {}
+    team_era_minus: dict[int, float] = {}
+    baselines = adjusted.league_baselines(all_team_stats)
+    if baselines and park_factors:
+        for split in hitting_splits:
+            tid, stat = split["team"]["id"], split["stat"]
+            value = adjusted.ops_plus(stat.get("obp"), stat.get("slg"), baselines, adjusted.half_park_factor(tid, park_factors))
+            if value is not None:
+                team_ops_plus[tid] = value
+        for split in pitching_splits:
+            tid, stat = split["team"]["id"], split["stat"]
+            value = adjusted.era_minus(stat.get("era"), baselines, adjusted.half_park_factor(tid, park_factors))
+            if value is not None:
+                team_era_minus[tid] = value
+
     def rank_block(values: dict[int, float], ascending_is_better: bool):
         rank_fn = _rank_asc if ascending_is_better else _rank_desc
         r = rank_fn(values, team_id)
@@ -236,6 +258,8 @@ def compute_league_context(team_id: int, all_team_stats: dict) -> dict:
         "team_era": rank_block(team_era, ascending_is_better=True),
         "team_fip": rank_block(team_fip, ascending_is_better=True),
         "team_k_bb_pct": rank_block(team_k_bb_pct, ascending_is_better=False),
+        "team_ops_plus": rank_block(team_ops_plus, ascending_is_better=False) if team_ops_plus else None,
+        "team_era_minus": rank_block(team_era_minus, ascending_is_better=True) if team_era_minus else None,
         "run_diff_league_chart": run_diff_league,
     }
 

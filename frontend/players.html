@@ -125,15 +125,15 @@
             <table id="roster-hitters-table" class="stat-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Pos</th><th>AVG</th><th>OPS</th><th>HR</th><th>RBI</th><th>BB%</th><th>K%</th>
+                  <th>Name</th><th>Pos</th><th>AVG</th><th>OPS</th><th>OPS+</th><th>HR</th><th>RBI</th><th>BB%</th><th>K%</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
-                <tr class="skeleton-row"><td colspan="8"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
+                <tr class="skeleton-row"><td colspan="9"><span class="skeleton"></span></td></tr>
               </tbody>
             </table>
           </div>
@@ -144,7 +144,7 @@
             <table id="roster-pitchers-table" class="stat-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Role</th><th>ERA</th><th>FIP</th><th>K-BB%</th><th>IP</th>
+                  <th>Name</th><th>Role</th><th>ERA</th><th>ERA-</th><th>FIP</th><th>FIP-</th><th>K-BB%</th><th>IP</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,6 +159,9 @@
       <p class="muted small-note">
         Every player on the 40-man roster with a real season sample, regardless of recent playing time.
         A badge marks a player currently off the active roster: <span class="il-badge">IL-10</span> / <span class="il-badge">IL-60</span> for the injured list, <span class="il-badge status-badge-minor">Minors</span> for optioned or reassigned.
+        OPS+, ERA-, and FIP- are indexed to league average (100) and adjusted for each team's home park
+        (Fenway boosts scoring about 6%, one of the biggest effects in baseball): OPS+ above 100 is better than
+        average, ERA-/FIP- below 100 is better.
       </p>
     </section>
 

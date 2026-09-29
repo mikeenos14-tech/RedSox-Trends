@@ -45,9 +45,11 @@ function renderTeamRank(t) {
     rankCard("Runs Allowed", d.runs_allowed, fmtInt),
     rankCard("Team wOBA", d.team_woba, fmtRate),
     rankCard("Team OPS", d.team_ops, fmtRate),
+    rankCard("Team OPS+", d.team_ops_plus, fmtInt),
     rankCard("Walk Rate", d.team_bb_pct, fmtPct1),
     rankCard("Strikeout Rate", d.team_k_pct, fmtPct1),
     rankCard("Team ERA", d.team_era, fmtEra),
+    rankCard("Team ERA-", d.team_era_minus, fmtInt),
     rankCard("Team FIP", d.team_fip, fmtEra),
     rankCard("Pitching K-BB%", d.team_k_bb_pct, fmtPct1)
   );

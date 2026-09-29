@@ -337,6 +337,29 @@ def build_team_profile(league_data: dict, team: str = TEAM_ABBR) -> dict:
     return profile
 
 
+PARK_FACTORS_URL = "https://baseballsavant.mlb.com/leaderboard/statcast-park-factors"
+_PARK_DATA_RE = re.compile(r"var data = (\[.*?\]);", re.DOTALL)
+
+
+async def fetch_park_factors() -> dict[int, int]:
+    """Savant's 3-year rolling Statcast park factors: {home team id: runs
+    index} (100 = neutral). Parks without a 3-year sample are absent."""
+    params = {"type": "year", "year": season_mod.current(), "batSide": "", "stat": "index_wOBA", "condition": "All", "rolling": 3}
+    async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
+        resp = await client.get(PARK_FACTORS_URL, params=params)
+        resp.raise_for_status()
+    match = _PARK_DATA_RE.search(resp.text)
+    if not match:
+        return {}
+    factors = {}
+    for row in json.loads(match.group(1)):
+        try:
+            factors[int(row["main_team_id"])] = int(row["index_runs"])
+        except (KeyError, TypeError, ValueError):
+            continue
+    return factors
+
+
 async def fetch_league_data() -> dict:
     """Every Savant fetch needed across the team report, player search, and
     player comparison — grouped into one call so a day-scoped cache upstream
@@ -356,6 +379,7 @@ async def fetch_league_data() -> dict:
         team_expected_pitching,
         team_contact_hitting,
         team_contact_pitching,
+        park_factors,
     ) = await asyncio.gather(
         fetch_percentile_rankings("batter"),
         fetch_percentile_rankings("pitcher"),
@@ -365,6 +389,7 @@ async def fetch_league_data() -> dict:
         fetch_team_leaderboard(EXPECTED_URL, "pitcher"),
         fetch_team_leaderboard(CONTACT_URL, "batter"),
         fetch_team_leaderboard(CONTACT_URL, "pitcher"),
+        fetch_park_factors(),
     )
 
     return {
@@ -376,6 +401,7 @@ async def fetch_league_data() -> dict:
         "team_expected_pitching": team_expected_pitching,
         "team_contact_hitting": team_contact_hitting,
         "team_contact_pitching": team_contact_pitching,
+        "park_factors": park_factors,
     }
 
 

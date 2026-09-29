@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
@@ -7,7 +9,7 @@ import time
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Awaitable, Callable, Optional, TypeVar
+from typing import Awaitable, Callable, TypeVar
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -15,6 +17,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import (
+    adjusted,
     ai_recap,
     bullpen,
     config,
@@ -240,10 +243,52 @@ async def team_summary():
     return await _build_summary()
 
 
+async def _park_factors() -> dict:
+    """Savant park factors from the day-cached Savant pull. Empty on failure,
+    and the park-adjusted stats are then omitted rather than shown
+    unadjusted."""
+    try:
+        return (await _get_league_data_cached()).get("park_factors") or {}
+    except Exception as exc:  # noqa: BLE001 — Savant is a scrape
+        logger.warning("Park factors unavailable: %s", exc)
+        return {}
+
+
+async def _boston_league_context() -> dict:
+    all_team_stats, parks = await asyncio.gather(_get_all_team_stats_cached(), _park_factors())
+    return league_context.compute_league_context(config.TEAM_ID, all_team_stats, parks)
+
+
+def _add_adjusted(report: dict, baselines: dict | None, pf: float) -> dict:
+    """OPS+ / ERA- / FIP- onto roster-report season lines (a copy — the
+    cached report stays untouched)."""
+    if not baselines:
+        return report
+    out = {**report, "hitters": [], "pitchers": []}
+    for h in report["hitters"]:
+        s = h["season"]
+        out["hitters"].append({**h, "season": {**s, "ops_plus": adjusted.ops_plus(s.get("obp"), s.get("slg"), baselines, pf)}})
+    for p in report["pitchers"]:
+        s = p["season"]
+        out["pitchers"].append({**p, "season": {
+            **s,
+            "era_minus": adjusted.era_minus(s.get("era"), baselines, pf),
+            "fip_minus": adjusted.fip_minus(s.get("fip"), baselines, pf),
+        }})
+    return out
+
+
+async def _adjustment_inputs(team_id: int = config.TEAM_ID) -> tuple:
+    all_team_stats, parks = await asyncio.gather(_get_all_team_stats_cached(), _park_factors())
+    if not parks:
+        return None, 1.0
+    return adjusted.league_baselines(all_team_stats), adjusted.half_park_factor(team_id, parks)
+
+
 @app.get("/api/team/league-context")
 async def team_league_context():
     return await _cached_for(
-        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_league_context
+        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, _boston_league_context
     )
 
 
@@ -264,7 +309,7 @@ _upcoming_cache: dict = {"result": None, "fetched_at": 0.0}
 _upcoming_lock = asyncio.Lock()
 
 
-def _pitcher_line(person: dict) -> Optional[dict]:
+def _pitcher_line(person: dict) -> dict | None:
     stat = player_stats._first_split(person, "season", "pitching")
     if not stat:
         return None
@@ -376,7 +421,7 @@ async def team_profile_endpoint(id: int):
 
         all_team_stats = await _get_all_team_stats_cached()
         try:
-            profile = await team_profile.get_team_profile(id, all_team_stats)
+            profile = await team_profile.get_team_profile(id, all_team_stats, await _park_factors())
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -492,7 +537,7 @@ async def team_analysis():
     # serves both purposes without repeating itself.
     summary = await _build_summary()
     lg_ctx = await _cached_for(
-        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, league_context.get_league_context
+        _league_context_cache, _league_context_lock, HEAVY_FETCH_CACHE_SECONDS, _boston_league_context
     )
     summary["league_context"] = {k: v for k, v in lg_ctx.items() if k != "run_diff_league_chart"}
     # Savant's expected stats, so any "luck" claim is grounded in xwOBA
@@ -532,7 +577,8 @@ async def players_hot_cold():
 
 @app.get("/api/players/full-roster")
 async def players_full_roster():
-    return await _get_full_roster_cached()
+    report, (baselines, pf) = await asyncio.gather(_get_full_roster_cached(), _adjustment_inputs())
+    return _add_adjusted(report, baselines, pf)
 
 
 @app.get("/api/players/notes")
@@ -587,6 +633,13 @@ async def players_profile(id: int):
         profile = await player_profile.get_player_profile(id, get_league_data=_get_league_data_cached)
         if profile is None:
             raise HTTPException(status_code=404, detail="Player not found on the current 40-man roster")
+        baselines, pf = await _adjustment_inputs()
+        if baselines:
+            hit, pit = profile.get("hitting_this_season"), profile.get("pitching_this_season")
+            if hit:
+                hit["ops_plus"] = adjusted.ops_plus(hit.get("obp"), hit.get("slg"), baselines, pf)
+            if pit:
+                pit["era_minus"] = adjusted.era_minus(pit.get("era"), baselines, pf)
 
         _player_profile_cache[id] = {"date": today, "data": profile}
         return profile

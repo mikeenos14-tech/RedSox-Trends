@@ -18,7 +18,20 @@ WOBA_WEIGHTS = {"bb": 0.690, "hbp": 0.722, "single": 0.888, "double": 1.271, "tr
 # Approximate FIP constant. The precise value requires full-league seasonal
 # run environment data; ~3.10 tracks recent MLB seasons closely enough for
 # form-tracking purposes.
-FIP_CONSTANT = 3.10
+FIP_CONSTANT = 3.10  # fallback until the season's real constant is computed
+_fip_constant = {"value": FIP_CONSTANT}
+
+
+def fip_constant() -> float:
+    return _fip_constant["value"]
+
+
+def set_fip_constant(value: float) -> None:
+    """Called with the season's real constant (lgERA minus league FIP
+    components) whenever all-team stats are fetched. Bounded as a sanity
+    check: real constants live around 3.0-3.3."""
+    if 2.5 <= value <= 4.0:
+        _fip_constant["value"] = round(value, 3)
 
 LEAGUE_AVG_BABIP = 0.300
 
@@ -226,7 +239,7 @@ def _pitching_metrics(stat: dict) -> dict:
     runs = stat.get("runs", 0) or 0
     batters_faced = stat.get("battersFaced", 0) or 0
 
-    fip = round(((13 * hr) + 3 * (bb + hbp) - (2 * so)) / ip + FIP_CONSTANT, 2) if ip > 0 else None
+    fip = round(((13 * hr) + 3 * (bb + hbp) - (2 * so)) / ip + fip_constant(), 2) if ip > 0 else None
 
     babip_denom = ab - so - hr + sf
     babip_against = round((h - hr) / babip_denom, 3) if babip_denom > 0 else None

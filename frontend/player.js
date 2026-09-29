@@ -49,6 +49,7 @@ function renderSeasonStats(p) {
     cards.innerHTML = [
       statTile("AVG", h.avg),
       statTile("OPS", h.ops),
+      ...(h.ops_plus != null ? [statTile("OPS+", h.ops_plus)] : []),
       statTile("HR", h.hr),
       statTile("RBI", h.rbi),
     ].join("");
@@ -57,6 +58,7 @@ function renderSeasonStats(p) {
     yearEl.textContent = `${pit.innings_pitched} IP`;
     cards.innerHTML = [
       statTile("ERA", pit.era),
+      ...(pit.era_minus != null ? [statTile("ERA-", pit.era_minus)] : []),
       statTile("W-L", `${pit.wins}-${pit.losses}`),
       statTile("SV", pit.saves),
       statTile("SO", pit.strikeouts),

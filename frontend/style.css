@@ -619,14 +619,16 @@ main section { scroll-margin-top: 3.5rem; }
   #hitters-table th:nth-child(8), #hitters-table td:nth-child(8),
   /* Hot/Cold pitchers: Name [Role] ERA(S) Form ΔERA ...adv */
   #pitchers-table th:nth-child(2), #pitchers-table td:nth-child(2),
-  /* Roster hitters: Name [Pos] AVG OPS HR [RBI] [BB%] [K%] */
+  /* Roster hitters: Name [Pos] [AVG] OPS OPS+ HR [RBI] [BB%] [K%] */
   #roster-hitters-table th:nth-child(2), #roster-hitters-table td:nth-child(2),
-  #roster-hitters-table th:nth-child(6), #roster-hitters-table td:nth-child(6),
+  #roster-hitters-table th:nth-child(3), #roster-hitters-table td:nth-child(3),
   #roster-hitters-table th:nth-child(7), #roster-hitters-table td:nth-child(7),
   #roster-hitters-table th:nth-child(8), #roster-hitters-table td:nth-child(8),
-  /* Roster pitchers: Name [Role] ERA FIP [K-BB%] IP */
+  #roster-hitters-table th:nth-child(9), #roster-hitters-table td:nth-child(9),
+  /* Roster pitchers: Name [Role] ERA ERA- [FIP] FIP- [K-BB%] IP */
   #roster-pitchers-table th:nth-child(2), #roster-pitchers-table td:nth-child(2),
   #roster-pitchers-table th:nth-child(5), #roster-pitchers-table td:nth-child(5),
+  #roster-pitchers-table th:nth-child(7), #roster-pitchers-table td:nth-child(7),
   /* Player game log: Date Opp [H/A] Result Line */
   #player-gamelog-table th:nth-child(3), #player-gamelog-table td:nth-child(3),
   /* Team page: Name [Pos|Role] ... */

@@ -826,6 +826,14 @@ function rankCard(label, block, fmt) {
 }
 
 const fmtInt = (v) => (v == null ? "-" : Math.round(v));
+
+// Heat class for a 100-scale index (OPS+, ERA-, FIP-): 10+ points either
+// side of average is clearly good or bad.
+function indexClass(v, higherIsBetter) {
+  if (v == null) return "";
+  const diff = higherIsBetter ? v - 100 : 100 - v;
+  return diff >= 10 ? "heat-good" : diff <= -10 ? "heat-bad" : "";
+}
 const fmtSignedInt = (v) => (v == null ? "-" : v > 0 ? `+${Math.round(v)}` : Math.round(v));
 const fmtRate = (v) => (v == null ? "-" : v.toFixed(3).replace(/^0/, ""));
 const fmtEra = (v) => (v == null ? "-" : v.toFixed(2));
@@ -845,9 +853,11 @@ async function loadLeagueContext() {
       rankCard("Runs Allowed", d.runs_allowed, fmtInt),
       rankCard("Team wOBA", d.team_woba, fmtRate),
       rankCard("Team OPS", d.team_ops, fmtRate),
+      rankCard("Team OPS+", d.team_ops_plus, fmtInt),
       rankCard("Walk Rate", d.team_bb_pct, fmtPct1),
       rankCard("Strikeout Rate", d.team_k_pct, fmtPct1),
       rankCard("Team ERA", d.team_era, fmtEra),
+      rankCard("Team ERA-", d.team_era_minus, fmtInt),
       rankCard("Team FIP", d.team_fip, fmtEra),
       rankCard("Pitching K-BB%", d.team_k_bb_pct, fmtPct1)
     );
@@ -1255,6 +1265,7 @@ async function loadFullRoster() {
         <td>${h.position || "-"}</td>
         <td class="num">${pctStr(s.avg)}</td>
         <td class="num">${pctStr(s.ops)}</td>
+        <td class="num ${indexClass(s.ops_plus, true)}">${fmtInt(s.ops_plus)}</td>
         <td class="num">${s.hr ?? "-"}</td>
         <td class="num">${s.rbi ?? "-"}</td>
         <td class="num">${fmtPct1(s.bb_pct)}</td>
@@ -1272,7 +1283,9 @@ async function loadFullRoster() {
         <td class="name">${playerLink(p.id, p.name)}${il}</td>
         <td>${p.role}</td>
         <td class="num">${s.era ?? "-"}</td>
+        <td class="num ${indexClass(s.era_minus, false)}">${fmtInt(s.era_minus)}</td>
         <td class="num">${s.fip ?? "-"}</td>
+        <td class="num ${indexClass(s.fip_minus, false)}">${fmtInt(s.fip_minus)}</td>
         <td class="num">${fmtPct1(s.k_bb_pct)}</td>
         <td class="num">${s.ip_display ?? "-"}</td>
       `;

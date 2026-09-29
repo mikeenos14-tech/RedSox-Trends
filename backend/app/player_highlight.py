@@ -98,6 +98,8 @@ async def get_stat_lines(person_id: int, season: int | None = None) -> dict:
     if hitting_season and (hitting_season.get("plateAppearances") or 0) > 0:
         result["hitting_this_season"] = {
             "avg": hitting_season.get("avg"),
+            "obp": hitting_season.get("obp"),
+            "slg": hitting_season.get("slg"),
             "hr": hitting_season.get("homeRuns"),
             "rbi": hitting_season.get("rbi"),
             "ops": hitting_season.get("ops"),
