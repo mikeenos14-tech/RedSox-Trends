@@ -5,7 +5,7 @@ import re
 import anthropic
 from anthropic import AsyncAnthropic
 
-from . import config
+from . import ai_store, config
 
 MODEL = "claude-sonnet-5"
 
@@ -36,6 +36,21 @@ async def _create_message(**kwargs):
         return await _client().messages.create(**kwargs)
     except anthropic.APIError as exc:
         raise RuntimeError(f"Anthropic API request failed: {exc}") from exc
+
+
+async def _persisted(kind: str, system_prompt: str, key_material, produce):
+    """Serve a stored output if this exact input was already generated under
+    this exact prompt and model; otherwise generate and store it. The prompt
+    and model are part of the key, so editing a prompt regenerates instead of
+    serving old wording. Failures (truncation, API errors) raise before
+    anything is stored."""
+    key = ai_store.make_key(kind, MODEL, system_prompt, key_material)
+    stored = ai_store.get(kind, key)
+    if stored is not None:
+        return stored
+    value = await produce()
+    ai_store.put(kind, key, value, MODEL)
+    return value
 
 
 def _extract_text(message) -> str:
@@ -101,6 +116,10 @@ ANALYSIS_SYSTEM_PROMPT = (
 
 
 async def generate_team_analysis(trends_summary: dict) -> str:
+    return await _persisted("team_analysis", ANALYSIS_SYSTEM_PROMPT, trends_summary, lambda: _generate_team_analysis_uncached(trends_summary))
+
+
+async def _generate_team_analysis_uncached(trends_summary: dict) -> str:
     message = await _create_message(
         model=MODEL,
         # Seen this hit the ceiling in production once (966 chars of visible
@@ -149,6 +168,10 @@ PLAYER_NOTES_SYSTEM_PROMPT = (
 
 
 async def generate_player_notes(player_report: dict) -> str:
+    return await _persisted("player_notes", PLAYER_NOTES_SYSTEM_PROMPT, player_report, lambda: _generate_player_notes_uncached(player_report))
+
+
+async def _generate_player_notes_uncached(player_report: dict) -> str:
     if not player_report["hitters"] and not player_report["pitchers"]:
         return "- Not enough recent playing time across the roster yet to call out a form change with confidence."
 
@@ -190,6 +213,10 @@ SIGNIFICANCE_SYSTEM_PROMPT = (
 
 
 async def generate_significance_narration(findings: list[dict]) -> str:
+    return await _persisted("significance", SIGNIFICANCE_SYSTEM_PROMPT, [f['detail'] for f in findings], lambda: _generate_significance_narration_uncached(findings))
+
+
+async def _generate_significance_narration_uncached(findings: list[dict]) -> str:
     message = await _create_message(
         model=MODEL,
         max_tokens=500,
@@ -268,6 +295,17 @@ PLAYER_HIGHLIGHT_SYSTEM_PROMPT = (
 
 
 async def generate_player_highlight(bio: dict) -> str:
+    # One feature per player per day: keyed on (date, player), not the full
+    # input, whose stat line can change mid-day after a game.
+    return await _persisted(
+        "player_highlight",
+        PLAYER_HIGHLIGHT_SYSTEM_PROMPT,
+        (bio.get("date"), bio.get("id")),
+        lambda: _generate_player_highlight_uncached(bio),
+    )
+
+
+async def _generate_player_highlight_uncached(bio: dict) -> str:
     message = await _create_message(
         model=MODEL,
         # Same headroom bump as generate_team_analysis, for the same reason —
@@ -369,6 +407,10 @@ STATCAST_SYSTEM_PROMPT = (
 
 
 async def generate_statcast_notes(report: dict) -> str:
+    return await _persisted("statcast_notes", STATCAST_SYSTEM_PROMPT, report, lambda: _generate_statcast_notes_uncached(report))
+
+
+async def _generate_statcast_notes_uncached(report: dict) -> str:
     if not report["hitters"] and not report["pitchers"]:
         return "- Not enough Statcast-qualified playing time on the roster yet to call out a trend."
 
@@ -503,7 +545,25 @@ def _strip_run_counts(text: str, bad: list[str]) -> str:
     return text
 
 
+# Bump when the fact sheet or the recap backstop changes in a way that
+# should regenerate stored recaps (prompt edits already do automatically).
+RECAP_PIPELINE_VERSION = 2
+
+
 async def generate_game_recap(game_data: dict) -> str:
+    # Keyed by game, not by input content: the input includes Google News
+    # headlines, which drift for days after a game — content-keying would
+    # write a fresh, differently-worded recap of the same game after every
+    # deploy.
+    return await _persisted(
+        "game_recap",
+        GAME_RECAP_SYSTEM_PROMPT,
+        (game_data["game_pk"], RECAP_PIPELINE_VERSION),
+        lambda: _generate_game_recap_uncached(game_data),
+    )
+
+
+async def _generate_game_recap_uncached(game_data: dict) -> str:
     sheet = build_recap_fact_sheet(game_data)
 
     async def attempt() -> str:

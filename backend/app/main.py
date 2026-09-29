@@ -2,8 +2,10 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import time
 import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Awaitable, Callable, TypeVar
 
@@ -34,7 +36,27 @@ from . import (
 
 logger = logging.getLogger("uvicorn.error")
 
-app = FastAPI(title="The Fenway Almanac")
+# Proactively (re)generate every AI output on a schedule instead of on a
+# visitor's page load: a new recap is ready within ~10 minutes of a game
+# going final, the daily highlight shortly after midnight, and analysis
+# whenever its underlying data changes — nobody waits 10-18s on a cold
+# cache. Each pass is cheap when nothing changed: in-memory and persisted
+# caches (see ai_store) short-circuit before any Claude call. On by default
+# on Railway; off locally unless WARM_AI_CACHE=1, so a dev server restart
+# doesn't spend API credits.
+WARM_INTERVAL_SECONDS = 600
+WARM_ENABLED = os.getenv("WARM_AI_CACHE", "1" if os.getenv("RAILWAY_ENVIRONMENT") else "0") == "1"
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    task = asyncio.create_task(_warm_loop()) if WARM_ENABLED else None
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title="The Fenway Almanac", lifespan=lifespan)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
@@ -624,6 +646,36 @@ async def team_last_game_recap():
         _game_recap_cache["game_pk"] = game_pk
         _game_recap_cache["data"] = result
         return result
+
+
+async def warm_ai_outputs() -> None:
+    """One pass over every AI-backed endpoint, oldest-news-first. Each call
+    goes through the endpoint's own caching, so only genuinely new inputs
+    reach Claude. A failure in one never blocks the rest."""
+    await season.ensure_fresh()
+    for name, endpoint in (
+        ("last-game recap", team_last_game_recap),
+        ("what stood out", team_last_game_significance),
+        ("team analysis", team_analysis),
+        ("player notes", players_notes),
+        ("player highlight", players_highlight),
+        ("statcast notes", players_statcast_notes),
+    ):
+        started = time.monotonic()
+        try:
+            await endpoint()
+        except Exception as exc:  # noqa: BLE001 — log and move on; next pass retries
+            logger.warning("AI warm-up: %s failed: %s", name, exc)
+        else:
+            elapsed = time.monotonic() - started
+            if elapsed > 2:
+                logger.info("AI warm-up: %s generated in %.1fs", name, elapsed)
+
+
+async def _warm_loop() -> None:
+    while True:
+        await warm_ai_outputs()
+        await asyncio.sleep(WARM_INTERVAL_SECONDS)
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

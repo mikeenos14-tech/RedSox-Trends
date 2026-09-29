@@ -113,6 +113,10 @@ hallucinated stats.
 - The season shown is resolved from MLB's own calendar at runtime
   (`backend/app/season.py`), so the site rolls over on Opening Day with no
   code change; the completed season stays up through the offseason
+- AI outputs are persisted in SQLite (`backend/app/ai_store.py`) on a Railway
+  volume, keyed by input + prompt + model (editing a prompt regenerates), and
+  a background loop re-warms every AI endpoint every 10 min so visitors never
+  trigger generation; the table doubles as an audit log of every AI text shown
 
 ## How this got built
 
